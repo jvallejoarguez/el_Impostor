@@ -43,8 +43,7 @@ export class GameRoom {
     const url = new URL(request.url)
 
     if (url.pathname === '/exists') {
-      const active = this.state !== null || this.sessions.size > 0
-      return Response.json({ active })
+      return Response.json({ active: this.state !== null && this.state.phase !== 'lobby' || this.sessions.size > 0 })
     }
 
     if (request.headers.get('Upgrade') !== 'websocket') {
@@ -101,25 +100,23 @@ export class GameRoom {
     const playerId = this._playerIdForWs(ws)
     if (!playerId || !this.state) return
     this.sessions.delete(playerId)
-
     this.state = {
       ...this.state,
       players: this.state.players.map(p => p.id === playerId ? { ...p, connected: false } : p),
     }
-
-    // Lobby ownership transfer + remove disconnected lobby players entirely
+    // Transfer ownership if owner left during lobby
     if (this.state.phase === 'lobby') {
-      const remaining = this.state.players.filter(p => p.connected)
-      if (remaining.length === 0) {
-        this.state = null
-        return
-      }
-      this.state = {
-        ...this.state,
-        players: remaining.map((p, i) => ({ ...p, isOwner: i === 0 })),
+      const wasOwner = this.state.players.find(p => p.id === playerId)?.isOwner
+      if (wasOwner) {
+        const nextOwner = this.state.players.find(p => p.connected)
+        if (nextOwner) {
+          this.state = {
+            ...this.state,
+            players: this.state.players.map(p => ({ ...p, isOwner: p.id === nextOwner.id })),
+          }
+        }
       }
     }
-
     this._broadcast()
   }
 
@@ -165,6 +162,9 @@ export class GameRoom {
           this._broadcast()
           await this.ctx.storage.setAlarm(nextTurnEnd)
         } else if (this.state.phase === 'voting') {
+          // Intentionally deviates from plan: plan's alarm lacks this branch, but without it
+          // auto-timeout into voting would have no votingTimerEnd and players would be stuck.
+          // _handleSubmitWord sets it on manual submit; alarm path needs symmetric handling.
           const voteEnd = Date.now() + 30000
           this.state = { ...this.state, timerEnd: null, votingTimerEnd: voteEnd }
           this._broadcast()
@@ -285,20 +285,27 @@ export class GameRoom {
   _handleBackToLobby(playerId) {
     const player = this.state?.players.find(p => p.id === playerId)
     if (!player?.isOwner) return
-    this._handlePlayAgain()
+    this.state = {
+      ...INITIAL_STATE(this.state.code),
+      players: this.state.players
+        .filter(p => p.connected)
+        .map((p, i) => ({ ...p, ready: false, isOwner: i === 0 })),
+      rules: this.state.rules, // keep current rules
+    }
+    this._broadcast()
   }
 
   // ── Broadcast helpers ────────────────────────────────────
 
   _sendRoleMessages() {
-    this.state.players.forEach((player) => {
+    this.state.players.forEach((player, idx) => {
       const ws = this.sessions.get(player.id)
-      if (ws) this._sendRoleTo(player.id, ws)
+      if (ws) this._sendRoleTo(player.id, ws, idx)
     })
   }
 
-  _sendRoleTo(playerId, ws) {
-    const idx = this.state.players.findIndex(p => p.id === playerId)
+  _sendRoleTo(playerId, ws, idxOverride) {
+    const idx = idxOverride ?? this.state.players.findIndex(p => p.id === playerId)
     const isImpostor = idx === this.state.impostorIdx
     ws.send(JSON.stringify({
       type: 'ROLE',
