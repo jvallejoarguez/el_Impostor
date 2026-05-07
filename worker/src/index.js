@@ -16,6 +16,7 @@ function corsHeaders(env) {
     'Access-Control-Allow-Origin': env.FRONTEND_ORIGIN || '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '86400',
   }
 }
 
@@ -44,13 +45,16 @@ export default {
         })
       }
       return new Response(JSON.stringify({ code }), {
-        status: 200, headers: { ...cors, 'Content-Type': 'application/json' },
+        status: 201, headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
 
     // GET /rooms/:code/ws — WebSocket upgrade, proxied to GameRoom DO
     const wsMatch = url.pathname.match(/^\/rooms\/([A-Z0-9]{4})\/ws$/)
-    if (wsMatch && request.headers.get('Upgrade') === 'websocket') {
+    if (wsMatch) {
+      if (request.headers.get('Upgrade') !== 'websocket') {
+        return new Response('Upgrade Required: WebSocket', { status: 426, headers: cors })
+      }
       const code = wsMatch[1]
       const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(code))
       return stub.fetch(request)
