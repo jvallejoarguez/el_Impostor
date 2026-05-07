@@ -26,7 +26,9 @@ export function useGameSocket() {
   const retryCountRef = useRef(0)
   const activeCodeRef = useRef(null)
   const activeNameRef = useRef(null)
-  const myId = getOrCreatePlayerId()
+  const myIdRef = useRef(null)
+  if (!myIdRef.current) myIdRef.current = getOrCreatePlayerId()
+  const myId = myIdRef.current
 
   const send = useCallback((type, payload = {}) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -35,6 +37,12 @@ export function useGameSocket() {
   }, [])
 
   const connect = useCallback((code, name) => {
+    clearTimeout(retryTimerRef.current)
+    if (wsRef.current) {
+      const old = wsRef.current
+      wsRef.current = null   // orphan it so onclose's `wsRef.current !== ws` check skips retry
+      try { old.close() } catch {}
+    }
     activeCodeRef.current = code
     activeNameRef.current = name
     retryCountRef.current = 0
@@ -49,6 +57,7 @@ export function useGameSocket() {
     wsRef.current = null
     setGameState(null)
     setMyRole(null)
+    setLastError(null)
     setConnectionState('disconnected')
   }, [])
 
@@ -61,12 +70,15 @@ export function useGameSocket() {
     wsRef.current = ws
 
     ws.onopen = () => {
+      if (wsRef.current !== ws) return
       retryCountRef.current = 0
+      setLastError(null)
       setConnectionState('connected')
-      ws.send(JSON.stringify({ type: 'JOIN', payload: { name, code, playerId: myId } }))
+      ws.send(JSON.stringify({ type: 'JOIN', payload: { name, code, playerId: myIdRef.current } }))
     }
 
     ws.onmessage = (event) => {
+      if (wsRef.current !== ws) return
       let msg
       try { msg = JSON.parse(event.data) } catch { return }
       switch (msg.type) {
@@ -83,6 +95,7 @@ export function useGameSocket() {
     }
 
     ws.onclose = () => {
+      if (wsRef.current !== ws) return  // superseded by a newer socket — do nothing
       setConnectionState('disconnected')
       if (activeCodeRef.current && activeNameRef.current) {
         // Exponential backoff: 1s, 2s, 4s, 8s, max 16s
@@ -99,8 +112,12 @@ export function useGameSocket() {
   }
 
   useEffect(() => () => {
+    activeCodeRef.current = null
+    activeNameRef.current = null
     clearTimeout(retryTimerRef.current)
-    wsRef.current?.close()
+    const ws = wsRef.current
+    wsRef.current = null
+    try { ws?.close() } catch {}
   }, [])
 
   return { gameState, myRole, myId, connectionState, lastError, connect, disconnect, send }
