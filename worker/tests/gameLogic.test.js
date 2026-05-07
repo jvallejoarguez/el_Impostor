@@ -1,5 +1,5 @@
 // worker/tests/gameLogic.test.js
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import {
   applyJoin, applyReady, applyUpdateRules, applyStartGame,
   applySubmitWord, applyBetweenVote, applyCastVote,
