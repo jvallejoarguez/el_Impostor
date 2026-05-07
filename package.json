@@ -1,0 +1,13 @@
+{
+  "name": "el-impostor",
+  "private": true,
+  "workspaces": ["frontend", "worker"],
+  "scripts": {
+    "dev": "concurrently -n frontend,worker -c cyan,yellow \"npm run dev -w frontend\" \"npm run dev -w worker\"",
+    "deploy:worker": "npm run deploy -w worker",
+    "deploy:frontend": "npm run build -w frontend && wrangler pages deploy frontend/dist --project-name el-impostor"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "el-impostor-worker",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "deploy": "wrangler deploy",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "wrangler": "^3.57.0",
+    "vitest": "^1.6.0"
+  }
+}
