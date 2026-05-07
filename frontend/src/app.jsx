@@ -4,7 +4,7 @@ import { HomeScreen, JoinScreen } from './components/screens-entry.jsx'
 import { LobbyScreen, CountdownScreen } from './components/screens-lobby.jsx'
 import { RoleRevealScreen, GameplayScreen } from './components/screens-game.jsx'
 import { BetweenRoundScreen, VotingScreen, ResultsScreen } from './components/screens-vote.jsx'
-import { useGameSocket } from './ws/useGameSocket.js'
+import { useGameSocket, WORKER_BASE } from './ws/useGameSocket.js'
 import { initSounds } from './audio/soundManager.js'
 
 // Theming defaults (keep existing theme system intact)
@@ -61,7 +61,7 @@ export default function App() {
     setCreateError(null)
     setPlayerName(name)
     try {
-      const res = await fetch('/rooms', { method: 'POST' })
+      const res = await fetch(`${WORKER_BASE}/rooms`, { method: 'POST' })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const { code } = await res.json()
       if (!code) throw new Error('No room code returned')

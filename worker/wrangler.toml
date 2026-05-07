@@ -5,6 +5,8 @@ compatibility_date = "2024-09-23"
 [vars]
 FRONTEND_ORIGIN = "http://localhost:3000"
 
+# Default fallback for production CORS. Override after first Pages
+# deploy with: wrangler secret put FRONTEND_ORIGIN --env production
 [env.production.vars]
 FRONTEND_ORIGIN = "https://el-impostor.pages.dev"
 

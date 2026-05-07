@@ -11,7 +11,7 @@ function getOrCreatePlayerId() {
   return id
 }
 
-const WORKER_BASE = import.meta.env.VITE_WORKER_URL || ''
+export const WORKER_BASE = import.meta.env.VITE_WORKER_URL || ''
 // In dev, Vite proxies /rooms → localhost:8787, so WORKER_BASE is empty.
 // In production, set VITE_WORKER_URL=https://el-impostor-worker.<account>.workers.dev
 
