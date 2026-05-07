@@ -3,9 +3,8 @@ import { Sticker, Avatar, hashSeed } from './primitives.jsx'
 
 // components/screens-lobby.jsx — Lobby, countdown
 
-function LobbyScreen({ room, isOwner, onStart, onLeave, onUpdateRules, theme }) {
+function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onStartGame, onLeave }) {
   const [copied, setCopied] = React.useState(false);
-  const [ready, setReady] = React.useState(false);
 
   const copyCode = () => {
     navigator.clipboard?.writeText(room.code);
@@ -13,8 +12,12 @@ function LobbyScreen({ room, isOwner, onStart, onLeave, onUpdateRules, theme }) 
     setTimeout(() => setCopied(false), 1500);
   };
 
-  const allReady = room.players.every(p => p.ready || p.isOwner);
-  const canStart = isOwner && room.players.length >= 3 && allReady;
+  // Owner is implicitly ready; non-owners must mark ready
+  const connectedPlayers = room.players.filter(p => p.connected !== false);
+  const allReady = connectedPlayers.every(p => p.ready || p.isOwner);
+  const canStart = amOwner && connectedPlayers.length >= 3 && allReady;
+  const myPlayer = room.players.find(p => p.id === myId);
+  const iAmReady = myPlayer?.ready ?? false;
 
   return (
     <div style={{ minHeight: "100vh", padding: "24px", maxWidth: 1280, margin: "0 auto" }}>
@@ -50,7 +53,7 @@ function LobbyScreen({ room, isOwner, onStart, onLeave, onUpdateRules, theme }) 
             gap: 16,
           }}>
             {room.players.map(p => (
-              <PlayerCard key={p.id} player={p} avatarStyle={theme.avatarStyle}/>
+              <PlayerCard key={p.id} player={p} avatarStyle={theme.avatarStyle} isMe={p.id === myId}/>
             ))}
             {Array.from({ length: Math.max(0, 4 - room.players.length) }).map((_, i) => (
               <div key={`empty-${i}`} className="dashed" style={{
@@ -80,7 +83,7 @@ function LobbyScreen({ room, isOwner, onStart, onLeave, onUpdateRules, theme }) 
               value={`${room.rules.turnTime}s`}
               min={10} max={60} step={5}
               current={room.rules.turnTime}
-              editable={isOwner}
+              editable={amOwner}
               onChange={v => onUpdateRules({ turnTime: v })}
               suffix="s"
             />
@@ -89,7 +92,7 @@ function LobbyScreen({ room, isOwner, onStart, onLeave, onUpdateRules, theme }) 
               value={`${room.rules.roundsBeforeVote}`}
               min={1} max={5} step={1}
               current={room.rules.roundsBeforeVote}
-              editable={isOwner}
+              editable={amOwner}
               onChange={v => onUpdateRules({ roundsBeforeVote: v })}
             />
             <RuleRow
@@ -97,42 +100,43 @@ function LobbyScreen({ room, isOwner, onStart, onLeave, onUpdateRules, theme }) 
               value={`${room.rules.maxPlayers}`}
               min={4} max={12} step={1}
               current={room.rules.maxPlayers}
-              editable={isOwner}
+              editable={amOwner}
               onChange={v => onUpdateRules({ maxPlayers: v })}
             />
             <ToggleRow
               label="El impostor conoce la pista"
               value={room.rules.imposterHasHint}
-              editable={isOwner}
+              editable={amOwner}
               onChange={v => onUpdateRules({ imposterHasHint: v })}
             />
             <ToggleRow
               label="Impostor gana al no ser descubierto"
               value={room.rules.imposterWinsIfNotFound}
-              editable={isOwner}
+              editable={amOwner}
               onChange={v => onUpdateRules({ imposterWinsIfNotFound: v })}
             />
           </div>
 
           <div style={{ marginTop: 28, paddingTop: 20, borderTop: "2.5px dashed var(--ink-soft)" }}>
-            {isOwner ? (
+            {amOwner ? (
               <button
                 className="btn btn--primary btn--block btn--lg"
                 disabled={!canStart}
-                onClick={onStart}
+                onClick={onStartGame}
               >
-                {room.players.length < 3 ? "Faltan jugadores" : !allReady ? "Esperando ready..." : "Empezar partida"}
+                {connectedPlayers.length < 3 ? "Faltan jugadores" : !allReady ? "Esperando ready..." : "Empezar partida"}
               </button>
             ) : (
               <button
-                className={`btn btn--block btn--lg ${ready ? "btn--teal" : "btn--mustard"}`}
-                onClick={() => setReady(r => !r)}
+                className={`btn btn--block btn--lg ${iAmReady ? "btn--teal" : "btn--mustard"}`}
+                disabled={iAmReady}
+                onClick={onReady}
               >
-                {ready ? "✓ Listo" : "Marcar listo"}
+                {iAmReady ? "✓ Listo" : "Marcar listo"}
               </button>
             )}
             <p style={{ textAlign: "center", fontSize: 12, color: "var(--ink-soft)", marginTop: 12, marginBottom: 0 }}>
-              {isOwner ? "Eres el dueño de la sala" : "Esperando que el dueño empiece"}
+              {amOwner ? "Eres el dueño de la sala" : "Esperando que el dueño empiece"}
             </p>
           </div>
         </div>
@@ -147,7 +151,8 @@ function LobbyScreen({ room, isOwner, onStart, onLeave, onUpdateRules, theme }) 
   );
 }
 
-function PlayerCard({ player, avatarStyle }) {
+function PlayerCard({ player, avatarStyle, isMe }) {
+  const disconnected = player.connected === false;
   return (
     <div style={{
       padding: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
@@ -157,10 +162,23 @@ function PlayerCard({ player, avatarStyle }) {
       boxShadow: "4px 4px 0 var(--ink)",
       position: "relative",
       transform: `rotate(${(hashSeed(player.name) % 5 - 2) * 0.7}deg)`,
+      opacity: disconnected ? 0.5 : 1,
     }} className="pop">
+      {isMe && (
+        <div style={{
+          position: "absolute", top: -8, left: -8,
+          padding: "2px 8px",
+          background: "var(--mustard)", color: "var(--ink)",
+          border: "2px solid var(--ink)", borderRadius: 8,
+          fontSize: 10, fontWeight: 700, letterSpacing: "0.08em",
+          textTransform: "uppercase",
+        }}>Tú</div>
+      )}
       <Avatar name={player.name} style={avatarStyle} size={64} showCrown={player.isOwner}/>
       <div style={{ fontFamily: "var(--font-display)", fontSize: 14, textAlign: "center" }}>{player.name}</div>
-      {player.isOwner ? (
+      {disconnected ? (
+        <span style={{ fontSize: 11, color: "var(--ink-soft)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>Desconectado</span>
+      ) : player.isOwner ? (
         <Sticker color="mustard" rotate={0} size="sm">Dueño</Sticker>
       ) : player.ready ? (
         <Sticker color="teal" rotate={0} size="sm">✓ Listo</Sticker>
@@ -233,10 +251,11 @@ const h2Style = {
 };
 
 // === COUNTDOWN ===
-function CountdownScreen({ onComplete }) {
+// Server drives phase transition via alarm; this component is a 4s visual animation only.
+function CountdownScreen({ theme }) {
   const [n, setN] = React.useState(3);
   React.useEffect(() => {
-    if (n === 0) { setTimeout(onComplete, 600); return; }
+    if (n <= 0) return;
     const t = setTimeout(() => setN(n - 1), 1000);
     return () => clearTimeout(t);
   }, [n]);

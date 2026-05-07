@@ -3,8 +3,14 @@ import { Sticker, Logo } from './primitives.jsx'
 
 // components/screens-entry.jsx — Home and Join screens
 
-function HomeScreen({ onCreate, onJoin, theme }) {
+function HomeScreen({ theme, mode, onCreateRoom, onJoinRoom, onSubmitName, onBack }) {
   const [hover, setHover] = React.useState(null);
+
+  // "create" mode shows a name-entry sub-form before creating the room
+  if (mode === "create") {
+    return <CreateNameForm theme={theme} onSubmitName={onSubmitName} onBack={onBack}/>;
+  }
+
   return (
     <div className="screen-wrap" style={{
       minHeight: "100vh", display: "flex", flexDirection: "column",
@@ -47,7 +53,7 @@ function HomeScreen({ onCreate, onJoin, theme }) {
           className="btn btn--primary btn--lg"
           onMouseEnter={() => setHover("create")}
           onMouseLeave={() => setHover(null)}
-          onClick={onCreate}
+          onClick={onCreateRoom}
           style={{ transform: hover === "create" ? "translate(-2px,-2px) rotate(-1deg)" : "rotate(-1deg)" }}
         >
           <span style={{ fontSize: 22, marginRight: 8 }}>＋</span> Crear sala
@@ -56,7 +62,7 @@ function HomeScreen({ onCreate, onJoin, theme }) {
           className="btn btn--mustard btn--lg"
           onMouseEnter={() => setHover("join")}
           onMouseLeave={() => setHover(null)}
-          onClick={onJoin}
+          onClick={onJoinRoom}
           style={{ transform: hover === "join" ? "translate(-2px,-2px) rotate(1deg)" : "rotate(1deg)" }}
         >
           <span style={{ fontSize: 22, marginRight: 8 }}>→</span> Unirse a sala
@@ -69,6 +75,53 @@ function HomeScreen({ onCreate, onJoin, theme }) {
         <HowItWorksStep num="2" title="Di una palabra relacionada"/>
         <Arrow/>
         <HowItWorksStep num="3" title="Descubre al impostor"/>
+      </div>
+    </div>
+  );
+}
+
+function CreateNameForm({ theme, onSubmitName, onBack }) {
+  const [name, setName] = React.useState("");
+  const canSubmit = name.trim().length >= 2;
+  const submit = () => { if (canSubmit) onSubmitName(name.trim()); };
+
+  return (
+    <div style={{
+      minHeight: "100vh", display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", padding: 24,
+    }}>
+      <button onClick={onBack} className="btn btn--ghost btn--sm" style={{ position: "absolute", top: 20, left: 20 }}>
+        ← Volver
+      </button>
+
+      <div className="card slide-up" style={{
+        width: "100%", maxWidth: 460,
+        padding: "40px 36px",
+        background: "var(--paper)",
+      }}>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <Sticker color="red" rotate={-3} size="lg">Crear sala</Sticker>
+        </div>
+
+        <label style={labelStyle}>Tu nombre</label>
+        <input
+          value={name}
+          onChange={e => setName(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && submit()}
+          maxLength={16}
+          placeholder="Ej. Ana"
+          autoFocus
+          style={inputStyle}
+        />
+
+        <button
+          className="btn btn--primary btn--block"
+          disabled={!canSubmit}
+          onClick={submit}
+          style={{ marginTop: 28 }}
+        >
+          Crear sala →
+        </button>
       </div>
     </div>
   );
@@ -94,10 +147,9 @@ function Arrow() {
 }
 
 // === JOIN SCREEN ===
-function JoinScreen({ onBack, onJoin }) {
+function JoinScreen({ theme, error, onJoin, onBack }) {
   const [code, setCode] = React.useState(["", "", "", ""]);
   const [name, setName] = React.useState("");
-  const [error, setError] = React.useState(false);
   const inputsRef = React.useRef([]);
 
   const setDigit = (i, val) => {
@@ -106,7 +158,6 @@ function JoinScreen({ onBack, onJoin }) {
     const next = [...code];
     next[i] = v;
     setCode(next);
-    setError(false);
     if (v && i < 3) inputsRef.current[i+1]?.focus();
   };
 
@@ -119,7 +170,7 @@ function JoinScreen({ onBack, onJoin }) {
 
   const submit = () => {
     if (!canJoin) return;
-    onJoin(code.join(""), name.trim());
+    onJoin(name.trim(), code.join(""));
   };
 
   return (
@@ -165,7 +216,7 @@ function JoinScreen({ onBack, onJoin }) {
                 fontFamily: "var(--font-mono)",
                 fontSize: 36,
                 fontWeight: 700,
-                border: `3px solid ${error ? "var(--red)" : "var(--ink)"}`,
+                border: `3px solid ${error ? "var(--red)" : "var(--ink)"}`, // error is now a string message from server
                 borderRadius: 14,
                 background: "var(--card)",
                 boxShadow: "4px 4px 0 var(--ink)",
@@ -176,6 +227,15 @@ function JoinScreen({ onBack, onJoin }) {
             />
           ))}
         </div>
+
+        {error && (
+          <div style={{
+            marginTop: 18, padding: "10px 14px",
+            background: "var(--red)", color: "var(--paper)",
+            border: "2.5px solid var(--ink)", borderRadius: 10,
+            fontSize: 13, fontWeight: 600, textAlign: "center",
+          }}>{error}</div>
+        )}
 
         <button
           className="btn btn--primary btn--block"

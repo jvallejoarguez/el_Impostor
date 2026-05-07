@@ -5,11 +5,18 @@ import { Sticker, Avatar } from './primitives.jsx'
 
 // === ROLE REVEAL ===
 // style: 'flash' | 'card' | 'stamp'
-function RoleRevealScreen({ isImposter, secretWord, hint, onContinue, revealStyle = "flash" }) {
+// Server drives phase transition via alarm — no onContinue.
+function RoleRevealScreen({ theme, myRole, revealStyle = "flash" }) {
+  // myRole may briefly be null on reconnect before ROLE arrives; show neutral until it does.
+  const isImposter = myRole?.isImpostor ?? false;
+  const secretWord = myRole?.word ?? "";
+  const hint = myRole?.hint ?? "";
+
   const [phase, setPhase] = React.useState(0); // 0 = hidden, 1 = reveal, 2 = show info
   React.useEffect(() => {
-    setTimeout(() => setPhase(1), 200);
-    setTimeout(() => setPhase(2), 900);
+    const t1 = setTimeout(() => setPhase(1), 200);
+    const t2 = setTimeout(() => setPhase(2), 900);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
   const bg = isImposter ? "var(--red)" : "var(--teal)";
@@ -71,9 +78,6 @@ function RoleRevealScreen({ isImposter, secretWord, hint, onContinue, revealStyl
             </div>
           </div>
         </div>
-        <button onClick={onContinue} className="btn btn--mustard" style={{ marginTop: 32 }}>
-          Entendido →
-        </button>
       </div>
     );
   }
@@ -118,9 +122,6 @@ function RoleRevealScreen({ isImposter, secretWord, hint, onContinue, revealStyl
             </div>
           )}
         </div>
-        <button onClick={onContinue} className="btn btn--primary" style={{ marginTop: 32 }}>
-          Entendido →
-        </button>
       </div>
     );
   }
@@ -176,11 +177,6 @@ function RoleRevealScreen({ isImposter, secretWord, hint, onContinue, revealStyl
               Di una palabra relacionada sin ser demasiado obvio
             </div>
           )}
-          <div style={{ marginTop: 28 }}>
-            <button onClick={onContinue} className="btn" style={{ background: "var(--paper)", color: "var(--ink)" }}>
-              Empezar ronda →
-            </button>
-          </div>
         </div>
       )}
     </div>
@@ -188,10 +184,41 @@ function RoleRevealScreen({ isImposter, secretWord, hint, onContinue, revealStyl
 }
 
 // === GAMEPLAY CIRCLE ===
-function GameplayScreen({ room, currentPlayerIdx, activePlayerIdx, currentWord, words, timer, onSubmitWord, circleLayout = "orbit", theme }) {
-  const [wordInput, setWordInput] = React.useState("");
-  const isMyTurn = activePlayerIdx === currentPlayerIdx;
+function GameplayScreen({ theme, room, myId, myRole, onSubmitWord }) {
+  const circleLayout = theme.circleLayout || "orbit";
+  const players = room.players;
+  const activePlayerIdx = room.activePlayerIdx ?? 0;
+  // myIdx replaces "currentPlayerIdx" — index of the local player in the players array
+  const myIdx = players.findIndex(p => p.id === myId);
+  const isMyTurn = activePlayerIdx === myIdx;
 
+  // Derive the latest-word-per-player map from wordHistory (last word wins per player).
+  const words = React.useMemo(() => {
+    const map = {};
+    for (const entry of room.wordHistory || []) map[entry.playerId] = entry.word;
+    return map;
+  }, [room.wordHistory]);
+
+  // Local live countdown derived from server's timerEnd.
+  const turnTotal = room.rules?.turnTime ?? 30;
+  const computeRemaining = () => {
+    if (!room.timerEnd) return turnTotal;
+    return Math.max(0, Math.ceil((room.timerEnd - Date.now()) / 1000));
+  };
+  const [remaining, setRemaining] = React.useState(computeRemaining);
+  React.useEffect(() => {
+    setRemaining(computeRemaining());
+    const id = setInterval(() => setRemaining(computeRemaining()), 250);
+    return () => clearInterval(id);
+  }, [room.timerEnd]);
+  const timer = { remaining, total: turnTotal };
+  const timeFrac = turnTotal > 0 ? timer.remaining / turnTotal : 0;
+
+  // currentWord: the local player's role hint or secret word, used for the top-bar reminder.
+  const amImposter = myRole?.isImpostor ?? false;
+  const currentWord = amImposter ? (myRole?.hint ?? "—") : (myRole?.word ?? "—");
+
+  const [wordInput, setWordInput] = React.useState("");
   React.useEffect(() => { setWordInput(""); }, [activePlayerIdx]);
 
   const submit = () => {
@@ -200,11 +227,6 @@ function GameplayScreen({ room, currentPlayerIdx, activePlayerIdx, currentWord, 
     setWordInput("");
   };
 
-  const players = room.players;
-  const N = players.length;
-
-  const timeFrac = timer.remaining / timer.total;
-
   return (
     <div style={{ minHeight: "100vh", padding: 20, display: "flex", flexDirection: "column" }}>
       {/* top bar */}
@@ -212,11 +234,11 @@ function GameplayScreen({ room, currentPlayerIdx, activePlayerIdx, currentWord, 
         <Sticker color="ink" rotate={-2}>Ronda {room.currentRound} / {room.rules.roundsBeforeVote}</Sticker>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-soft)", fontWeight: 700 }}>
-            {currentPlayerIdx === room.imposterIdx ? "Pista" : "Palabra"}
+            {amImposter ? "Pista" : "Palabra"}
           </span>
           <span style={{
             padding: "6px 14px",
-            background: currentPlayerIdx === room.imposterIdx ? "var(--red)" : "var(--teal)",
+            background: amImposter ? "var(--red)" : "var(--teal)",
             color: "var(--paper)",
             border: "2.5px solid var(--ink)",
             borderRadius: 10,
@@ -253,7 +275,7 @@ function GameplayScreen({ room, currentPlayerIdx, activePlayerIdx, currentWord, 
         {isMyTurn ? (
           <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 200 }}>
-              <Avatar name={players[currentPlayerIdx].name} style={theme.avatarStyle} size={48} speaking/>
+              <Avatar name={players[myIdx]?.name ?? ""} style={theme.avatarStyle} size={48} speaking/>
               <div>
                 <div style={{ fontFamily: "var(--font-display)", fontSize: 16 }}>Tu turno</div>
                 <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>Di una palabra relacionada</div>
@@ -334,7 +356,8 @@ function CircleLayout({ players, activeIdx, words, layout, avatarStyle, timeFrac
           }}/>
           <Avatar name={active.name} style={avatarStyle} size={160} speaking/>
           <div style={{ textAlign: "center", marginTop: 12, fontFamily: "var(--font-display)", fontSize: 22 }}>{active.name}</div>
-          {words[active.id] && <WordBubble text={words[active.id]} color={active.isImposter ? "red" : "teal"}/>}
+          {/* impostor identity is private during play — color all word bubbles neutrally */}
+          {words[active.id] && <WordBubble text={words[active.id]} color="teal"/>}
         </div>
         <div style={{ position: "absolute", bottom: 20, right: 20 }}>
           <TimerRing remaining={timerRemaining} total={timerTotal} frac={timeFrac} size={80}/>
@@ -401,7 +424,7 @@ function CircleLayout({ players, activeIdx, words, layout, avatarStyle, timeFrac
                 <Avatar name={p.name} style={avatarStyle} size={avatarSize} speaking={active}/>
                 <div style={{ fontFamily: "var(--font-display)", fontSize: 12, marginTop: 4 }}>{p.name}</div>
               </div>
-              {words[p.id] && <WordBubble text={words[p.id]} color={p.isImposter ? "red" : "teal"} compact/>}
+              {words[p.id] && <WordBubble text={words[p.id]} color="teal" compact/>}
               {active && <div className="pulse-ring" style={{ position: "absolute", inset: 0, borderRadius: "50%" }}/>}
             </div>
           );

@@ -3,7 +3,16 @@ import { Sticker, Avatar } from './primitives.jsx'
 
 // components/screens-vote.jsx — between-round, voting, results
 
-function BetweenRoundScreen({ room, votesToContinue, votesToVote, onVote, myVote }) {
+function BetweenRoundScreen({ theme, room, myId, onVote }) {
+  const continueVotes = room.betweenRoundVotes?.continue || [];
+  const voteVotes = room.betweenRoundVotes?.vote || [];
+  const votesToContinue = continueVotes.length;
+  const votesToVote = voteVotes.length;
+  const myVote = continueVotes.includes(myId)
+    ? "continue"
+    : voteVotes.includes(myId) ? "vote" : null;
+  const total = room.players.filter(p => p.connected !== false).length;
+
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <Sticker color="ink" rotate={-2} size="lg">Fin de ronda {room.currentRound}</Sticker>
@@ -20,20 +29,20 @@ function BetweenRoundScreen({ room, votesToContinue, votesToVote, onVote, myVote
           title="Otra ronda"
           subtitle="Más pistas, más dudas"
           count={votesToContinue}
-          total={room.players.length}
+          total={total}
           selected={myVote === "continue"}
           color="teal"
-          onClick={() => onVote("continue")}
+          onClick={() => myVote == null && onVote("continue")}
           icon="↻"
         />
         <VoteCard
           title="Votar ya"
           subtitle="Descubrir al impostor"
           count={votesToVote}
-          total={room.players.length}
+          total={total}
           selected={myVote === "vote"}
           color="red"
-          onClick={() => onVote("vote")}
+          onClick={() => myVote == null && onVote("vote")}
           icon="⚖"
         />
       </div>
@@ -74,7 +83,27 @@ function VoteCard({ title, subtitle, count, total, selected, color, onClick, ico
 }
 
 // === VOTING SCREEN ===
-function VotingScreen({ room, myVote, votes, onVote, onConfirm, timer, avatarStyle }) {
+function VotingScreen({ theme, room, myId, onCastVote, onConfirmVote }) {
+  const avatarStyle = theme.avatarStyle;
+  const votes = room.votes || {};
+  const myVote = votes[myId] || null;
+  const confirmed = (room.confirmedVotes || []).includes(myId);
+
+  // Local live countdown derived from server's votingTimerEnd.
+  const computeRemaining = () => {
+    if (!room.votingTimerEnd) return 0;
+    return Math.max(0, Math.ceil((room.votingTimerEnd - Date.now()) / 1000));
+  };
+  const [timer, setTimer] = React.useState(computeRemaining);
+  React.useEffect(() => {
+    setTimer(computeRemaining());
+    const id = setInterval(() => setTimer(computeRemaining()), 250);
+    return () => clearInterval(id);
+  }, [room.votingTimerEnd]);
+
+  const onVote = (id) => { if (!confirmed) onCastVote(id); };
+  const onConfirm = () => { if (myVote && !confirmed) onConfirmVote(); };
+
   return (
     <div style={{
       minHeight: "100vh",
@@ -153,10 +182,10 @@ function VotingScreen({ room, myVote, votes, onVote, onConfirm, timer, avatarSty
           </div>
           <button
             onClick={onConfirm}
-            disabled={!myVote}
+            disabled={!myVote || confirmed}
             className="btn btn--primary"
           >
-            Confirmar voto →
+            {confirmed ? "✓ Voto confirmado" : "Confirmar voto →"}
           </button>
         </div>
       </div>
@@ -165,9 +194,16 @@ function VotingScreen({ room, myVote, votes, onVote, onConfirm, timer, avatarSty
 }
 
 // === RESULTS ===
-function ResultsScreen({ room, imposterFound, imposter, secretWord, voteTally, onPlayAgain, onBackToLobby, avatarStyle }) {
+function ResultsScreen({ theme, room, myId, onPlayAgain, onBackToLobby }) {
+  const avatarStyle = theme.avatarStyle;
+  const result = room.result || {};
+  const imposterFound = !!result.found;
+  // Look up impostor in players (preferred — keeps avatar consistency) with name fallback.
+  const imposter = room.players.find(p => p.id === result.impostorId)
+    || { id: result.impostorId, name: result.impostorName || "?" };
+  const secretWord = result.secretWord || "—";
+  const voteTally = result.tally || {};
   const winner = imposterFound ? "jugadores" : "impostor";
-  const winnerColor = imposterFound ? "teal" : "red";
   const bg = imposterFound ? "var(--teal)" : "var(--red)";
 
   return (
@@ -241,12 +277,13 @@ function ResultsScreen({ room, imposterFound, imposter, secretWord, voteTally, o
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {room.players.map(p => {
               const count = voteTally[p.id] || 0;
+              const isImp = p.id === result.impostorId;
               return (
                 <div key={p.id} style={{
                   display: "flex", alignItems: "center", gap: 8,
                   padding: "6px 12px",
-                  background: p.isImposter ? "var(--red)" : "var(--card)",
-                  color: p.isImposter ? "var(--paper)" : "var(--ink)",
+                  background: isImp ? "var(--red)" : "var(--card)",
+                  color: isImp ? "var(--paper)" : "var(--ink)",
                   border: "2.5px solid var(--ink)", borderRadius: 999,
                   fontSize: 13, fontWeight: 600,
                 }}>
@@ -263,9 +300,11 @@ function ResultsScreen({ room, imposterFound, imposter, secretWord, voteTally, o
         <button onClick={onPlayAgain} className="btn btn--primary">
           ↻ Otra partida
         </button>
-        <button onClick={onBackToLobby} className="btn btn--mustard">
-          Volver al lobby
-        </button>
+        {onBackToLobby && (
+          <button onClick={onBackToLobby} className="btn btn--mustard">
+            Volver al lobby
+          </button>
+        )}
       </div>
     </div>
   );
