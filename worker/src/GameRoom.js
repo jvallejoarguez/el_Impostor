@@ -43,7 +43,7 @@ export class GameRoom {
     const url = new URL(request.url)
 
     if (url.pathname === '/exists') {
-      return Response.json({ active: this.state !== null && this.state.phase !== 'lobby' || this.sessions.size > 0 })
+      return Response.json({ active: (this.state !== null && this.state.phase !== 'lobby') || this.sessions.size > 0 })
     }
 
     if (request.headers.get('Upgrade') !== 'websocket') {
@@ -79,7 +79,7 @@ export class GameRoom {
         if (playerId) await this._handleSubmitWord(playerId, msg.payload || {})
         break
       case 'BETWEEN_VOTE':
-        if (playerId) { this.state = applyBetweenVote(this.state, { playerId, choice: msg.payload?.choice }); this._broadcast() }
+        if (playerId) await this._handleBetweenVote(playerId, msg.payload?.choice)
         break
       case 'CAST_VOTE':
         if (playerId) { this.state = applyCastVote(this.state, { voterId: playerId, targetId: msg.payload?.targetId }); this._broadcast() }
@@ -233,10 +233,28 @@ export class GameRoom {
     const wordPair = words[Math.floor(Math.random() * words.length)]
     const next = applyStartGame(this.state, wordPair)
     if (next.phase !== 'countdown') return // requirements not met
-    this.state = next
+    const countdownEnd = Date.now() + 4000
+    this.state = { ...next, timerEnd: countdownEnd }
     this._broadcast()
     // 4-second countdown then alarm fires → roleReveal
-    await this.ctx.storage.setAlarm(Date.now() + 4000)
+    await this.ctx.storage.setAlarm(countdownEnd)
+  }
+
+  async _handleBetweenVote(playerId, choice) {
+    this.state = applyBetweenVote(this.state, { playerId, choice })
+    if (this.state.phase === 'playing') {
+      const nextTurnEnd = Date.now() + this.state.rules.turnTime * 1000
+      this.state = { ...this.state, timerEnd: nextTurnEnd }
+      this._broadcast()
+      await this.ctx.storage.setAlarm(nextTurnEnd)
+    } else if (this.state.phase === 'voting') {
+      const voteEnd = Date.now() + 30000
+      this.state = { ...this.state, votingTimerEnd: voteEnd }
+      this._broadcast()
+      await this.ctx.storage.setAlarm(voteEnd)
+    } else {
+      this._broadcast()
+    }
   }
 
   async _handleSubmitWord(playerId, { word }) {
@@ -307,16 +325,18 @@ export class GameRoom {
   _sendRoleTo(playerId, ws, idxOverride) {
     const idx = idxOverride ?? this.state.players.findIndex(p => p.id === playerId)
     const isImpostor = idx === this.state.impostorIdx
-    ws.send(JSON.stringify({
-      type: 'ROLE',
-      payload: {
-        isImpostor,
-        word: isImpostor ? null : this.state.secretWord,
-        hint: isImpostor
-          ? (this.state.rules.imposterHasHint ? this.state.hint : null)
-          : this.state.hint,
-      },
-    }))
+    try {
+      ws.send(JSON.stringify({
+        type: 'ROLE',
+        payload: {
+          isImpostor,
+          word: isImpostor ? null : this.state.secretWord,
+          hint: isImpostor
+            ? (this.state.rules.imposterHasHint ? this.state.hint : null)
+            : this.state.hint,
+        },
+      }))
+    } catch {}
   }
 
   _broadcast() {
