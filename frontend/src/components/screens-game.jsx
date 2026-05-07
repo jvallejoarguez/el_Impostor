@@ -1,5 +1,6 @@
 import React from 'react'
 import { Sticker, Avatar } from './primitives.jsx'
+import { play } from '../audio/soundManager.js'
 
 // components/screens-game.jsx — Role reveal, gameplay circle, results
 
@@ -17,6 +18,9 @@ function RoleRevealScreen({ theme, myRole, revealStyle = "flash" }) {
     const t1 = setTimeout(() => setPhase(1), 200);
     const t2 = setTimeout(() => setPhase(2), 900);
     return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+  React.useEffect(() => {
+    play(myRole?.isImpostor ? 'roleImpostor' : 'roleCrewmate');
   }, []);
 
   const bg = isImposter ? "var(--red)" : "var(--teal)";
@@ -220,6 +224,27 @@ function GameplayScreen({ theme, room, myId, myRole, onSubmitWord }) {
 
   const [wordInput, setWordInput] = React.useState("");
   React.useEffect(() => { setWordInput(""); }, [activePlayerIdx]);
+
+  // SFX: your turn
+  React.useEffect(() => {
+    if (isMyTurn) play('yourTurn');
+  }, [isMyTurn]);
+
+  // SFX: timer warning when remaining drops to/below 25% of total
+  const pct = turnTotal > 0 ? remaining / turnTotal : 0;
+  React.useEffect(() => {
+    if (pct <= 0.25 && pct > 0) play('timerWarning');
+  }, [Math.floor(pct * 4)]);
+
+  // SFX: word submit (any player)
+  const wordCount = room.wordHistory?.length ?? 0;
+  const prevWordCountRef = React.useRef(wordCount);
+  React.useEffect(() => {
+    if (wordCount > prevWordCountRef.current) {
+      play('wordSubmit');
+    }
+    prevWordCountRef.current = wordCount;
+  }, [wordCount]);
 
   const submit = () => {
     if (!wordInput.trim()) return;

@@ -1,5 +1,6 @@
 import React from 'react'
 import { Sticker, Avatar, hashSeed } from './primitives.jsx'
+import { play } from '../audio/soundManager.js'
 
 // components/screens-lobby.jsx — Lobby, countdown
 
@@ -255,6 +256,7 @@ const h2Style = {
 function CountdownScreen({ theme }) {
   const [n, setN] = React.useState(3);
   React.useEffect(() => {
+    play('tick');
     if (n <= 0) return;
     const t = setTimeout(() => setN(n - 1), 1000);
     return () => clearTimeout(t);

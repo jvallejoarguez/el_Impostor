@@ -1,5 +1,6 @@
 import React from 'react'
 import { Sticker, Avatar } from './primitives.jsx'
+import { play } from '../audio/soundManager.js'
 
 // components/screens-vote.jsx — between-round, voting, results
 
@@ -101,7 +102,12 @@ function VotingScreen({ theme, room, myId, onCastVote, onConfirmVote }) {
     return () => clearInterval(id);
   }, [room.votingTimerEnd]);
 
-  const onVote = (id) => { if (!confirmed) onCastVote(id); };
+  const onVote = (id) => {
+    if (!confirmed) {
+      play('voteCast');
+      onCastVote(id);
+    }
+  };
   const onConfirm = () => { if (myVote && !confirmed) onConfirmVote(); };
 
   return (
@@ -205,6 +211,10 @@ function ResultsScreen({ theme, room, myId, onPlayAgain, onBackToLobby }) {
   const voteTally = result.tally || {};
   const winner = imposterFound ? "jugadores" : "impostor";
   const bg = imposterFound ? "var(--teal)" : "var(--red)";
+
+  React.useEffect(() => {
+    play(result.found ? 'win' : 'lose');
+  }, []);
 
   return (
     <div style={{ minHeight: "100vh", padding: 24, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
