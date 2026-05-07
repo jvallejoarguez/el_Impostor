@@ -5,6 +5,9 @@ compatibility_date = "2024-09-23"
 [vars]
 FRONTEND_ORIGIN = "http://localhost:3000"
 
+[env.production.vars]
+FRONTEND_ORIGIN = "https://el-impostor.pages.dev"
+
 [[durable_objects.bindings]]
 name = "GAME_ROOM"
 class_name = "GameRoom"
