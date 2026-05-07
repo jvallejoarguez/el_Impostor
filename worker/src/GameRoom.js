@@ -43,7 +43,15 @@ export class GameRoom {
     const url = new URL(request.url)
 
     if (url.pathname === '/exists') {
-      return Response.json({ active: (this.state !== null && this.state.phase !== 'lobby') || this.sessions.size > 0 })
+      return Response.json({ active: this.state !== null || this.sessions.size > 0 })
+    }
+
+    // Claim the room code at creation time so a concurrent POST /rooms
+    // cannot pick the same code before any client connects.
+    if (url.pathname === '/claim') {
+      const code = url.searchParams.get('code') || 'UNKNOWN'
+      if (!this.state) this.state = INITIAL_STATE(code)
+      return Response.json({ ok: true })
     }
 
     if (request.headers.get('Upgrade') !== 'websocket') {
@@ -194,8 +202,11 @@ export class GameRoom {
 
   async _handleJoin(ws, { name, code, playerId }) {
     if (!playerId) return
+    // Reject join for unclaimed rooms — only POST /rooms creates a room.
     if (!this.state) {
-      this.state = INITIAL_STATE(code || 'UNKNOWN')
+      ws.send(JSON.stringify({ type: 'ERROR', payload: { message: 'Sala no encontrada' } }))
+      ws.close()
+      return
     }
 
     const existing = this.state.players.find(p => p.id === playerId)

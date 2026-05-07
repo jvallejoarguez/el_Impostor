@@ -161,13 +161,33 @@ function JoinScreen({ theme, error, onJoin, onBack }) {
   const [name, setName] = React.useState("");
   const inputsRef = React.useRef([]);
 
+  const fillFrom = (startIdx, raw) => {
+    const cleaned = (raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!cleaned) return;
+    const next = [...code];
+    let lastFilled = startIdx;
+    for (let k = 0; k < cleaned.length && startIdx + k < 4; k++) {
+      next[startIdx + k] = cleaned[k];
+      lastFilled = startIdx + k;
+    }
+    setCode(next);
+    const focusIdx = Math.min(lastFilled + 1, 3);
+    inputsRef.current[focusIdx]?.focus();
+  };
+
   const setDigit = (i, val) => {
-    const v = val.toUpperCase().slice(-1);
-    if (!/[A-Z0-9]/.test(v) && v !== "") return;
+    if (val.length > 1) return fillFrom(i, val);
+    const v = val.toUpperCase();
+    if (v && !/[A-Z0-9]/.test(v)) return;
     const next = [...code];
     next[i] = v;
     setCode(next);
     if (v && i < 3) inputsRef.current[i+1]?.focus();
+  };
+
+  const handlePaste = (i, e) => {
+    e.preventDefault();
+    fillFrom(i, e.clipboardData.getData("text"));
   };
 
   const handleKey = (i, e) => {
@@ -218,7 +238,8 @@ function JoinScreen({ theme, error, onJoin, onBack }) {
               value={d}
               onChange={e => setDigit(i, e.target.value)}
               onKeyDown={e => handleKey(i, e)}
-              maxLength={1}
+              onPaste={e => handlePaste(i, e)}
+              maxLength={4}
               style={{
                 width: 56, height: 72,
                 textAlign: "center",

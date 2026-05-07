@@ -37,7 +37,12 @@ export default {
         const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(candidate))
         const res = await stub.fetch(new Request('http://internal/exists'))
         const { active } = await res.json()
-        if (!active) { code = candidate; break }
+        if (!active) {
+          // Claim immediately so a concurrent POST cannot pick the same code.
+          await stub.fetch(new Request(`http://internal/claim?code=${candidate}`))
+          code = candidate
+          break
+        }
       }
       if (!code) {
         return new Response(JSON.stringify({ error: 'Could not generate room' }), {
