@@ -43,7 +43,7 @@ function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onSta
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 20 }}>
             <h2 style={h2Style}>Jugadores</h2>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, color: "var(--ink-soft)" }}>
-              {room.players.length} / {room.rules.maxPlayers}
+              {room.players.length} / {room.rules?.maxPlayers ?? '?'}
             </span>
           </div>
 

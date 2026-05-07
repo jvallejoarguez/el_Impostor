@@ -3,12 +3,12 @@ import { Sticker, Logo } from './primitives.jsx'
 
 // components/screens-entry.jsx — Home and Join screens
 
-function HomeScreen({ theme, mode, onCreateRoom, onJoinRoom, onSubmitName, onBack }) {
+function HomeScreen({ theme, mode, error, onCreateRoom, onJoinRoom, onSubmitName, onBack }) {
   const [hover, setHover] = React.useState(null);
 
   // "create" mode shows a name-entry sub-form before creating the room
   if (mode === "create") {
-    return <CreateNameForm theme={theme} onSubmitName={onSubmitName} onBack={onBack}/>;
+    return <CreateNameForm theme={theme} error={error} onSubmitName={onSubmitName} onBack={onBack}/>;
   }
 
   return (
@@ -80,7 +80,7 @@ function HomeScreen({ theme, mode, onCreateRoom, onJoinRoom, onSubmitName, onBac
   );
 }
 
-function CreateNameForm({ theme, onSubmitName, onBack }) {
+function CreateNameForm({ theme, error, onSubmitName, onBack }) {
   const [name, setName] = React.useState("");
   const canSubmit = name.trim().length >= 2;
   const submit = () => { if (canSubmit) onSubmitName(name.trim()); };
@@ -113,6 +113,15 @@ function CreateNameForm({ theme, onSubmitName, onBack }) {
           autoFocus
           style={inputStyle}
         />
+
+        {error && (
+          <div style={{
+            marginTop: 18, padding: "10px 14px",
+            background: "var(--red)", color: "var(--paper)",
+            border: "2.5px solid var(--ink)", borderRadius: 10,
+            fontSize: 13, fontWeight: 600, textAlign: "center",
+          }}>{error}</div>
+        )}
 
         <button
           className="btn btn--primary btn--block"

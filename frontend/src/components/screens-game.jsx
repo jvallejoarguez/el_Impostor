@@ -231,7 +231,7 @@ function GameplayScreen({ theme, room, myId, myRole, onSubmitWord }) {
     <div style={{ minHeight: "100vh", padding: 20, display: "flex", flexDirection: "column" }}>
       {/* top bar */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
-        <Sticker color="ink" rotate={-2}>Ronda {room.currentRound} / {room.rules.roundsBeforeVote}</Sticker>
+        <Sticker color="ink" rotate={-2}>Ronda {room.currentRound} / {room.rules?.roundsBeforeVote}</Sticker>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-soft)", fontWeight: 700 }}>
             {amImposter ? "Pista" : "Palabra"}
@@ -303,10 +303,10 @@ function GameplayScreen({ theme, room, myId, myRole, onSubmitWord }) {
           </div>
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <Avatar name={players[activePlayerIdx].name} style={theme.avatarStyle} size={48} speaking/>
+            <Avatar name={players[activePlayerIdx]?.name ?? ""} style={theme.avatarStyle} size={48} speaking/>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: "var(--font-display)", fontSize: 16 }}>
-                {players[activePlayerIdx].name} está pensando...
+                {players[activePlayerIdx]?.name ?? ""} está pensando...
               </div>
               <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>Espera tu turno</div>
             </div>
@@ -346,6 +346,7 @@ function CircleLayout({ players, activeIdx, words, layout, avatarStyle, timeFrac
   if (layout === "stage") {
     // spotlight — active center, others on sides dimmed
     const active = players[activeIdx];
+    if (!active) return null;
     const others = players.filter((_, i) => i !== activeIdx);
     return (
       <div ref={wrapRef} style={{ width: "100%", height: "100%", position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 30 }}>
@@ -400,7 +401,7 @@ function CircleLayout({ players, activeIdx, words, layout, avatarStyle, timeFrac
         }}>
           <TimerRing remaining={timerRemaining} total={timerTotal} frac={timeFrac} size={120}/>
           <div style={{ fontFamily: "var(--font-display)", fontSize: 14, textAlign: "center", maxWidth: 160 }}>
-            {players[activeIdx].name}
+            {players[activeIdx]?.name ?? ""}
           </div>
         </div>
 

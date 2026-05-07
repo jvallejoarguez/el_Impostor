@@ -23,6 +23,7 @@ export default function App() {
   const [playerName, setPlayerName] = useState('')
   const [roomCode, setRoomCode] = useState('')
   const [joinError, setJoinError] = useState(null)
+  const [createError, setCreateError] = useState(null)
   const [theme] = useState(DEFAULT_THEME)
 
   const { gameState, myRole, myId, connectionState, lastError, connect, disconnect, send } =
@@ -57,15 +58,18 @@ export default function App() {
 
   const handleCreateRoom = useCallback(async (name) => {
     handleSoundsInit()
+    setCreateError(null)
     setPlayerName(name)
     try {
       const res = await fetch('/rooms', { method: 'POST' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const { code } = await res.json()
+      if (!code) throw new Error('No room code returned')
       setRoomCode(code)
       connect(code, name)
       setScreen('lobby')
     } catch {
-      setJoinError('No se pudo crear la sala. Inténtalo de nuevo.')
+      setCreateError('No se pudo crear la sala. Inténtalo de nuevo.')
     }
   }, [connect, handleSoundsInit])
 
@@ -116,8 +120,9 @@ export default function App() {
       <HomeScreen
         theme={theme}
         mode="create"
+        error={createError}
         onSubmitName={handleCreateRoom}
-        onBack={() => setScreen('home')}
+        onBack={() => { setCreateError(null); setScreen('home') }}
       />
     )
   }
