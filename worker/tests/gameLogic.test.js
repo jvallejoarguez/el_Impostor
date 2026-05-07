@@ -147,6 +147,22 @@ describe('applyStartGame', () => {
     const next = applyStartGame(state, { word: 'Playa', hint: 'Lugar de vacaciones' })
     expect(next.phase).toBe('lobby')
   })
+
+  it('never assigns impostorIdx to a disconnected player slot', () => {
+    // Ghost at index 0 is disconnected. impostor must always be one of p1, p2, p3.
+    const players = [
+      makePlayer('p0', 'Ghost', { connected: false, ready: false }),
+      makePlayer('p1', 'Ana', { isOwner: true, ready: true }),
+      makePlayer('p2', 'Bob', { ready: true }),
+      makePlayer('p3', 'Car', { ready: true }),
+    ]
+    for (let i = 0; i < 30; i++) {
+      const state = makeState({ players })
+      const next = applyStartGame(state, { word: 'Playa', hint: 'Lugar de vacaciones' })
+      const impostor = next.players[next.impostorIdx]
+      expect(impostor.connected).toBe(true)
+    }
+  })
 })
 
 // ────────────────────────────────────────────────────────────────

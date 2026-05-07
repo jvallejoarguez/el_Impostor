@@ -28,7 +28,10 @@ export function applyStartGame(state, wordPair) {
   const connected = state.players.filter(p => p.connected)
   if (connected.length < 3) return state
   if (!connected.every(p => p.ready)) return state
-  const impostorIdx = Math.floor(Math.random() * connected.length)
+  // Pick from connected players, then map back to a state.players index
+  // (state.players may contain disconnected ghosts that aren't valid impostors).
+  const chosen = connected[Math.floor(Math.random() * connected.length)]
+  const impostorIdx = state.players.findIndex(p => p.id === chosen.id)
   return {
     ...state,
     phase: 'countdown',
