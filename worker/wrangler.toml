@@ -5,15 +5,23 @@ compatibility_date = "2024-09-23"
 [vars]
 FRONTEND_ORIGIN = "http://localhost:3000"
 
-# Default fallback for production CORS. Override after first Pages
-# deploy with: wrangler secret put FRONTEND_ORIGIN --env production
-[env.production.vars]
-FRONTEND_ORIGIN = "https://el-impostor.pages.dev"
-
 [[durable_objects.bindings]]
 name = "GAME_ROOM"
 class_name = "GameRoom"
 
+# Free-plan Durable Objects must use SQLite-backed storage.
 [[migrations]]
 tag = "v1"
-new_classes = ["GameRoom"]
+new_sqlite_classes = ["GameRoom"]
+
+# Production env — wrangler does not auto-inherit durable_objects across
+# envs, so we redeclare the binding here. Override FRONTEND_ORIGIN to your
+# Pages URL after the first Pages deploy.
+[env.production]
+
+[env.production.vars]
+FRONTEND_ORIGIN = "https://el-impostor-djf.pages.dev"
+
+[[env.production.durable_objects.bindings]]
+name = "GAME_ROOM"
+class_name = "GameRoom"
