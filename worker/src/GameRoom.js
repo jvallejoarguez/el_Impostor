@@ -15,7 +15,6 @@ const INITIAL_STATE = (code) => ({
     roundsBeforeVote: 2,
     maxPlayers: 8,
     imposterHasHint: true,
-    imposterWinsIfNotFound: true,
   },
   impostorIdx: null,
   secretWord: null,
@@ -37,6 +36,16 @@ export class GameRoom {
     this.env = env
     this.sessions = new Map() // playerId -> WebSocket
     this.state = null
+    // Hydrate state from durable storage so wrangler hot-reloads and
+    // Cloudflare DO evictions don't wipe in-progress rooms.
+    ctx.blockConcurrencyWhile(async () => {
+      const saved = await ctx.storage.get('state')
+      if (saved) this.state = saved
+    })
+  }
+
+  async _save() {
+    if (this.state) await this.ctx.storage.put('state', this.state)
   }
 
   async fetch(request) {
@@ -50,7 +59,10 @@ export class GameRoom {
     // cannot pick the same code before any client connects.
     if (url.pathname === '/claim') {
       const code = url.searchParams.get('code') || 'UNKNOWN'
-      if (!this.state) this.state = INITIAL_STATE(code)
+      if (!this.state) {
+        this.state = INITIAL_STATE(code)
+        await this._save()
+      }
       return Response.json({ ok: true })
     }
 
@@ -71,6 +83,9 @@ export class GameRoom {
     const playerId = this._playerIdForWs(ws)
 
     switch (msg.type) {
+      case 'PING':
+        try { ws.send(JSON.stringify({ type: 'PONG' })) } catch {}
+        break
       case 'JOIN':
         await this._handleJoin(ws, msg.payload || {})
         break
@@ -108,20 +123,20 @@ export class GameRoom {
     const playerId = this._playerIdForWs(ws)
     if (!playerId || !this.state) return
     this.sessions.delete(playerId)
+    const wasOwner = this.state.players.find(p => p.id === playerId)?.isOwner
     this.state = {
       ...this.state,
       players: this.state.players.map(p => p.id === playerId ? { ...p, connected: false } : p),
     }
-    // Transfer ownership if owner left during lobby
-    if (this.state.phase === 'lobby') {
-      const wasOwner = this.state.players.find(p => p.id === playerId)?.isOwner
-      if (wasOwner) {
-        const nextOwner = this.state.players.find(p => p.connected)
-        if (nextOwner) {
-          this.state = {
-            ...this.state,
-            players: this.state.players.map(p => ({ ...p, isOwner: p.id === nextOwner.id })),
-          }
+    // Transfer ownership to the next connected player whenever the owner
+    // drops, regardless of phase — otherwise owner-only actions (START_GAME,
+    // BACK_TO_LOBBY) get stranded if the host never reconnects.
+    if (wasOwner) {
+      const nextOwner = this.state.players.find(p => p.connected)
+      if (nextOwner) {
+        this.state = {
+          ...this.state,
+          players: this.state.players.map(p => ({ ...p, isOwner: p.id === nextOwner.id })),
         }
       }
     }
@@ -201,6 +216,7 @@ export class GameRoom {
   // ── Handlers ──────────────────────────────────────────────
 
   async _handleJoin(ws, { name, code, playerId }) {
+    console.log('[GameRoom] JOIN attempt', { code, name, playerId, hasState: !!this.state, players: this.state?.players.length })
     if (!playerId) return
     // Reject join for unclaimed rooms — only POST /rooms creates a room.
     if (!this.state) {
@@ -352,6 +368,8 @@ export class GameRoom {
 
   _broadcast() {
     if (!this.state) return
+    // Fire-and-forget persistence — don't block the broadcast on storage I/O.
+    this._save().catch(() => {})
     const msg = JSON.stringify({ type: 'STATE', payload: this._publicState() })
     for (const ws of this.sessions.values()) {
       try { ws.send(msg) } catch {}

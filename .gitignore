@@ -5,3 +5,4 @@ frontend/node_modules/
 worker/node_modules/
 worker/.wrangler/
 npm_install.log
+.DS_Store
