@@ -8,6 +8,17 @@ Real-time multiplayer over WebSockets. Anonymous play — no accounts.
 - **Backend:** Cloudflare Workers + Durable Objects (in `worker/`)
 - **Hosting:** Cloudflare Pages (frontend) + Cloudflare Workers (backend)
 
+## Production (live)
+
+| Surface  | URL                                                                |
+|----------|--------------------------------------------------------------------|
+| Frontend | https://el-impostor-djf.pages.dev                                  |
+| Worker   | https://el-impostor-worker-production.jvallejoarguez.workers.dev   |
+
+Cloudflare account: `jvallejoarguez@gmail.com` (free tier). Pages project name: `el-impostor` (the `-djf` suffix is auto-appended because `el-impostor.pages.dev` was already taken). Worker name: `el-impostor-worker-production` (the `-production` suffix comes from deploying with `--env production`).
+
+See [`docs/deployment.md`](docs/deployment.md) for the full deployment story, gotchas hit, and the exact redeploy commands.
+
 ## Local Development
 
 Prerequisites: Node 20+, Wrangler CLI (`npm i -g wrangler`), Cloudflare account.
@@ -22,11 +33,22 @@ Open http://localhost:3000 in 3 browser tabs to simulate 3 players.
 ## Deployment
 
 ```bash
-npm run deploy:worker   # wrangler deploy (must run first)
-npm run deploy:frontend # wrangler pages deploy frontend/dist
+# 1. Worker (must run first — Pages build needs the worker URL)
+npm run deploy:worker
+
+# 2. Build frontend with the worker URL baked in
+VITE_WORKER_URL=https://el-impostor-worker-production.jvallejoarguez.workers.dev \
+  npm run build -w frontend
+
+# 3. Pages — pin to main, otherwise it deploys to a branch preview
+#    and the canonical el-impostor-djf.pages.dev shows "Deployment Not Found".
+npx wrangler pages deploy frontend/dist \
+  --project-name el-impostor --branch main --commit-dirty=true
 ```
 
-Set `FRONTEND_ORIGIN` environment variable in Cloudflare dashboard to your Pages URL.
+`FRONTEND_ORIGIN` lives in `worker/wrangler.toml` under `[env.production.vars]`. If the Pages URL ever changes, update it there and rerun step 1.
+
+Full walkthrough and troubleshooting: [`docs/deployment.md`](docs/deployment.md).
 
 ## Project Structure
 
