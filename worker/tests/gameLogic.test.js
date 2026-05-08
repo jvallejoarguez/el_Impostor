@@ -15,7 +15,6 @@ const makeState = (overrides = {}) => ({
     roundsBeforeVote: 2,
     maxPlayers: 8,
     imposterHasHint: true,
-    imposterWinsIfNotFound: true,
   },
   impostorIdx: null,
   secretWord: null,
@@ -181,7 +180,7 @@ describe('applySubmitWord', () => {
     impostorIdx: 2,
     secretWord: 'Playa',
     hint: 'Lugar de vacaciones',
-    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, imposterWinsIfNotFound: true },
+    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true },
   })
 
   it('adds the word to wordHistory', () => {
@@ -231,7 +230,7 @@ describe('applyBetweenVote', () => {
     players: [makePlayer('p1', 'Ana'), makePlayer('p2', 'Bob'), makePlayer('p3', 'Car')],
     currentRound: 1,
     betweenRoundVotes: { continue: [], vote: [] },
-    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, imposterWinsIfNotFound: true },
+    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true },
     impostorIdx: 2,
     secretWord: 'Playa',
     hint: 'Lugar',
@@ -273,7 +272,7 @@ describe('applyCastVote', () => {
     impostorIdx: 2,
     secretWord: 'Playa',
     hint: 'Lugar',
-    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, imposterWinsIfNotFound: true },
+    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true },
   })
 
   it('records a vote', () => {
@@ -298,7 +297,7 @@ describe('applyConfirmVote + computeResult', () => {
     impostorIdx: 2,
     secretWord: 'Playa',
     hint: 'Lugar',
-    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, imposterWinsIfNotFound: true },
+    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true },
   })
 
   it('applyConfirmVote transitions to results when all players have confirmed', () => {
@@ -327,7 +326,7 @@ describe('applyConfirmVote + computeResult', () => {
       impostorIdx: 2,
       secretWord: 'Playa',
       hint: 'Lugar',
-      rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, imposterWinsIfNotFound: true },
+      rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true },
     })
     const result = computeResult(state)
     expect(result.found).toBe(false)

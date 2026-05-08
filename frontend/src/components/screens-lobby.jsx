@@ -110,12 +110,6 @@ function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onSta
               editable={amOwner}
               onChange={v => onUpdateRules({ imposterHasHint: v })}
             />
-            <ToggleRow
-              label="Impostor gana al no ser descubierto"
-              value={room.rules.imposterWinsIfNotFound}
-              editable={amOwner}
-              onChange={v => onUpdateRules({ imposterWinsIfNotFound: v })}
-            />
           </div>
 
           <div style={{ marginTop: 28, paddingTop: 20, borderTop: "2.5px dashed var(--ink-soft)" }}>

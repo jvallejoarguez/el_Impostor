@@ -142,14 +142,15 @@ export default function App() {
   if (!gameState) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'Space Grotesk, sans-serif' }}>
-        {connectionState === 'connecting' ? 'Conectando...' : 'Desconectado — reconectando...'}
+        Conectando...
       </div>
     )
   }
 
+  let screenEl = null
   switch (phase) {
     case 'lobby':
-      return (
+      screenEl = (
         <LobbyScreen
           theme={theme}
           room={{ ...gameState, code: roomCode }}
@@ -161,21 +162,15 @@ export default function App() {
           onLeave={handleLeaveRoom}
         />
       )
-
+      break
     case 'countdown':
-      return <CountdownScreen theme={theme} />
-
+      screenEl = <CountdownScreen theme={theme} />
+      break
     case 'roleReveal':
-      return (
-        <RoleRevealScreen
-          theme={theme}
-          myRole={myRole}
-          revealStyle={theme.revealStyle}
-        />
-      )
-
+      screenEl = <RoleRevealScreen theme={theme} myRole={myRole} revealStyle={theme.revealStyle} />
+      break
     case 'playing':
-      return (
+      screenEl = (
         <GameplayScreen
           theme={theme}
           room={gameState}
@@ -184,19 +179,12 @@ export default function App() {
           onSubmitWord={handleSubmitWord}
         />
       )
-
+      break
     case 'betweenRound':
-      return (
-        <BetweenRoundScreen
-          theme={theme}
-          room={gameState}
-          myId={myId}
-          onVote={handleBetweenVote}
-        />
-      )
-
+      screenEl = <BetweenRoundScreen theme={theme} room={gameState} myId={myId} onVote={handleBetweenVote} />
+      break
     case 'voting':
-      return (
+      screenEl = (
         <VotingScreen
           theme={theme}
           room={gameState}
@@ -205,9 +193,9 @@ export default function App() {
           onConfirmVote={handleConfirmVote}
         />
       )
-
+      break
     case 'results':
-      return (
+      screenEl = (
         <ResultsScreen
           theme={theme}
           room={gameState}
@@ -216,8 +204,44 @@ export default function App() {
           onBackToLobby={amOwner ? handleBackToLobby : undefined}
         />
       )
-
-    default:
-      return null
+      break
   }
+
+  return (
+    <>
+      {screenEl}
+      {connectionState === 'reconnecting' && <ReconnectBanner />}
+    </>
+  )
+}
+
+function ReconnectBanner() {
+  // Only paint after 800ms of disconnection — avoids flicker for instant reconnects.
+  const [show, setShow] = React.useState(false)
+  React.useEffect(() => {
+    const t = setTimeout(() => setShow(true), 800)
+    return () => clearTimeout(t)
+  }, [])
+  if (!show) return null
+  return (
+    <div style={{
+      position: 'fixed', top: 12, left: '50%', transform: 'translateX(-50%)',
+      padding: '8px 14px',
+      background: 'var(--ink)', color: 'var(--paper)',
+      border: '2.5px solid var(--ink)', borderRadius: 10,
+      fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 700,
+      letterSpacing: '0.04em',
+      boxShadow: '4px 4px 0 var(--mustard)',
+      zIndex: 1000,
+      display: 'flex', alignItems: 'center', gap: 8,
+    }}>
+      <span style={{
+        width: 8, height: 8, borderRadius: '50%',
+        background: 'var(--mustard)',
+        animation: 'pulse 1s ease-in-out infinite',
+      }}/>
+      Reconectando…
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}`}</style>
+    </div>
+  )
 }

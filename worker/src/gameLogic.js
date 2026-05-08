@@ -27,7 +27,7 @@ export function applyUpdateRules(state, { playerId, rules }) {
 export function applyStartGame(state, wordPair) {
   const connected = state.players.filter(p => p.connected)
   if (connected.length < 3) return state
-  if (!connected.every(p => p.ready)) return state
+  if (!connected.every(p => p.ready || p.isOwner)) return state
   // Pick from connected players, then map back to a state.players index
   // (state.players may contain disconnected ghosts that aren't valid impostors).
   const chosen = connected[Math.floor(Math.random() * connected.length)]
