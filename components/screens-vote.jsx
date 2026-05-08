@@ -2,10 +2,10 @@
 
 function BetweenRoundScreen({ room, votesToContinue, votesToVote, onVote, myVote }) {
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
+    <div className="screen-pad" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <Sticker color="ink" rotate={-2} size="lg">Fin de ronda {room.currentRound}</Sticker>
 
-      <h1 style={{ fontFamily: "var(--font-display)", fontSize: 48, marginTop: 24, marginBottom: 8, textAlign: "center" }}>
+      <h1 className="between-title" style={{ fontFamily: "var(--font-display)", fontSize: 48, marginTop: 24, marginBottom: 8, textAlign: "center" }}>
         ¿Qué hacen ahora?
       </h1>
       <p style={{ color: "var(--ink-soft)", textAlign: "center", maxWidth: 480, marginTop: 0 }}>
@@ -45,7 +45,7 @@ function BetweenRoundScreen({ room, votesToContinue, votesToVote, onVote, myVote
 function VoteCard({ title, subtitle, count, total, selected, color, onClick, icon }) {
   const bg = color === "red" ? "var(--red)" : "var(--teal)";
   return (
-    <button onClick={onClick} style={{
+    <button className="vote-card" onClick={onClick} style={{
       width: 240, padding: 24,
       background: selected ? bg : "var(--card)",
       color: selected ? "var(--paper)" : "var(--ink)",
@@ -57,8 +57,8 @@ function VoteCard({ title, subtitle, count, total, selected, color, onClick, ico
       transition: "transform .15s ease, box-shadow .15s ease",
       textAlign: "left",
     }}>
-      <div style={{ fontSize: 56, lineHeight: 1, marginBottom: 12 }}>{icon}</div>
-      <div style={{ fontFamily: "var(--font-display)", fontSize: 26 }}>{title}</div>
+      <div className="icon" style={{ fontSize: 56, lineHeight: 1, marginBottom: 12 }}>{icon}</div>
+      <div className="title" style={{ fontFamily: "var(--font-display)", fontSize: 26 }}>{title}</div>
       <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>{subtitle}</div>
       <div style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 8 }}>
         <div style={{ flex: 1, height: 10, background: "var(--ink)", borderRadius: 6, overflow: "hidden", opacity: 0.3 }}>
@@ -73,7 +73,7 @@ function VoteCard({ title, subtitle, count, total, selected, color, onClick, ico
 // === VOTING SCREEN ===
 function VotingScreen({ room, myVote, votes, onVote, onConfirm, timer, avatarStyle }) {
   return (
-    <div style={{
+    <div className="screen-pad" style={{
       minHeight: "100vh",
       padding: 24,
       position: "relative",
@@ -98,7 +98,7 @@ function VotingScreen({ room, myVote, votes, onVote, onConfirm, timer, avatarSty
           </p>
         </div>
 
-        <div style={{
+        <div className="voting-grid" style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
           gap: 18,
@@ -108,7 +108,7 @@ function VotingScreen({ room, myVote, votes, onVote, onConfirm, timer, avatarSty
             const selected = myVote === p.id;
             const voteCount = Object.values(votes).filter(v => v === p.id).length;
             return (
-              <button key={p.id} onClick={() => onVote(p.id)} style={{
+              <button key={p.id} className="voting-card" onClick={() => onVote(p.id)} style={{
                 padding: 18,
                 background: selected ? "var(--red)" : "var(--card)",
                 color: selected ? "var(--paper)" : "var(--ink)",
@@ -168,7 +168,7 @@ function ResultsScreen({ room, imposterFound, imposter, secretWord, voteTally, o
   const bg = imposterFound ? "var(--teal)" : "var(--red)";
 
   return (
-    <div style={{ minHeight: "100vh", padding: 24, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+    <div className="screen-pad" style={{ minHeight: "100vh", padding: 24, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
       <div className="pop" style={{
         padding: "12px 32px",
         background: bg,
@@ -181,11 +181,12 @@ function ResultsScreen({ room, imposterFound, imposter, secretWord, voteTally, o
         textTransform: "uppercase",
         boxShadow: "5px 5px 0 var(--ink)",
         transform: "rotate(-2deg)",
+        textAlign: "center",
       }}>
         {imposterFound ? "Impostor descubierto" : "Impostor se salió con la suya"}
       </div>
 
-      <h1 style={{
+      <h1 className="results-title" style={{
         fontFamily: "var(--font-display)",
         fontSize: "min(14vw, 96px)",
         letterSpacing: "-0.03em",
@@ -198,13 +199,13 @@ function ResultsScreen({ room, imposterFound, imposter, secretWord, voteTally, o
         </span>
       </h1>
 
-      <div className="card slide-up" style={{
+      <div className="card slide-up results-card" style={{
         padding: 28, background: "var(--paper)",
         maxWidth: 540, width: "100%",
         marginTop: 24,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 24 }}>
-          <div style={{ position: "relative" }}>
+        <div className="imposter-row" style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 24 }}>
+          <div style={{ position: "relative", flexShrink: 0 }}>
             <Avatar name={imposter.name} style={avatarStyle} size={96}/>
             {/* mask overlay */}
             <div style={{
@@ -220,7 +221,7 @@ function ResultsScreen({ room, imposterFound, imposter, secretWord, voteTally, o
             <div style={{ fontSize: 12, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--ink-soft)", fontWeight: 700 }}>
               El impostor era
             </div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 36, marginTop: 4 }}>{imposter.name}</div>
+            <div className="imposter-name" style={{ fontFamily: "var(--font-display)", fontSize: 36, marginTop: 4, wordBreak: "break-word" }}>{imposter.name}</div>
           </div>
         </div>
 

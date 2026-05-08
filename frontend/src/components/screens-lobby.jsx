@@ -21,17 +21,17 @@ function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onSta
   const iAmReady = myPlayer?.ready ?? false;
 
   return (
-    <div style={{ minHeight: "100vh", padding: "24px", maxWidth: 1280, margin: "0 auto" }}>
+    <div className="screen-pad" style={{ minHeight: "100vh", padding: "24px", maxWidth: 1280, margin: "0 auto" }}>
       {/* top bar */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
+      <div className="lobby-topbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
         <button onClick={onLeave} className="btn btn--ghost btn--sm">← Salir</button>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
           <Sticker color="mustard" rotate={-2} size="lg">Sala · {room.code}</Sticker>
           <button onClick={copyCode} className="btn btn--sm" style={{ padding: "10px 14px" }}>
             {copied ? "✓ Copiado" : "⧉ Copiar"}
           </button>
         </div>
-        <div style={{ width: 80 }}/>
+        <div className="spacer" style={{ width: 80 }}/>
       </div>
 
       <div style={{
@@ -40,7 +40,7 @@ function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onSta
         gap: 24,
       }} className="lobby-grid">
         {/* LEFT — players */}
-        <div className="card" style={{ padding: 28, background: "var(--paper)" }}>
+        <div className="card lobby-card" style={{ padding: 28, background: "var(--paper)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 20 }}>
             <h2 style={h2Style}>Jugadores</h2>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, color: "var(--ink-soft)" }}>
@@ -76,7 +76,7 @@ function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onSta
         </div>
 
         {/* RIGHT — rules */}
-        <div className="card" style={{ padding: 28, background: "var(--card)", alignSelf: "start" }}>
+        <div className="card lobby-card" style={{ padding: 28, background: "var(--card)", alignSelf: "start" }}>
           <h2 style={h2Style}>Reglas</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 18, marginTop: 16 }}>
             <RuleRow

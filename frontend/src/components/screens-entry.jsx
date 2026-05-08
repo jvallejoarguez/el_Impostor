@@ -1,10 +1,11 @@
 import React from 'react'
-import { Sticker, Logo } from './primitives.jsx'
+import { Sticker, Logo, useIsMobile } from './primitives.jsx'
 
 // components/screens-entry.jsx — Home and Join screens
 
 function HomeScreen({ theme, mode, error, onCreateRoom, onJoinRoom, onSubmitName, onBack }) {
   const [hover, setHover] = React.useState(null);
+  const isMobile = useIsMobile();
 
   // "create" mode shows a name-entry sub-form before creating the room
   if (mode === "create") {
@@ -12,31 +13,31 @@ function HomeScreen({ theme, mode, error, onCreateRoom, onJoinRoom, onSubmitName
   }
 
   return (
-    <div className="screen-wrap" style={{
+    <div className="screen-wrap screen-pad" style={{
       minHeight: "100vh", display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center",
       padding: "40px 20px",
       position: "relative",
     }}>
-      {/* Floating stickers */}
-      <div style={{ position: "absolute", top: "8%", left: "6%", pointerEvents: "none" }}>
+      {/* Floating stickers (hidden on mobile via .floating-stickers) */}
+      <div className="floating-stickers" style={{ position: "absolute", top: "8%", left: "6%", pointerEvents: "none" }}>
         <Sticker color="teal" rotate={-8}>¿Quién es?</Sticker>
       </div>
-      <div style={{ position: "absolute", top: "12%", right: "8%", pointerEvents: "none" }}>
+      <div className="floating-stickers" style={{ position: "absolute", top: "12%", right: "8%", pointerEvents: "none" }}>
         <Sticker color="red" rotate={6}>3–12 jugadores</Sticker>
       </div>
-      <div style={{ position: "absolute", bottom: "14%", left: "10%", pointerEvents: "none" }}>
+      <div className="floating-stickers" style={{ position: "absolute", bottom: "14%", left: "10%", pointerEvents: "none" }}>
         <Sticker color="mustard" rotate={-5}>Juego de palabras</Sticker>
       </div>
-      <div style={{ position: "absolute", bottom: "20%", right: "12%", pointerEvents: "none" }}>
+      <div className="floating-stickers" style={{ position: "absolute", bottom: "20%", right: "12%", pointerEvents: "none" }}>
         <Sticker color="ink" rotate={4}>Gratis · Online</Sticker>
       </div>
 
-      <div style={{ marginBottom: 48, position: "relative", zIndex: 2 }}>
-        <Logo variant={theme.logoVariant} theme={theme}/>
+      <div className="home-logo-wrap" style={{ marginBottom: 48, position: "relative", zIndex: 2, maxWidth: "100%", overflow: "hidden", display: "flex", justifyContent: "center" }}>
+        <Logo variant={theme.logoVariant} theme={theme} size={isMobile ? 0.6 : 1}/>
       </div>
 
-      <p style={{
+      <p className="home-tagline" style={{
         fontFamily: "var(--font-ui)",
         fontSize: 18,
         color: "var(--ink-soft)",
@@ -44,11 +45,12 @@ function HomeScreen({ theme, mode, error, onCreateRoom, onJoinRoom, onSubmitName
         textAlign: "center",
         marginTop: 0,
         marginBottom: 40,
+        padding: "0 8px",
       }}>
         Todos reciben una palabra secreta. Uno no la tiene. Descubre al impostor antes de que sea tarde.
       </p>
 
-      <div style={{ display: "flex", gap: 20, flexWrap: "wrap", justifyContent: "center" }}>
+      <div className="home-cta-row" style={{ display: "flex", gap: 20, flexWrap: "wrap", justifyContent: "center" }}>
         <button
           className="btn btn--primary btn--lg"
           onMouseEnter={() => setHover("create")}
@@ -69,7 +71,7 @@ function HomeScreen({ theme, mode, error, onCreateRoom, onJoinRoom, onSubmitName
         </button>
       </div>
 
-      <div style={{ marginTop: 32, display: "flex", gap: 16, alignItems: "center", opacity: 0.65, flexWrap: "wrap", justifyContent: "center", transform: "scale(0.85)", transformOrigin: "center top" }}>
+      <div className="how-steps" style={{ marginTop: 32, display: "flex", gap: 16, alignItems: "center", opacity: 0.65, flexWrap: "wrap", justifyContent: "center", transform: "scale(0.85)", transformOrigin: "center top" }}>
         <HowItWorksStep num="1" title="Recibe tu palabra"/>
         <Arrow/>
         <HowItWorksStep num="2" title="Di una palabra relacionada"/>
@@ -86,18 +88,20 @@ function CreateNameForm({ theme, error, onSubmitName, onBack }) {
   const submit = () => { if (canSubmit) onSubmitName(name.trim()); };
 
   return (
-    <div style={{
+    <div className="screen-pad" style={{
       minHeight: "100vh", display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center", padding: 24,
+      position: "relative",
     }}>
-      <button onClick={onBack} className="btn btn--ghost btn--sm" style={{ position: "absolute", top: 20, left: 20 }}>
+      <button onClick={onBack} className="btn btn--ghost btn--sm" style={{ position: "absolute", top: 16, left: 16, zIndex: 5 }}>
         ← Volver
       </button>
 
-      <div className="card slide-up" style={{
+      <div className="card slide-up join-card" style={{
         width: "100%", maxWidth: 460,
         padding: "40px 36px",
         background: "var(--paper)",
+        marginTop: 56,
       }}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <Sticker color="red" rotate={-3} size="lg">Crear sala</Sticker>
@@ -203,18 +207,20 @@ function JoinScreen({ theme, error, onJoin, onBack }) {
   };
 
   return (
-    <div style={{
+    <div className="screen-pad" style={{
       minHeight: "100vh", display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center", padding: 24,
+      position: "relative",
     }}>
-      <button onClick={onBack} className="btn btn--ghost btn--sm" style={{ position: "absolute", top: 20, left: 20 }}>
+      <button onClick={onBack} className="btn btn--ghost btn--sm" style={{ position: "absolute", top: 16, left: 16, zIndex: 5 }}>
         ← Volver
       </button>
 
-      <div className="card slide-up" style={{
+      <div className="card slide-up join-card" style={{
         width: "100%", maxWidth: 460,
         padding: "40px 36px",
         background: "var(--paper)",
+        marginTop: 56,
       }}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <Sticker color="teal" rotate={-3} size="lg">Unirse a sala</Sticker>
@@ -230,7 +236,7 @@ function JoinScreen({ theme, error, onJoin, onBack }) {
         />
 
         <label style={{ ...labelStyle, marginTop: 24 }}>Código de sala</label>
-        <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 8 }}>
+        <div className="otp-row" style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 8 }}>
           {code.map((d, i) => (
             <input
               key={i}
@@ -240,6 +246,7 @@ function JoinScreen({ theme, error, onJoin, onBack }) {
               onKeyDown={e => handleKey(i, e)}
               onPaste={e => handlePaste(i, e)}
               maxLength={4}
+              className="otp-input"
               style={{
                 width: 56, height: 72,
                 textAlign: "center",

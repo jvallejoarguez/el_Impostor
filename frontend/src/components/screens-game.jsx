@@ -88,22 +88,23 @@ function RoleRevealScreen({ theme, myRole, revealStyle = "flash" }) {
 
   if (revealStyle === "stamp") {
     return (
-      <div style={{
+      <div className="screen-pad" style={{
         minHeight: "100vh", display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center", padding: 24,
         background: "var(--paper)",
       }}>
-        <div style={{
+        <div className="reveal-stamp-card" style={{
           background: "repeating-linear-gradient(-45deg, var(--cream-deep) 0 14px, var(--paper) 14px 28px)",
           padding: 40,
           border: "3px solid var(--ink)",
           borderRadius: 8,
           boxShadow: "8px 8px 0 var(--ink)",
           maxWidth: 480,
+          width: "100%",
           textAlign: "center",
           position: "relative",
         }}>
-          <div style={{
+          <div className={`reveal-stamp-inner ${phase >= 1 ? "pop" : ""}`} style={{
             display: "inline-block",
             padding: "16px 36px",
             border: `6px double ${isImposter ? "var(--red)" : "var(--teal)"}`,
@@ -112,7 +113,7 @@ function RoleRevealScreen({ theme, myRole, revealStyle = "flash" }) {
             fontSize: 48,
             transform: "rotate(-4deg)",
             letterSpacing: "0.08em",
-          }} className={phase >= 1 ? "pop" : ""}>
+          }}>
             {isImposter ? "IMPOSTOR" : "JUGADOR"}
           </div>
           {phase >= 2 && (
@@ -253,7 +254,7 @@ function GameplayScreen({ theme, room, myId, myRole, onSubmitWord }) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", padding: 20, display: "flex", flexDirection: "column" }}>
+    <div className="screen-pad-tight" style={{ minHeight: "100vh", padding: 20, display: "flex", flexDirection: "column" }}>
       {/* top bar */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
         <Sticker color="ink" rotate={-2}>Ronda {room.currentRound} / {room.rules?.roundsBeforeVote}</Sticker>
@@ -289,7 +290,7 @@ function GameplayScreen({ theme, room, myId, myRole, onSubmitWord }) {
       </div>
 
       {/* bottom — my input or waiting */}
-      <div style={{
+      <div className="gameplay-bottom" style={{
         padding: "20px",
         background: "var(--paper)",
         border: "3px solid var(--ink)",
@@ -298,8 +299,8 @@ function GameplayScreen({ theme, room, myId, myRole, onSubmitWord }) {
         marginTop: 12,
       }}>
         {isMyTurn ? (
-          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 200 }}>
+          <div className="input-row" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+            <div className="turn-info" style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 200 }}>
               <Avatar name={players[myIdx]?.name ?? ""} style={theme.avatarStyle} size={48} speaking/>
               <div>
                 <div style={{ fontFamily: "var(--font-display)", fontSize: 16 }}>Tu turno</div>
@@ -316,7 +317,7 @@ function GameplayScreen({ theme, room, myId, myRole, onSubmitWord }) {
               style={{
                 flex: 2, minWidth: 180,
                 padding: "14px 18px",
-                fontFamily: "var(--font-ui)", fontSize: 18, fontWeight: 600,
+                fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 600,
                 border: "3px solid var(--ink)", borderRadius: 12,
                 background: "var(--card)", boxShadow: "3px 3px 0 var(--ink)",
                 outline: "none", color: "var(--ink)",

@@ -209,3 +209,71 @@ input { font-family: inherit; }
 .rotate-1 { transform: rotate(1deg); }
 .rotate-2 { transform: rotate(2deg); }
 .rotate-3 { transform: rotate(3deg); }
+
+/* === Mobile responsive === */
+@media (max-width: 640px) {
+  .btn { padding: 13px 20px; font-size: 15px; box-shadow: var(--shadow-hard); }
+  .btn:hover { box-shadow: var(--shadow-hard); }
+  .btn--lg { padding: 16px 24px; font-size: 17px; }
+  .btn--sm { padding: 8px 12px; font-size: 12px; }
+  .card { border-radius: var(--radius-md); box-shadow: var(--shadow-hard-lg); }
+
+  .floating-stickers { display: none !important; }
+  .how-steps { display: none !important; }
+  .home-tagline { font-size: 15px !important; max-width: 320px !important; margin-bottom: 28px !important; }
+  .home-cta-row { flex-direction: column !important; width: 100%; max-width: 320px; }
+  .home-cta-row .btn { width: 100%; transform: none !important; }
+
+  .screen-pad { padding: 16px !important; }
+  .screen-pad-tight { padding: 12px !important; }
+
+  .lobby-topbar { gap: 8px !important; margin-bottom: 16px !important; }
+  .lobby-topbar .spacer { display: none !important; }
+  .lobby-card { padding: 18px !important; }
+
+  .otp-row { gap: 6px !important; }
+  .otp-input {
+    width: 14vw !important;
+    height: 18vw !important;
+    max-width: 56px;
+    max-height: 72px;
+    font-size: 28px !important;
+  }
+  .join-card { padding: 24px 20px !important; }
+
+  .gameplay-bottom { padding: 12px !important; }
+  .gameplay-bottom .input-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+  .gameplay-bottom .input-row .turn-info { width: 100%; min-width: 0 !important; }
+  .gameplay-bottom .input-row input { width: 100%; min-width: 0 !important; flex: none !important; }
+  .gameplay-bottom .input-row .btn { width: 100%; }
+
+  .reveal-stamp-card { padding: 24px !important; max-width: 100% !important; }
+  .reveal-stamp-inner { font-size: 32px !important; padding: 10px 18px !important; }
+
+  .vote-card { width: 100% !important; max-width: 320px; }
+  .vote-card .icon { font-size: 40px !important; margin-bottom: 8px !important; }
+  .vote-card .title { font-size: 22px !important; }
+
+  .voting-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important; gap: 12px !important; }
+  .voting-card { padding: 12px !important; }
+
+  .between-title { font-size: 32px !important; }
+  .results-title { font-size: 44px !important; }
+  .results-card { padding: 18px !important; }
+  .results-card .imposter-row { gap: 12px !important; }
+  .results-card .imposter-name { font-size: 26px !important; }
+
+  .home-logo-wrap { margin-bottom: 28px !important; }
+
+  /* hide dev jumper button by default; dev still possible via long-press */
+  .dev-jumper { opacity: 0.4; }
+}
+
+@media (max-width: 380px) {
+  .otp-input { font-size: 24px !important; }
+  .home-tagline { font-size: 14px !important; }
+}

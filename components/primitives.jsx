@@ -1,5 +1,21 @@
 // components/primitives.jsx — Logo, Avatar, shared bits
 
+function useIsMobile(maxWidth = 640) {
+  const get = () => typeof window !== "undefined" && window.matchMedia(`(max-width: ${maxWidth}px)`).matches;
+  const [m, setM] = React.useState(get);
+  React.useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${maxWidth}px)`);
+    const handler = e => setM(e.matches);
+    if (mq.addEventListener) mq.addEventListener("change", handler);
+    else mq.addListener(handler);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", handler);
+      else mq.removeListener(handler);
+    };
+  }, [maxWidth]);
+  return m;
+}
+
 // === LOGO VARIANTS ===
 // variant: 'stacked' | 'badge' | 'sticker'
 function Logo({ variant = "stacked", size = 1, theme = {} }) {
@@ -54,34 +70,35 @@ function Logo({ variant = "stacked", size = 1, theme = {} }) {
     );
   }
   // stacked (default) — "EL" small, "IMPOSTOR" big, masked O
+  const elSize = 48 * size;
+  const impSize = 112 * size;
   return (
     <div style={{
       display: "inline-flex", flexDirection: "column", alignItems: "center",
-      transform: `scale(${size})`, transformOrigin: "center top",
       lineHeight: 0.85,
     }}>
       <div style={{
         fontFamily: "var(--font-display)",
-        fontSize: 48,
+        fontSize: elSize,
         color: "var(--ink)",
         letterSpacing: "0.15em",
-        padding: "4px 16px",
+        padding: `${4*size}px ${16*size}px`,
         background: "var(--mustard)",
         border: "3px solid var(--ink)",
         borderRadius: 10,
-        boxShadow: "4px 4px 0 var(--ink)",
+        boxShadow: `${4*size}px ${4*size}px 0 var(--ink)`,
         transform: "rotate(-2deg)",
-        marginBottom: -8,
+        marginBottom: -8 * size,
         zIndex: 2,
         position: "relative",
       }}>EL</div>
       <div style={{
         fontFamily: "var(--font-display)",
-        fontSize: 112,
+        fontSize: impSize,
         color: primary,
         letterSpacing: "-0.02em",
-        WebkitTextStroke: "3px var(--ink)",
-        filter: "drop-shadow(6px 6px 0 var(--ink))",
+        WebkitTextStroke: `${Math.max(2, 3*size)}px var(--ink)`,
+        filter: `drop-shadow(${6*size}px ${6*size}px 0 var(--ink))`,
         display: "flex",
         alignItems: "center",
       }}>
@@ -294,4 +311,4 @@ function Sticker({ children, color = "mustard", rotate = -3, size = "md" }) {
   );
 }
 
-Object.assign(window, { Logo, Avatar, Crown, Sticker, hashSeed, AVATAR_COLORS });
+Object.assign(window, { Logo, Avatar, Crown, Sticker, hashSeed, AVATAR_COLORS, useIsMobile });
