@@ -42,6 +42,16 @@ export class GameRoom {
       const saved = await ctx.storage.get('state')
       if (saved) this.state = saved
     })
+    // Hibernation API: when the DO wakes from hibernation, this.sessions is
+    // empty but ctx.getWebSockets() still has every accepted socket. Each
+    // socket's playerId was stashed via serializeAttachment in _handleJoin,
+    // so we can rebuild the routing table here. Without this, broadcasts
+    // after a hibernation tick only reach the most recently joined tab —
+    // the visible symptom was "host doesn't see joiners".
+    for (const ws of ctx.getWebSockets()) {
+      const att = ws.deserializeAttachment?.()
+      if (att?.playerId) this.sessions.set(att.playerId, ws)
+    }
   }
 
   async _save() {
@@ -228,7 +238,12 @@ export class GameRoom {
     const existing = this.state.players.find(p => p.id === playerId)
     if (existing) {
       // Reconnect path
+      const prev = this.sessions.get(playerId)
+      if (prev && prev !== ws) {
+        try { prev.close(1000, 'replaced') } catch {}
+      }
       this.sessions.set(playerId, ws)
+      try { ws.serializeAttachment({ playerId }) } catch {}
       this.state = applyJoin(this.state, { id: playerId, name, isOwner: existing.isOwner })
       if (['roleReveal', 'playing', 'betweenRound', 'voting', 'results'].includes(this.state.phase)) {
         this._sendRoleTo(playerId, ws)
@@ -250,6 +265,7 @@ export class GameRoom {
     }
     const isOwner = this.state.players.length === 0
     this.sessions.set(playerId, ws)
+    try { ws.serializeAttachment({ playerId }) } catch {}
     this.state = applyJoin(this.state, { id: playerId, name, isOwner })
     this._broadcast()
   }
@@ -371,7 +387,17 @@ export class GameRoom {
     // Fire-and-forget persistence — don't block the broadcast on storage I/O.
     this._save().catch(() => {})
     const msg = JSON.stringify({ type: 'STATE', payload: this._publicState() })
+    // Source of truth is ctx.getWebSockets(): it survives hibernation and
+    // includes every accepted socket, even ones this instance never saw a
+    // JOIN for. this.sessions is a fast lookup index, not authoritative.
+    const sockets = this.ctx.getWebSockets()
+    const seen = new Set()
+    for (const ws of sockets) {
+      seen.add(ws)
+      try { ws.send(msg) } catch {}
+    }
     for (const ws of this.sessions.values()) {
+      if (seen.has(ws)) continue
       try { ws.send(msg) } catch {}
     }
   }
@@ -385,6 +411,16 @@ export class GameRoom {
     for (const [id, socket] of this.sessions) {
       if (socket === ws) return id
     }
+    // Fallback: read playerId from the socket's serialized attachment.
+    // Covers the window where this.sessions hasn't been rebuilt yet but the
+    // attachment (set in _handleJoin) survived hibernation on the socket.
+    try {
+      const att = ws.deserializeAttachment?.()
+      if (att?.playerId) {
+        this.sessions.set(att.playerId, ws)
+        return att.playerId
+      }
+    } catch {}
     return null
   }
 }
