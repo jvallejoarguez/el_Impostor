@@ -128,7 +128,7 @@ function VotingScreen({ theme, room, myId, onCastVote, onConfirmVote }) {
       <div style={{ position: "relative", zIndex: 2 }}>
         <div style={{ textAlign: "center", marginBottom: 24 }}>
           <Sticker color="red" rotate={-3} size="lg">Tiempo de votar</Sticker>
-          <h1 style={{ fontFamily: "var(--font-display)", fontSize: "min(10vw, 64px)", margin: "16px 0 4px", letterSpacing: "-0.02em" }}>
+          <h1 style={{ fontFamily: "var(--font-display)", fontSize: "min(10vw, 64px)", margin: "16px 0 4px", letterSpacing: 0 }}>
             ¿Quién es el impostor?
           </h1>
           <p style={{ color: "var(--ink-soft)", margin: 0, fontWeight: 600 }}>
@@ -238,7 +238,7 @@ function ResultsScreen({ theme, room, myId, onPlayAgain, onBackToLobby }) {
       <h1 className="results-title" style={{
         fontFamily: "var(--font-display)",
         fontSize: "min(14vw, 96px)",
-        letterSpacing: "-0.03em",
+        letterSpacing: 0,
         margin: "20px 0 12px",
         textAlign: "center",
         lineHeight: 0.9,

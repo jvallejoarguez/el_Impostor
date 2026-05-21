@@ -1,5 +1,67 @@
 // worker/src/gameLogic.js
 
+export const WORD_CATEGORY_IDS = [
+  'all',
+  'animales',
+  'comida',
+  'lugares',
+  'objetos',
+  'naturaleza',
+  'cultura',
+  'profesiones',
+  'deportes',
+  'ficcion',
+  'ciencia',
+]
+
+const WORD_CATEGORY_SET = new Set(WORD_CATEGORY_IDS)
+
+function clampInt(value, min, max) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return null
+  return Math.min(max, Math.max(min, Math.round(n)))
+}
+
+function connectedPlayerIndices(state) {
+  return state.players
+    .map((p, idx) => p.connected !== false ? idx : null)
+    .filter(idx => idx !== null)
+}
+
+export function firstConnectedPlayerIdx(state) {
+  return connectedPlayerIndices(state)[0] ?? 0
+}
+
+function sanitizeRules(state, patch = {}) {
+  const next = {}
+  const connectedCount = state.players.filter(p => p.connected !== false).length
+
+  if ('turnTime' in patch) {
+    const turnTime = clampInt(patch.turnTime, 10, 60)
+    if (turnTime !== null) next.turnTime = turnTime
+  }
+
+  if ('roundsBeforeVote' in patch) {
+    const roundsBeforeVote = clampInt(patch.roundsBeforeVote, 1, 5)
+    if (roundsBeforeVote !== null) next.roundsBeforeVote = roundsBeforeVote
+  }
+
+  if ('maxPlayers' in patch) {
+    const maxPlayers = clampInt(patch.maxPlayers, Math.max(3, connectedCount), 12)
+    if (maxPlayers !== null) next.maxPlayers = maxPlayers
+  }
+
+  if ('imposterHasHint' in patch && typeof patch.imposterHasHint === 'boolean') {
+    next.imposterHasHint = patch.imposterHasHint
+  }
+
+  if ('wordCategory' in patch && WORD_CATEGORY_SET.has(patch.wordCategory)) {
+    next.wordCategory = patch.wordCategory
+  }
+
+  return next
+}
+
 export function applyJoin(state, { id, name, isOwner }) {
   const existing = state.players.find(p => p.id === id)
   if (existing) {
@@ -12,6 +74,7 @@ export function applyJoin(state, { id, name, isOwner }) {
 }
 
 export function applyReady(state, playerId) {
+  if (state.phase !== 'lobby') return state
   return {
     ...state,
     players: state.players.map(p => p.id === playerId ? { ...p, ready: true } : p),
@@ -21,7 +84,8 @@ export function applyReady(state, playerId) {
 export function applyUpdateRules(state, { playerId, rules }) {
   const player = state.players.find(p => p.id === playerId)
   if (!player?.isOwner) return state
-  return { ...state, rules: { ...state.rules, ...rules } }
+  if (state.phase !== 'lobby') return state
+  return { ...state, rules: { ...state.rules, ...sanitizeRules(state, rules) } }
 }
 
 export function applyStartGame(state, wordPair) {
@@ -42,6 +106,9 @@ export function applyStartGame(state, wordPair) {
     currentRound: null,
     wordHistory: [],
     votes: {},
+    confirmedVotes: [],
+    phaseAfterReview: null,
+    roundReviewEnd: null,
     votingTimerEnd: null,
     betweenRoundVotes: { continue: [], vote: [] },
     result: null,
@@ -49,37 +116,32 @@ export function applyStartGame(state, wordPair) {
 }
 
 export function applySubmitWord(state, { playerId, word }) {
+  if (state.phase !== 'playing') return state
   const activePlayer = state.players[state.activePlayerIdx]
   if (activePlayer?.id !== playerId) return state
 
   const newHistory = [...state.wordHistory, { playerId, word, round: state.currentRound }]
-  const nextActiveIdx = (state.activePlayerIdx + 1) % state.players.length
-  const roundComplete = nextActiveIdx === 0
+  const turnOrder = connectedPlayerIndices(state)
+  const currentTurnPosition = turnOrder.indexOf(state.activePlayerIdx)
+  const roundComplete = currentTurnPosition === -1 || currentTurnPosition === turnOrder.length - 1
+  const nextActiveIdx = roundComplete ? firstConnectedPlayerIdx(state) : turnOrder[currentTurnPosition + 1]
 
   if (!roundComplete) {
     return { ...state, wordHistory: newHistory, activePlayerIdx: nextActiveIdx }
   }
 
   // Round complete
-  if (state.currentRound >= state.rules.roundsBeforeVote) {
-    return {
-      ...state,
-      wordHistory: newHistory,
-      activePlayerIdx: 0,
-      phase: 'voting',
-    }
-  }
-
   return {
     ...state,
     wordHistory: newHistory,
-    activePlayerIdx: 0,
-    phase: 'betweenRound',
-    betweenRoundVotes: { continue: [], vote: [] },
+    phase: 'roundReview',
+    phaseAfterReview: state.currentRound >= state.rules.roundsBeforeVote ? 'voting' : 'betweenRound',
   }
 }
 
 export function applyBetweenVote(state, { playerId, choice }) {
+  if (state.phase !== 'betweenRound') return state
+  if (!['continue', 'vote'].includes(choice)) return state
   const alreadyVoted =
     state.betweenRoundVotes.continue.includes(playerId) ||
     state.betweenRoundVotes.vote.includes(playerId)
@@ -102,7 +164,7 @@ export function applyBetweenVote(state, { playerId, choice }) {
       ...state,
       phase: 'playing',
       currentRound: state.currentRound + 1,
-      activePlayerIdx: 0,
+      activePlayerIdx: firstConnectedPlayerIdx(state),
       betweenRoundVotes: { continue: [], vote: [] },
     }
   }
@@ -119,10 +181,13 @@ export function applyBetweenVote(state, { playerId, choice }) {
 }
 
 export function applyCastVote(state, { voterId, targetId }) {
+  if (state.phase !== 'voting') return state
+  if (!state.players.some(p => p.id === targetId)) return state
   return { ...state, votes: { ...state.votes, [voterId]: targetId } }
 }
 
 export function applyConfirmVote(state, voterId) {
+  if (state.phase !== 'voting') return state
   const confirmed = (state.confirmedVotes || [])
   if (confirmed.includes(voterId)) return state
   const newConfirmed = [...confirmed, voterId]

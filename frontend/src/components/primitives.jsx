@@ -98,7 +98,7 @@ function Logo({ variant = "stacked", size = 1, theme = {} }) {
         fontFamily: "var(--font-display)",
         fontSize: impSize,
         color: primary,
-        letterSpacing: "-0.02em",
+        letterSpacing: 0,
         WebkitTextStroke: `${Math.max(2, 3*size)}px var(--ink)`,
         filter: `drop-shadow(${6*size}px ${6*size}px 0 var(--ink))`,
         display: "flex",

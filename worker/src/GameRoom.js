@@ -2,9 +2,12 @@
 import {
   applyJoin, applyReady, applyUpdateRules, applyStartGame,
   applySubmitWord, applyBetweenVote, applyCastVote,
-  applyConfirmVote, computeResult,
+  applyConfirmVote, computeResult, firstConnectedPlayerIdx,
 } from './gameLogic.js'
 import words from './words.json'
+
+const ROUND_REVIEW_MS = 3500
+const VOTING_MS = 30000
 
 const INITIAL_STATE = (code) => ({
   code,
@@ -15,6 +18,7 @@ const INITIAL_STATE = (code) => ({
     roundsBeforeVote: 2,
     maxPlayers: 8,
     imposterHasHint: true,
+    wordCategory: 'all',
   },
   impostorIdx: null,
   secretWord: null,
@@ -25,6 +29,8 @@ const INITIAL_STATE = (code) => ({
   votes: {},
   confirmedVotes: [],
   timerEnd: null,
+  roundReviewEnd: null,
+  phaseAfterReview: null,
   votingTimerEnd: null,
   betweenRoundVotes: { continue: [], vote: [] },
   result: null,
@@ -176,7 +182,7 @@ export class GameRoom {
         this.state = {
           ...this.state,
           phase: 'playing',
-          activePlayerIdx: 0,
+          activePlayerIdx: firstConnectedPlayerIdx(this.state),
           currentRound: 1,
           timerEnd: firstTurnEnd,
         }
@@ -194,17 +200,24 @@ export class GameRoom {
           this.state = { ...this.state, timerEnd: nextTurnEnd }
           this._broadcast()
           await this.ctx.storage.setAlarm(nextTurnEnd)
+        } else if (this.state.phase === 'roundReview') {
+          await this._startRoundReview()
         } else if (this.state.phase === 'voting') {
           // Intentionally deviates from plan: plan's alarm lacks this branch, but without it
           // auto-timeout into voting would have no votingTimerEnd and players would be stuck.
           // _handleSubmitWord sets it on manual submit; alarm path needs symmetric handling.
-          const voteEnd = Date.now() + 30000
+          const voteEnd = Date.now() + VOTING_MS
           this.state = { ...this.state, timerEnd: null, votingTimerEnd: voteEnd }
           this._broadcast()
           await this.ctx.storage.setAlarm(voteEnd)
         } else {
           this._broadcast()
         }
+        break
+      }
+
+      case 'roundReview': {
+        await this._finishRoundReview()
         break
       }
 
@@ -245,7 +258,7 @@ export class GameRoom {
       this.sessions.set(playerId, ws)
       try { ws.serializeAttachment({ playerId }) } catch {}
       this.state = applyJoin(this.state, { id: playerId, name, isOwner: existing.isOwner })
-      if (['roleReveal', 'playing', 'betweenRound', 'voting', 'results'].includes(this.state.phase)) {
+      if (['roleReveal', 'playing', 'roundReview', 'betweenRound', 'voting', 'results'].includes(this.state.phase)) {
         this._sendRoleTo(playerId, ws)
       }
       this._broadcast()
@@ -273,7 +286,7 @@ export class GameRoom {
   async _handleStartGame(playerId) {
     const player = this.state?.players.find(p => p.id === playerId)
     if (!player?.isOwner) return
-    const wordPair = words[Math.floor(Math.random() * words.length)]
+    const wordPair = this._pickWordPair()
     const next = applyStartGame(this.state, wordPair)
     if (next.phase !== 'countdown') return // requirements not met
     const countdownEnd = Date.now() + 4000
@@ -291,7 +304,7 @@ export class GameRoom {
       this._broadcast()
       await this.ctx.storage.setAlarm(nextTurnEnd)
     } else if (this.state.phase === 'voting') {
-      const voteEnd = Date.now() + 30000
+      const voteEnd = Date.now() + VOTING_MS
       this.state = { ...this.state, votingTimerEnd: voteEnd }
       this._broadcast()
       await this.ctx.storage.setAlarm(voteEnd)
@@ -309,9 +322,12 @@ export class GameRoom {
       this.state = { ...this.state, timerEnd: nextTurnEnd }
       this._broadcast()
       await this.ctx.storage.setAlarm(nextTurnEnd)
+    } else if (this.state.phase === 'roundReview') {
+      await this.ctx.storage.deleteAlarm()
+      await this._startRoundReview()
     } else if (this.state.phase === 'voting') {
       await this.ctx.storage.deleteAlarm()
-      const voteEnd = Date.now() + 30000
+      const voteEnd = Date.now() + VOTING_MS
       this.state = { ...this.state, timerEnd: null, votingTimerEnd: voteEnd }
       this._broadcast()
       await this.ctx.storage.setAlarm(voteEnd)
@@ -354,6 +370,59 @@ export class GameRoom {
       rules: this.state.rules, // keep current rules
     }
     this._broadcast()
+  }
+
+  async _startRoundReview() {
+    const reviewEnd = Date.now() + ROUND_REVIEW_MS
+    this.state = {
+      ...this.state,
+      timerEnd: null,
+      votingTimerEnd: null,
+      roundReviewEnd: reviewEnd,
+    }
+    this._broadcast()
+    await this.ctx.storage.setAlarm(reviewEnd)
+  }
+
+  async _finishRoundReview() {
+    const nextPhase = this.state.phaseAfterReview || 'betweenRound'
+
+    if (nextPhase === 'voting') {
+      const voteEnd = Date.now() + VOTING_MS
+      this.state = {
+        ...this.state,
+        phase: 'voting',
+        activePlayerIdx: firstConnectedPlayerIdx(this.state),
+        timerEnd: null,
+        roundReviewEnd: null,
+        phaseAfterReview: null,
+        votingTimerEnd: voteEnd,
+      }
+      this._broadcast()
+      await this.ctx.storage.setAlarm(voteEnd)
+      return
+    }
+
+    this.state = {
+      ...this.state,
+      phase: 'betweenRound',
+      activePlayerIdx: firstConnectedPlayerIdx(this.state),
+      timerEnd: null,
+      roundReviewEnd: null,
+      phaseAfterReview: null,
+      votingTimerEnd: null,
+      betweenRoundVotes: { continue: [], vote: [] },
+    }
+    this._broadcast()
+  }
+
+  _pickWordPair() {
+    const category = this.state?.rules?.wordCategory || 'all'
+    const pool = category === 'all'
+      ? words
+      : words.filter(item => item.category === category)
+    const candidates = pool.length > 0 ? pool : words
+    return candidates[Math.floor(Math.random() * candidates.length)]
   }
 
   // ── Broadcast helpers ────────────────────────────────────

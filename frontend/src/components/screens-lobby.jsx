@@ -1,6 +1,7 @@
 import React from 'react'
 import { Sticker, Avatar, hashSeed } from './primitives.jsx'
 import { play } from '../audio/soundManager.js'
+import { WORD_CATEGORIES, wordCategoryLabel } from '../wordCategories.js'
 
 // components/screens-lobby.jsx — Lobby, countdown
 
@@ -96,10 +97,15 @@ function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onSta
               editable={amOwner}
               onChange={v => onUpdateRules({ roundsBeforeVote: v })}
             />
+            <CategoryRow
+              value={room.rules.wordCategory ?? "all"}
+              editable={amOwner}
+              onChange={v => onUpdateRules({ wordCategory: v })}
+            />
             <RuleRow
               label="Máx. jugadores"
               value={`${room.rules.maxPlayers}`}
-              min={4} max={12} step={1}
+              min={3} max={12} step={1}
               current={room.rules.maxPlayers}
               editable={amOwner}
               onChange={v => onUpdateRules({ maxPlayers: v })}
@@ -208,6 +214,63 @@ function RuleRow({ label, value, min, max, step, current, editable, onChange, su
   );
 }
 
+function CategoryRow({ value, editable, onChange }) {
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 12 }}>
+        <span style={{ fontSize: 14, fontWeight: 600 }}>Categoría</span>
+        <span style={{
+          fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 700,
+          padding: "2px 10px",
+          background: "var(--lavender)",
+          border: "2px solid var(--ink)",
+          borderRadius: 8,
+        }}>
+          {wordCategoryLabel(value)}
+        </span>
+      </div>
+      <div className="category-grid" style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+        gap: 8,
+      }}>
+        {WORD_CATEGORIES.map(category => {
+          const selected = category.id === value;
+          return (
+            <button
+              key={category.id}
+              type="button"
+              disabled={!editable}
+              onClick={() => editable && onChange(category.id)}
+              style={{
+                minHeight: 34,
+                padding: "6px 10px",
+                background: selected ? "var(--ink)" : "var(--paper)",
+                color: selected ? "var(--paper)" : "var(--ink)",
+                border: "2px solid var(--ink)",
+                borderRadius: 8,
+                boxShadow: selected ? "2px 2px 0 var(--mustard)" : "2px 2px 0 var(--ink)",
+                fontSize: 12,
+                fontWeight: 800,
+                textTransform: "uppercase",
+                cursor: editable ? "pointer" : "default",
+                opacity: editable || selected ? 1 : 0.55,
+              }}
+            >
+              {category.label}
+            </button>
+          );
+        })}
+      </div>
+      <style>{`
+        @media (max-width: 420px) {
+          .category-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 function ToggleRow({ label, value, editable, onChange }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
@@ -242,7 +305,7 @@ const h2Style = {
   fontFamily: "var(--font-display)",
   fontSize: 28,
   margin: 0,
-  letterSpacing: "-0.01em",
+  letterSpacing: 0,
 };
 
 // === COUNTDOWN ===
@@ -266,7 +329,7 @@ function CountdownScreen({ theme }) {
         fontSize: "min(40vw, 340px)",
         color: n === 0 ? "var(--mustard)" : "var(--red)",
         WebkitTextStroke: "6px var(--paper)",
-        letterSpacing: "-0.04em",
+        letterSpacing: 0,
         lineHeight: 1,
         textShadow: "12px 12px 0 var(--paper)",
       }}>

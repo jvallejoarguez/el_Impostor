@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="El Impostor">
+  <rect width="64" height="64" rx="14" fill="#F5EBD6"/>
+  <path d="M8 11h42a6 6 0 0 1 6 6v30a6 6 0 0 1-6 6H14a6 6 0 0 1-6-6Z" fill="#E63946" stroke="#1A1410" stroke-width="4"/>
+  <path d="M15 18h34M15 46h24" stroke="#F4B942" stroke-width="4" stroke-linecap="round"/>
+  <path d="M18 30c4-8 24-8 28 0 2 4 0 12-6 14-5 2-11 2-16 0-6-2-8-10-6-14Z" fill="#1A1410"/>
+  <circle cx="25" cy="34" r="5" fill="#FBF4E2"/>
+  <circle cx="39" cy="34" r="5" fill="#FBF4E2"/>
+  <circle cx="26.5" cy="35" r="2" fill="#1A1410"/>
+  <circle cx="40.5" cy="35" r="2" fill="#1A1410"/>
+  <path d="M30 42c2 1.5 5 1.5 7 0" stroke="#FBF4E2" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M45 10 57 4l-3 13" fill="#3DA5A0" stroke="#1A1410" stroke-width="3" stroke-linejoin="round"/>
+</svg>

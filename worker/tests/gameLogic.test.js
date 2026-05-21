@@ -15,6 +15,7 @@ const makeState = (overrides = {}) => ({
     roundsBeforeVote: 2,
     maxPlayers: 8,
     imposterHasHint: true,
+    wordCategory: 'all',
   },
   impostorIdx: null,
   secretWord: null,
@@ -85,6 +86,12 @@ describe('applyReady', () => {
     const next = applyReady(state, 'p1')
     expect(next.players[1].ready).toBe(false)
   })
+
+  it('ignores ready outside the lobby', () => {
+    const state = makeState({ phase: 'playing', players: [makePlayer('p1', 'Ana')] })
+    const next = applyReady(state, 'p1')
+    expect(next.players[0].ready).toBe(false)
+  })
 })
 
 // ────────────────────────────────────────────────────────────────
@@ -93,8 +100,9 @@ describe('applyReady', () => {
 describe('applyUpdateRules', () => {
   it('merges new rule values', () => {
     const state = makeState({ players: [makePlayer('p1', 'Ana', { isOwner: true })] })
-    const next = applyUpdateRules(state, { playerId: 'p1', rules: { turnTime: 45 } })
+    const next = applyUpdateRules(state, { playerId: 'p1', rules: { turnTime: 45, wordCategory: 'animales' } })
     expect(next.rules.turnTime).toBe(45)
+    expect(next.rules.wordCategory).toBe('animales')
     expect(next.rules.roundsBeforeVote).toBe(2) // unchanged
   })
 
@@ -102,6 +110,38 @@ describe('applyUpdateRules', () => {
     const state = makeState({ players: [makePlayer('p1', 'Ana', { isOwner: false })] })
     const next = applyUpdateRules(state, { playerId: 'p1', rules: { turnTime: 45 } })
     expect(next.rules.turnTime).toBe(30) // unchanged
+  })
+
+  it('sanitizes invalid rule values', () => {
+    const state = makeState({
+      players: [
+        makePlayer('p1', 'Ana', { isOwner: true }),
+        makePlayer('p2', 'Bob'),
+        makePlayer('p3', 'Car'),
+        makePlayer('p4', 'Dee'),
+      ],
+    })
+    const next = applyUpdateRules(state, {
+      playerId: 'p1',
+      rules: {
+        turnTime: 999,
+        roundsBeforeVote: 0,
+        maxPlayers: 2,
+        imposterHasHint: 'yes',
+        wordCategory: 'nope',
+      },
+    })
+    expect(next.rules.turnTime).toBe(60)
+    expect(next.rules.roundsBeforeVote).toBe(1)
+    expect(next.rules.maxPlayers).toBe(4)
+    expect(next.rules.imposterHasHint).toBe(true)
+    expect(next.rules.wordCategory).toBe('all')
+  })
+
+  it('ignores rule updates outside the lobby', () => {
+    const state = makeState({ phase: 'playing', players: [makePlayer('p1', 'Ana', { isOwner: true })] })
+    const next = applyUpdateRules(state, { playerId: 'p1', rules: { turnTime: 45 } })
+    expect(next.rules.turnTime).toBe(30)
   })
 })
 
@@ -180,7 +220,7 @@ describe('applySubmitWord', () => {
     impostorIdx: 2,
     secretWord: 'Playa',
     hint: 'Lugar de vacaciones',
-    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true },
+    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, wordCategory: 'all' },
   })
 
   it('adds the word to wordHistory', () => {
@@ -196,21 +236,23 @@ describe('applySubmitWord', () => {
     expect(next.activePlayerIdx).toBe(1)
   })
 
-  it('advances to betweenRound after all players speak and round < roundsBeforeVote', () => {
+  it('moves to round review after all players speak and round < roundsBeforeVote', () => {
     let state = playingState()
     state = applySubmitWord(state, { playerId: 'p1', word: 'arena' })
     state = applySubmitWord(state, { playerId: 'p2', word: 'sol' })
     state = applySubmitWord(state, { playerId: 'p3', word: 'mar' })
-    expect(state.phase).toBe('betweenRound')
+    expect(state.phase).toBe('roundReview')
+    expect(state.phaseAfterReview).toBe('betweenRound')
   })
 
-  it('advances to voting after all players speak and round >= roundsBeforeVote', () => {
+  it('moves to round review before voting after all players speak and round >= roundsBeforeVote', () => {
     let state = playingState()
     state = { ...state, rules: { ...state.rules, roundsBeforeVote: 1 } }
     state = applySubmitWord(state, { playerId: 'p1', word: 'arena' })
     state = applySubmitWord(state, { playerId: 'p2', word: 'sol' })
     state = applySubmitWord(state, { playerId: 'p3', word: 'mar' })
-    expect(state.phase).toBe('voting')
+    expect(state.phase).toBe('roundReview')
+    expect(state.phaseAfterReview).toBe('voting')
   })
 
   it('ignores submission from wrong player', () => {
@@ -218,6 +260,26 @@ describe('applySubmitWord', () => {
     const next = applySubmitWord(state, { playerId: 'p2', word: 'sol' })
     expect(next.wordHistory).toHaveLength(0)
     expect(next.activePlayerIdx).toBe(0)
+  })
+
+  it('ignores submission outside the playing phase', () => {
+    const state = { ...playingState(), phase: 'betweenRound' }
+    const next = applySubmitWord(state, { playerId: 'p1', word: 'arena' })
+    expect(next.wordHistory).toHaveLength(0)
+  })
+
+  it('skips disconnected players in the turn order', () => {
+    const state = playingState()
+    const withDisconnected = {
+      ...state,
+      players: [
+        makePlayer('p1', 'Ana'),
+        makePlayer('p2', 'Bob', { connected: false }),
+        makePlayer('p3', 'Car'),
+      ],
+    }
+    const next = applySubmitWord(withDisconnected, { playerId: 'p1', word: 'arena' })
+    expect(next.activePlayerIdx).toBe(2)
   })
 })
 
@@ -230,7 +292,7 @@ describe('applyBetweenVote', () => {
     players: [makePlayer('p1', 'Ana'), makePlayer('p2', 'Bob'), makePlayer('p3', 'Car')],
     currentRound: 1,
     betweenRoundVotes: { continue: [], vote: [] },
-    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true },
+    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, wordCategory: 'all' },
     impostorIdx: 2,
     secretWord: 'Playa',
     hint: 'Lugar',
@@ -259,6 +321,13 @@ describe('applyBetweenVote', () => {
     state = applyBetweenVote(state, { playerId: 'p2', choice: 'vote' })
     expect(state.phase).toBe('voting')
   })
+
+  it('ignores between-round votes outside the betweenRound phase', () => {
+    const state = { ...betweenState(), phase: 'playing' }
+    const next = applyBetweenVote(state, { playerId: 'p1', choice: 'vote' })
+    expect(next.phase).toBe('playing')
+    expect(next.betweenRoundVotes).toEqual({ continue: [], vote: [] })
+  })
 })
 
 // ────────────────────────────────────────────────────────────────
@@ -272,7 +341,7 @@ describe('applyCastVote', () => {
     impostorIdx: 2,
     secretWord: 'Playa',
     hint: 'Lugar',
-    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true },
+    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, wordCategory: 'all' },
   })
 
   it('records a vote', () => {
@@ -287,6 +356,12 @@ describe('applyCastVote', () => {
     state = applyCastVote(state, { voterId: 'p1', targetId: 'p2' })
     expect(state.votes['p1']).toBe('p2')
   })
+
+  it('ignores invalid vote targets', () => {
+    const state = votingState()
+    const next = applyCastVote(state, { voterId: 'p1', targetId: 'missing' })
+    expect(next.votes).toEqual({})
+  })
 })
 
 describe('applyConfirmVote + computeResult', () => {
@@ -297,7 +372,7 @@ describe('applyConfirmVote + computeResult', () => {
     impostorIdx: 2,
     secretWord: 'Playa',
     hint: 'Lugar',
-    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true },
+    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, wordCategory: 'all' },
   })
 
   it('applyConfirmVote transitions to results when all players have confirmed', () => {
@@ -326,7 +401,7 @@ describe('applyConfirmVote + computeResult', () => {
       impostorIdx: 2,
       secretWord: 'Playa',
       hint: 'Lugar',
-      rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true },
+      rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, wordCategory: 'all' },
     })
     const result = computeResult(state)
     expect(result.found).toBe(false)

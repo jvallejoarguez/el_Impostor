@@ -170,6 +170,7 @@ export default function App() {
       screenEl = <RoleRevealScreen theme={theme} myRole={myRole} revealStyle={theme.revealStyle} />
       break
     case 'playing':
+    case 'roundReview':
       screenEl = (
         <GameplayScreen
           theme={theme}

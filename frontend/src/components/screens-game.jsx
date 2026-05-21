@@ -1,8 +1,11 @@
 import React from 'react'
 import { Sticker, Avatar } from './primitives.jsx'
 import { play } from '../audio/soundManager.js'
+import { wordCategoryLabel } from '../wordCategories.js'
 
 // components/screens-game.jsx — Role reveal, gameplay circle, results
+
+const ROUND_REVIEW_SECONDS = 4;
 
 // === ROLE REVEAL ===
 // style: 'flash' | 'card' | 'stamp'
@@ -68,7 +71,7 @@ function RoleRevealScreen({ theme, myRole, revealStyle = "flash" }) {
               <div style={{ fontFamily: "var(--font-display)", fontSize: 28, marginBottom: 12 }}>
                 {isImposter ? "TÚ ERES EL" : "ERES UN"}
               </div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 56, letterSpacing: "-0.02em", marginBottom: 24 }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 56, letterSpacing: 0, marginBottom: 24 }}>
                 {isImposter ? "IMPOSTOR" : "JUGADOR"}
               </div>
               <div style={{ width: "100%", padding: "16px 12px", background: "var(--ink)", color: "var(--paper)", borderRadius: 12 }}>
@@ -145,7 +148,7 @@ function RoleRevealScreen({ theme, myRole, revealStyle = "flash" }) {
           <div style={{
             fontFamily: "var(--font-display)",
             fontSize: "min(14vw, 96px)",
-            letterSpacing: "-0.02em",
+            letterSpacing: 0,
             lineHeight: 0.9,
             marginBottom: 12,
           }}>
@@ -154,7 +157,7 @@ function RoleRevealScreen({ theme, myRole, revealStyle = "flash" }) {
           <div style={{
             fontFamily: "var(--font-display)",
             fontSize: "min(22vw, 180px)",
-            letterSpacing: "-0.04em",
+            letterSpacing: 0,
             lineHeight: 0.9,
             WebkitTextStroke: "3px var(--ink)",
           }}>
@@ -193,9 +196,11 @@ function GameplayScreen({ theme, room, myId, myRole, onSubmitWord }) {
   const circleLayout = theme.circleLayout || "orbit";
   const players = room.players;
   const activePlayerIdx = room.activePlayerIdx ?? 0;
+  const isRoundReview = room.phase === "roundReview";
   // myIdx replaces "currentPlayerIdx" — index of the local player in the players array
   const myIdx = players.findIndex(p => p.id === myId);
   const isMyTurn = activePlayerIdx === myIdx;
+  const categoryLabel = wordCategoryLabel(room.rules?.wordCategory ?? "all");
 
   // Derive the latest-word-per-player map from wordHistory (last word wins per player).
   const words = React.useMemo(() => {
@@ -205,19 +210,20 @@ function GameplayScreen({ theme, room, myId, myRole, onSubmitWord }) {
   }, [room.wordHistory]);
 
   // Local live countdown derived from server's timerEnd.
-  const turnTotal = room.rules?.turnTime ?? 30;
+  const turnTotal = isRoundReview ? ROUND_REVIEW_SECONDS : room.rules?.turnTime ?? 30;
   const computeRemaining = () => {
-    if (!room.timerEnd) return turnTotal;
-    return Math.max(0, Math.ceil((room.timerEnd - Date.now()) / 1000));
+    const end = isRoundReview ? room.roundReviewEnd : room.timerEnd;
+    if (!end) return turnTotal;
+    return Math.max(0, Math.ceil((end - Date.now()) / 1000));
   };
   const [remaining, setRemaining] = React.useState(computeRemaining);
   React.useEffect(() => {
     setRemaining(computeRemaining());
     const id = setInterval(() => setRemaining(computeRemaining()), 250);
     return () => clearInterval(id);
-  }, [room.timerEnd]);
+  }, [room.timerEnd, room.roundReviewEnd, isRoundReview]);
   const timer = { remaining, total: turnTotal };
-  const timeFrac = turnTotal > 0 ? timer.remaining / turnTotal : 0;
+  const timeFrac = turnTotal > 0 ? Math.min(1, timer.remaining / turnTotal) : 0;
 
   // currentWord: the local player's role hint or secret word, used for the top-bar reminder.
   const amImposter = myRole?.isImpostor ?? false;
@@ -228,14 +234,14 @@ function GameplayScreen({ theme, room, myId, myRole, onSubmitWord }) {
 
   // SFX: your turn
   React.useEffect(() => {
-    if (isMyTurn) play('yourTurn');
-  }, [isMyTurn]);
+    if (isMyTurn && !isRoundReview) play('yourTurn');
+  }, [isMyTurn, isRoundReview]);
 
   // SFX: timer warning when remaining drops to/below 25% of total
   const pct = turnTotal > 0 ? remaining / turnTotal : 0;
   React.useEffect(() => {
-    if (pct <= 0.25 && pct > 0) play('timerWarning');
-  }, [Math.floor(pct * 4)]);
+    if (!isRoundReview && pct <= 0.25 && pct > 0) play('timerWarning');
+  }, [Math.floor(pct * 4), isRoundReview]);
 
   // SFX: word submit (any player)
   const wordCount = room.wordHistory?.length ?? 0;
@@ -257,7 +263,10 @@ function GameplayScreen({ theme, room, myId, myRole, onSubmitWord }) {
     <div className="screen-pad-tight" style={{ minHeight: "100vh", padding: 20, display: "flex", flexDirection: "column" }}>
       {/* top bar */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
-        <Sticker color="ink" rotate={-2}>Ronda {room.currentRound} / {room.rules?.roundsBeforeVote}</Sticker>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <Sticker color="ink" rotate={-2}>Ronda {room.currentRound} / {room.rules?.roundsBeforeVote}</Sticker>
+          <Sticker color="mustard" rotate={1}>{categoryLabel}</Sticker>
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-soft)", fontWeight: 700 }}>
             {amImposter ? "Pista" : "Palabra"}
@@ -298,7 +307,27 @@ function GameplayScreen({ theme, room, myId, myRole, onSubmitWord }) {
         boxShadow: "var(--shadow-hard-lg)",
         marginTop: 12,
       }}>
-        {isMyTurn ? (
+        {isRoundReview ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <Avatar name={players[activePlayerIdx]?.name ?? ""} style={theme.avatarStyle} size={48} speaking/>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 16 }}>
+                Última pista de la ronda
+              </div>
+              <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>
+                Siguiente fase en breve
+              </div>
+            </div>
+            <div style={{
+              width: 56, height: 56, borderRadius: "50%",
+              background: "var(--lavender)",
+              border: "3px solid var(--ink)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontFamily: "var(--font-mono)", fontSize: 18, fontWeight: 700,
+              boxShadow: "3px 3px 0 var(--ink)",
+            }}>{timer.remaining}</div>
+          </div>
+        ) : isMyTurn ? (
           <div className="input-row" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <div className="turn-info" style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 200 }}>
               <Avatar name={players[myIdx]?.name ?? ""} style={theme.avatarStyle} size={48} speaking/>
