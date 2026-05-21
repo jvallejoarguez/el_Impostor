@@ -3,8 +3,9 @@ import { describe, it, expect } from 'vitest'
 import {
   applyJoin, applyReady, applyUpdateRules, applyStartGame,
   applySubmitWord, applyBetweenVote, applyCastVote,
-  applyConfirmVote, computeResult,
+  applyConfirmVote, computeResult, WORD_CATEGORY_IDS,
 } from '../src/gameLogic.js'
+import words from '../src/words.json'
 
 const makeState = (overrides = {}) => ({
   code: 'TEST',
@@ -15,7 +16,7 @@ const makeState = (overrides = {}) => ({
     roundsBeforeVote: 2,
     maxPlayers: 8,
     imposterHasHint: true,
-    wordCategory: 'all',
+    wordCategories: ['all'],
   },
   impostorIdx: null,
   secretWord: null,
@@ -100,10 +101,22 @@ describe('applyReady', () => {
 describe('applyUpdateRules', () => {
   it('merges new rule values', () => {
     const state = makeState({ players: [makePlayer('p1', 'Ana', { isOwner: true })] })
-    const next = applyUpdateRules(state, { playerId: 'p1', rules: { turnTime: 45, wordCategory: 'animales' } })
+    const next = applyUpdateRules(state, { playerId: 'p1', rules: { turnTime: 45, wordCategories: ['animales', 'libros'] } })
     expect(next.rules.turnTime).toBe(45)
-    expect(next.rules.wordCategory).toBe('animales')
+    expect(next.rules.wordCategories).toEqual(['animales', 'libros'])
     expect(next.rules.roundsBeforeVote).toBe(2) // unchanged
+  })
+
+  it('accepts legacy single-category updates', () => {
+    const state = makeState({ players: [makePlayer('p1', 'Ana', { isOwner: true })] })
+    const next = applyUpdateRules(state, { playerId: 'p1', rules: { wordCategory: 'streamers' } })
+    expect(next.rules.wordCategories).toEqual(['streamers'])
+  })
+
+  it('uses all when a multi-category update includes all', () => {
+    const state = makeState({ players: [makePlayer('p1', 'Ana', { isOwner: true })] })
+    const next = applyUpdateRules(state, { playerId: 'p1', rules: { wordCategories: ['all', 'streamers'] } })
+    expect(next.rules.wordCategories).toEqual(['all'])
   })
 
   it('ignores update from non-owner', () => {
@@ -128,20 +141,36 @@ describe('applyUpdateRules', () => {
         roundsBeforeVote: 0,
         maxPlayers: 2,
         imposterHasHint: 'yes',
-        wordCategory: 'nope',
+        wordCategories: ['nope'],
       },
     })
     expect(next.rules.turnTime).toBe(60)
     expect(next.rules.roundsBeforeVote).toBe(1)
     expect(next.rules.maxPlayers).toBe(4)
     expect(next.rules.imposterHasHint).toBe(true)
-    expect(next.rules.wordCategory).toBe('all')
+    expect(next.rules.wordCategories).toEqual(['all'])
   })
 
   it('ignores rule updates outside the lobby', () => {
     const state = makeState({ phase: 'playing', players: [makePlayer('p1', 'Ana', { isOwner: true })] })
     const next = applyUpdateRules(state, { playerId: 'p1', rules: { turnTime: 45 } })
     expect(next.rules.turnTime).toBe(30)
+  })
+})
+
+describe('words catalog', () => {
+  it('uses only known categories and balanced enough pools', () => {
+    const validCategories = new Set(WORD_CATEGORY_IDS.filter(id => id !== 'all'))
+    const counts = {}
+    for (const item of words) {
+      expect(item.word).toBeTruthy()
+      expect(item.hint).toBeTruthy()
+      expect(validCategories.has(item.category)).toBe(true)
+      counts[item.category] = (counts[item.category] || 0) + 1
+    }
+    for (const category of validCategories) {
+      expect(counts[category]).toBeGreaterThanOrEqual(12)
+    }
   })
 })
 
@@ -220,7 +249,7 @@ describe('applySubmitWord', () => {
     impostorIdx: 2,
     secretWord: 'Playa',
     hint: 'Lugar de vacaciones',
-    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, wordCategory: 'all' },
+    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, wordCategories: ['all'] },
   })
 
   it('adds the word to wordHistory', () => {
@@ -292,7 +321,7 @@ describe('applyBetweenVote', () => {
     players: [makePlayer('p1', 'Ana'), makePlayer('p2', 'Bob'), makePlayer('p3', 'Car')],
     currentRound: 1,
     betweenRoundVotes: { continue: [], vote: [] },
-    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, wordCategory: 'all' },
+    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, wordCategories: ['all'] },
     impostorIdx: 2,
     secretWord: 'Playa',
     hint: 'Lugar',
@@ -341,7 +370,7 @@ describe('applyCastVote', () => {
     impostorIdx: 2,
     secretWord: 'Playa',
     hint: 'Lugar',
-    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, wordCategory: 'all' },
+    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, wordCategories: ['all'] },
   })
 
   it('records a vote', () => {
@@ -372,7 +401,7 @@ describe('applyConfirmVote + computeResult', () => {
     impostorIdx: 2,
     secretWord: 'Playa',
     hint: 'Lugar',
-    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, wordCategory: 'all' },
+    rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, wordCategories: ['all'] },
   })
 
   it('applyConfirmVote transitions to results when all players have confirmed', () => {
@@ -401,7 +430,7 @@ describe('applyConfirmVote + computeResult', () => {
       impostorIdx: 2,
       secretWord: 'Playa',
       hint: 'Lugar',
-      rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, wordCategory: 'all' },
+      rules: { turnTime: 30, roundsBeforeVote: 2, maxPlayers: 8, imposterHasHint: true, wordCategories: ['all'] },
     })
     const result = computeResult(state)
     expect(result.found).toBe(false)

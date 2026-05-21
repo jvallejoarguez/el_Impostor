@@ -1,7 +1,7 @@
 import React from 'react'
 import { Sticker, Avatar } from './primitives.jsx'
 import { play } from '../audio/soundManager.js'
-import { wordCategoryLabel } from '../wordCategories.js'
+import { wordCategoriesLabel } from '../wordCategories.js'
 
 // components/screens-game.jsx — Role reveal, gameplay circle, results
 
@@ -28,6 +28,7 @@ function RoleRevealScreen({ theme, myRole, revealStyle = "flash" }) {
 
   const bg = isImposter ? "var(--red)" : "var(--teal)";
   const fg = "var(--paper)";
+  const revealWordSize = secretWord.length > 18 ? "min(10vw, 72px)" : "min(22vw, 180px)";
 
   if (revealStyle === "card") {
     return (
@@ -156,10 +157,12 @@ function RoleRevealScreen({ theme, myRole, revealStyle = "flash" }) {
           </div>
           <div style={{
             fontFamily: "var(--font-display)",
-            fontSize: "min(22vw, 180px)",
+            fontSize: revealWordSize,
             letterSpacing: 0,
-            lineHeight: 0.9,
+            lineHeight: 1,
             WebkitTextStroke: "3px var(--ink)",
+            maxWidth: "min(92vw, 980px)",
+            overflowWrap: "anywhere",
           }}>
             {isImposter ? "IMPOSTOR" : secretWord.toUpperCase()}
           </div>
@@ -200,7 +203,7 @@ function GameplayScreen({ theme, room, myId, myRole, onSubmitWord }) {
   // myIdx replaces "currentPlayerIdx" — index of the local player in the players array
   const myIdx = players.findIndex(p => p.id === myId);
   const isMyTurn = activePlayerIdx === myIdx;
-  const categoryLabel = wordCategoryLabel(room.rules?.wordCategory ?? "all");
+  const categoryLabel = wordCategoriesLabel(room.rules?.wordCategories ?? room.rules?.wordCategory ?? "all");
 
   // Derive the latest-word-per-player map from wordHistory (last word wins per player).
   const words = React.useMemo(() => {
@@ -280,6 +283,9 @@ function GameplayScreen({ theme, room, myId, myRole, onSubmitWord }) {
             boxShadow: "3px 3px 0 var(--ink)",
             fontFamily: "var(--font-display)",
             fontSize: 15,
+            maxWidth: 260,
+            overflowWrap: "anywhere",
+            textAlign: "center",
           }}>{currentWord}</span>
         </div>
       </div>

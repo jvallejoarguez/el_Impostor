@@ -1,7 +1,7 @@
 import React from 'react'
 import { Sticker, Avatar, hashSeed } from './primitives.jsx'
 import { play } from '../audio/soundManager.js'
-import { WORD_CATEGORIES, wordCategoryLabel } from '../wordCategories.js'
+import { WORD_CATEGORIES, normalizeWordCategories, wordCategoriesLabel } from '../wordCategories.js'
 
 // components/screens-lobby.jsx — Lobby, countdown
 
@@ -98,9 +98,9 @@ function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onSta
               onChange={v => onUpdateRules({ roundsBeforeVote: v })}
             />
             <CategoryRow
-              value={room.rules.wordCategory ?? "all"}
+              value={room.rules.wordCategories ?? room.rules.wordCategory ?? "all"}
               editable={amOwner}
-              onChange={v => onUpdateRules({ wordCategory: v })}
+              onChange={v => onUpdateRules({ wordCategories: v })}
             />
             <RuleRow
               label="Máx. jugadores"
@@ -215,10 +215,24 @@ function RuleRow({ label, value, min, max, step, current, editable, onChange, su
 }
 
 function CategoryRow({ value, editable, onChange }) {
+  const selectedCategories = normalizeWordCategories(value);
+  const toggleCategory = (categoryId) => {
+    if (!editable) return;
+    if (categoryId === "all") {
+      onChange(["all"]);
+      return;
+    }
+    const current = selectedCategories.includes("all") ? [] : selectedCategories;
+    const next = current.includes(categoryId)
+      ? current.filter(id => id !== categoryId)
+      : [...current, categoryId];
+    onChange(next.length === 0 ? ["all"] : next);
+  };
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 12 }}>
-        <span style={{ fontSize: 14, fontWeight: 600 }}>Categoría</span>
+        <span style={{ fontSize: 14, fontWeight: 600 }}>Categorías</span>
         <span style={{
           fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 700,
           padding: "2px 10px",
@@ -226,7 +240,7 @@ function CategoryRow({ value, editable, onChange }) {
           border: "2px solid var(--ink)",
           borderRadius: 8,
         }}>
-          {wordCategoryLabel(value)}
+          {wordCategoriesLabel(selectedCategories)}
         </span>
       </div>
       <div className="category-grid" style={{
@@ -235,13 +249,13 @@ function CategoryRow({ value, editable, onChange }) {
         gap: 8,
       }}>
         {WORD_CATEGORIES.map(category => {
-          const selected = category.id === value;
+          const selected = selectedCategories.includes(category.id);
           return (
             <button
               key={category.id}
               type="button"
               disabled={!editable}
-              onClick={() => editable && onChange(category.id)}
+              onClick={() => toggleCategory(category.id)}
               style={{
                 minHeight: 34,
                 padding: "6px 10px",

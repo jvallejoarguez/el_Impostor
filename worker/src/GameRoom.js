@@ -18,7 +18,7 @@ const INITIAL_STATE = (code) => ({
     roundsBeforeVote: 2,
     maxPlayers: 8,
     imposterHasHint: true,
-    wordCategory: 'all',
+    wordCategories: ['all'],
   },
   impostorIdx: null,
   secretWord: null,
@@ -417,10 +417,11 @@ export class GameRoom {
   }
 
   _pickWordPair() {
-    const category = this.state?.rules?.wordCategory || 'all'
-    const pool = category === 'all'
+    const categories = this.state?.rules?.wordCategories
+      || (this.state?.rules?.wordCategory ? [this.state.rules.wordCategory] : ['all'])
+    const pool = categories.includes('all')
       ? words
-      : words.filter(item => item.category === category)
+      : words.filter(item => categories.includes(item.category))
     const candidates = pool.length > 0 ? pool : words
     return candidates[Math.floor(Math.random() * candidates.length)]
   }

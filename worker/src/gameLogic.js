@@ -12,6 +12,11 @@ export const WORD_CATEGORY_IDS = [
   'deportes',
   'ficcion',
   'ciencia',
+  'streamers',
+  'youtubers',
+  'tiktokers',
+  'videojuegos',
+  'libros',
 ]
 
 const WORD_CATEGORY_SET = new Set(WORD_CATEGORY_IDS)
@@ -26,6 +31,14 @@ function connectedPlayerIndices(state) {
   return state.players
     .map((p, idx) => p.connected !== false ? idx : null)
     .filter(idx => idx !== null)
+}
+
+function normalizeCategories(value) {
+  const raw = Array.isArray(value) ? value : [value]
+  const filtered = raw
+    .filter(category => typeof category === 'string' && WORD_CATEGORY_SET.has(category))
+  if (filtered.length === 0 || filtered.includes('all')) return ['all']
+  return [...new Set(filtered)]
 }
 
 export function firstConnectedPlayerIdx(state) {
@@ -56,7 +69,11 @@ function sanitizeRules(state, patch = {}) {
   }
 
   if ('wordCategory' in patch && WORD_CATEGORY_SET.has(patch.wordCategory)) {
-    next.wordCategory = patch.wordCategory
+    next.wordCategories = normalizeCategories(patch.wordCategory)
+  }
+
+  if ('wordCategories' in patch) {
+    next.wordCategories = normalizeCategories(patch.wordCategories)
   }
 
   return next

@@ -278,7 +278,7 @@ function ResultsScreen({ theme, room, myId, onPlayAgain, onBackToLobby }) {
           <div style={{ fontSize: 12, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--ink-soft)", fontWeight: 700, marginBottom: 4 }}>
             La palabra secreta era
           </div>
-          <div style={{ fontFamily: "var(--font-display)", fontSize: 28 }}>{secretWord}</div>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 28, overflowWrap: "anywhere" }}>{secretWord}</div>
         </div>
 
         <div style={{ marginTop: 20 }}>
