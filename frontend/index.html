@@ -3,14 +3,90 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>El Impostor</title>
+    <title>El Impostor | Juego de palabras online para jugar con amigos</title>
+    <meta
+      name="description"
+      content="Juega El Impostor gratis online: crea una sala privada, invita a 3-12 amigos y descubre quién no conoce la palabra secreta."
+    />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="googlebot" content="index, follow, max-image-preview:large" />
+    <meta name="application-name" content="El Impostor" />
+    <meta name="apple-mobile-web-app-title" content="El Impostor" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="color-scheme" content="light" />
+    <link rel="canonical" href="https://el-impostor-djf.pages.dev/" />
+    <link rel="alternate" hreflang="es" href="https://el-impostor-djf.pages.dev/" />
+    <link rel="alternate" hreflang="x-default" href="https://el-impostor-djf.pages.dev/" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#E63946" />
+    <meta property="og:site_name" content="El Impostor" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://el-impostor-djf.pages.dev/" />
+    <meta property="og:title" content="El Impostor | Juego de palabras online" />
+    <meta
+      property="og:description"
+      content="Crea una sala gratis, comparte el código y descubre al impostor entre tus amigos. Partidas rápidas para 3-12 jugadores."
+    />
+    <meta property="og:image" content="https://el-impostor-djf.pages.dev/og-image.png" />
+    <meta property="og:image:secure_url" content="https://el-impostor-djf.pages.dev/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="El Impostor, juego de palabras online gratis para jugar con amigos" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="El Impostor | Juego de palabras online" />
+    <meta
+      name="twitter:description"
+      content="Crea una sala gratis, invita a tus amigos y encuentra al jugador que no conoce la palabra secreta."
+    />
+    <meta name="twitter:image" content="https://el-impostor-djf.pages.dev/og-image.png" />
+    <meta name="twitter:image:alt" content="El Impostor, juego de palabras online gratis" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono&display=swap" rel="stylesheet" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": ["WebApplication", "Game"],
+        "name": "El Impostor",
+        "alternateName": "El Impostor Online",
+        "url": "https://el-impostor-djf.pages.dev/",
+        "image": "https://el-impostor-djf.pages.dev/og-image.png",
+        "description": "Juego social de deducción y palabras para crear salas privadas online, jugar con amigos y descubrir al impostor.",
+        "applicationCategory": "GameApplication",
+        "operatingSystem": "Web",
+        "browserRequirements": "Requiere un navegador moderno con WebSockets.",
+        "inLanguage": "es",
+        "isAccessibleForFree": true,
+        "genre": ["Juego de palabras", "Deducción social", "Multijugador online"],
+        "playMode": "MultiPlayer",
+        "numberOfPlayers": {
+          "@type": "QuantitativeValue",
+          "minValue": 3,
+          "maxValue": 12
+        },
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "EUR",
+          "availability": "https://schema.org/InStock"
+        }
+      }
+    </script>
   </head>
   <body>
+    <noscript>
+      <main style="max-width: 720px; margin: 40px auto; padding: 24px; font-family: system-ui, sans-serif; line-height: 1.5;">
+        <h1>El Impostor</h1>
+        <p>
+          El Impostor es un juego de palabras online gratis para 3-12 jugadores. Crea una sala privada,
+          comparte el código con tus amigos y descubre quién no conoce la palabra secreta.
+        </p>
+        <p>Activa JavaScript para crear o unirte a una partida.</p>
+      </main>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

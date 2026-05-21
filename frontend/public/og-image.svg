@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">El Impostor</title>
+  <desc id="desc">Juego de palabras online gratis para descubrir al impostor con tus amigos.</desc>
+  <rect width="1200" height="630" fill="#F5EBD6"/>
+  <path d="M0 528c120-58 214-47 343-10 134 38 258 48 414-29 160-79 313-77 443-12v153H0Z" fill="#EADEC2"/>
+  <g opacity="0.42">
+    <circle cx="106" cy="94" r="9" fill="#1A1410"/>
+    <circle cx="172" cy="424" r="7" fill="#1A1410"/>
+    <circle cx="934" cy="98" r="8" fill="#1A1410"/>
+    <circle cx="1066" cy="404" r="6" fill="#1A1410"/>
+    <circle cx="744" cy="520" r="7" fill="#1A1410"/>
+    <circle cx="488" cy="86" r="6" fill="#1A1410"/>
+  </g>
+  <g transform="translate(88 88)">
+    <rect x="0" y="0" width="1024" height="454" rx="36" fill="#FBF4E2" stroke="#1A1410" stroke-width="8"/>
+    <g transform="translate(704 68) rotate(6)">
+      <rect x="0" y="0" width="224" height="294" rx="26" fill="#E63946" stroke="#1A1410" stroke-width="8"/>
+      <path d="M33 48h158M33 236h114" stroke="#F4B942" stroke-width="13" stroke-linecap="round"/>
+      <path d="M50 121c22-48 118-48 140 0 13 30 0 88-43 103-25 9-71 9-97 0-43-15-56-73-43-103Z" fill="#1A1410"/>
+      <circle cx="83" cy="150" r="22" fill="#FBF4E2"/>
+      <circle cx="142" cy="150" r="22" fill="#FBF4E2"/>
+      <circle cx="90" cy="158" r="8" fill="#1A1410"/>
+      <circle cx="149" cy="158" r="8" fill="#1A1410"/>
+      <path d="M105 198c16 10 33 10 49 0" stroke="#FBF4E2" stroke-width="9" stroke-linecap="round"/>
+      <path d="M180 4l70-34-19 77Z" fill="#3DA5A0" stroke="#1A1410" stroke-width="8" stroke-linejoin="round"/>
+    </g>
+    <g transform="translate(74 76)">
+      <rect x="0" y="0" width="225" height="50" rx="25" fill="#F4B942" stroke="#1A1410" stroke-width="5"/>
+      <text x="112.5" y="33" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="20" fill="#1A1410" letter-spacing="2">GRATIS ONLINE</text>
+      <text x="0" y="156" font-family="Arial Black, Arial, sans-serif" font-size="92" fill="#E63946" stroke="#1A1410" stroke-width="3" paint-order="stroke">EL</text>
+      <text x="0" y="252" font-family="Arial Black, Arial, sans-serif" font-size="92" fill="#1A1410">IMPOSTOR</text>
+      <text x="0" y="314" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#3A2F26">Juego de palabras y deducción social</text>
+      <text x="0" y="360" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="#3A2F26">Crea una sala para 3-12 amigos</text>
+    </g>
+  </g>
+</svg>
