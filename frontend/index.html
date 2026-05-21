@@ -49,30 +49,43 @@
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": ["WebApplication", "Game"],
-        "name": "El Impostor",
-        "alternateName": "El Impostor Online",
-        "url": "https://el-impostor-djf.pages.dev/",
-        "image": "https://el-impostor-djf.pages.dev/og-image.png",
-        "description": "Juego social de deducción y palabras para crear salas privadas online, jugar con amigos y descubrir al impostor.",
-        "applicationCategory": "GameApplication",
-        "operatingSystem": "Web",
-        "browserRequirements": "Requiere un navegador moderno con WebSockets.",
-        "inLanguage": "es",
-        "isAccessibleForFree": true,
-        "genre": ["Juego de palabras", "Deducción social", "Multijugador online"],
-        "playMode": "MultiPlayer",
-        "numberOfPlayers": {
-          "@type": "QuantitativeValue",
-          "minValue": 3,
-          "maxValue": 12
-        },
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "EUR",
-          "availability": "https://schema.org/InStock"
-        }
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://el-impostor-djf.pages.dev/#website",
+            "name": "El Impostor",
+            "alternateName": "El Impostor Online",
+            "url": "https://el-impostor-djf.pages.dev/",
+            "inLanguage": "es"
+          },
+          {
+            "@type": ["WebApplication", "Game"],
+            "@id": "https://el-impostor-djf.pages.dev/#game",
+            "name": "El Impostor",
+            "alternateName": "El Impostor Online",
+            "url": "https://el-impostor-djf.pages.dev/",
+            "image": "https://el-impostor-djf.pages.dev/og-image.png",
+            "description": "Juego social de deducción y palabras para crear salas privadas online, jugar con amigos y descubrir al impostor.",
+            "applicationCategory": "GameApplication",
+            "operatingSystem": "Web",
+            "browserRequirements": "Requiere un navegador moderno con WebSockets.",
+            "inLanguage": "es",
+            "isAccessibleForFree": true,
+            "genre": ["Juego de palabras", "Deducción social", "Multijugador online"],
+            "playMode": "MultiPlayer",
+            "numberOfPlayers": {
+              "@type": "QuantitativeValue",
+              "minValue": 3,
+              "maxValue": 12
+            },
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "EUR",
+              "availability": "https://schema.org/InStock"
+            }
+          }
+        ]
       }
     </script>
   </head>
