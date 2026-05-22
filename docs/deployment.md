@@ -1,13 +1,14 @@
 # Deployment
 
-> **Status:** Live as of 2026-05-08 on Cloudflare's free tier.
+> **Status:** Live as of 2026-05-22 on Cloudflare's free tier.
 >
 > | Surface  | URL                                                              |
 > |----------|------------------------------------------------------------------|
-> | Frontend | https://el-impostor-djf.pages.dev                                |
+> | Frontend | https://juegoimpostor.app                                        |
+> | Pages fallback | https://el-impostor-djf.pages.dev                         |
 > | Worker   | https://el-impostor-worker-production.jvallejoarguez.workers.dev |
 >
-> Account: `jvallejoarguez@gmail.com` (Account ID `9dcaf5d50edb2a76eaef1221620d7d33`). Pages project: `el-impostor`. Worker script: `el-impostor-worker-production`.
+> Account: `jvallejoarguez@gmail.com` (Account ID `9dcaf5d50edb2a76eaef1221620d7d33`). Pages project: `el-impostor`. Worker script: `el-impostor-worker-production`. Custom domain zone: `juegoimpostor.app`.
 
 This doc captures **what is actually in production**, the gotchas hit while getting there, and the exact commands needed to redeploy or roll back. It supplements `docs/superpowers/plans/2026-05-07-el-impostor-multiplayer.md` Phase 5 — read this when the plan and reality diverge.
 
@@ -15,7 +16,7 @@ This doc captures **what is actually in production**, the gotchas hit while gett
 
 ```
 ┌────────────────────────────────┐         ┌──────────────────────────────────┐
-│  Pages: el-impostor-djf        │  WSS    │  Worker: el-impostor-worker-     │
+│  Pages: juegoimpostor.app      │  WSS    │  Worker: el-impostor-worker-     │
 │  (Vite build of frontend/)     │────────▶│  production (DO: GameRoom)       │
 │  el-impostor-djf.pages.dev     │  HTTPS  │  *.workers.dev                   │
 └────────────────────────────────┘         └──────────────────────────────────┘
@@ -24,7 +25,7 @@ This doc captures **what is actually in production**, the gotchas hit while gett
                   └──────────────────────────────────────────┘
 ```
 
-The Pages site is a static SPA. The browser opens a WebSocket directly to the worker; the worker upgrades the WS into a Durable Object instance keyed by room code. CORS on `POST /rooms` is gated on `FRONTEND_ORIGIN`, which is set in `worker/wrangler.toml` and must exactly match the Pages domain.
+The Pages site is a static SPA. The browser opens a WebSocket directly to the worker; the worker upgrades the WS into a Durable Object instance keyed by room code. CORS on `POST /rooms` is gated on `FRONTEND_ORIGINS`, which is set in `worker/wrangler.toml` and must include every public frontend origin.
 
 ## Files that drive deployment
 
@@ -47,25 +48,21 @@ npm run deploy:worker
 #   Deployed el-impostor-worker-production triggers
 #   https://el-impostor-worker-production.jvallejoarguez.workers.dev
 
-# 2) Frontend build with the worker URL baked in
-VITE_WORKER_URL=https://el-impostor-worker-production.jvallejoarguez.workers.dev \
-  npm run build -w frontend
-
-# 3) Pages — IMPORTANT: --branch main pins this to the production alias.
+# 2) Frontend build with the worker URL baked in + Pages deploy.
+#    IMPORTANT: --branch main pins this to the production alias.
 #    Without it wrangler tags the deployment with the current git branch,
 #    which lands on a *preview* alias (e.g. feat-multiplayer.el-impostor-djf.pages.dev)
 #    and leaves the canonical URL serving 404.
-npx wrangler pages deploy frontend/dist \
-  --project-name el-impostor --branch main --commit-dirty=true
+npm run deploy:frontend
 ```
 
 Verify:
 
 ```bash
-curl -sS -o /dev/null -w "%{http_code}\n" https://el-impostor-djf.pages.dev/
+curl -sS -o /dev/null -w "%{http_code}\n" https://juegoimpostor.app/
 # 200
 
-curl -sS -X POST -H "Origin: https://el-impostor-djf.pages.dev" \
+curl -sS -X POST -H "Origin: https://juegoimpostor.app" \
   https://el-impostor-worker-production.jvallejoarguez.workers.dev/rooms
 # {"code":"XXXX"}
 ```
@@ -114,7 +111,7 @@ class_name = "GameRoom"
 [env.production]
 
 [env.production.vars]
-FRONTEND_ORIGIN = "https://el-impostor-djf.pages.dev"
+FRONTEND_ORIGINS = "https://juegoimpostor.app,https://www.juegoimpostor.app,https://el-impostor-djf.pages.dev"
 
 [[env.production.durable_objects.bindings]]
 name = "GAME_ROOM"
@@ -129,7 +126,7 @@ The `[migrations]` block *does* inherit, so we don't duplicate it.
 
 > Successfully created the 'el-impostor' project. It will be available at https://el-impostor-djf.pages.dev/
 
-Cloudflare appended `-djf` because `el-impostor.pages.dev` was already taken by another tenant. The plan assumes the bare slug — every place that hard-codes `https://el-impostor.pages.dev` (the original `wrangler.toml`, the plan's curl examples) needs to be updated to `https://el-impostor-djf.pages.dev`. **`FRONTEND_ORIGIN` in particular has to match exactly** or CORS preflight on `POST /rooms` will fail.
+Cloudflare appended `-djf` because `el-impostor.pages.dev` was already taken by another tenant. The custom domain `https://juegoimpostor.app` is the canonical public URL; keep `https://el-impostor-djf.pages.dev` as a fallback allowed origin so old links still work.
 
 ### 4. `wrangler pages deploy` defaults `--branch` to your current git branch
 
@@ -142,7 +139,7 @@ Always pass `--branch main` (or whichever branch the Pages project considers pro
 | Symptom                                                              | Likely cause                                                                                       | Fix                                                                                                  |
 |----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------|
 | Pages root URL shows "Deployment Not Found"                          | Last deploy went to a preview/branch alias                                                          | Redeploy with `--branch main`                                                                        |
-| `POST /rooms` from the frontend → CORS error in browser              | `FRONTEND_ORIGIN` doesn't match the Pages origin exactly (trailing slash, http vs https, sub-domain)| Update `[env.production.vars].FRONTEND_ORIGIN` in `wrangler.toml`, run `npm run deploy:worker`       |
+| `POST /rooms` from the frontend → CORS error in browser              | `FRONTEND_ORIGINS` does not include the current origin exactly (trailing slash, http vs https, sub-domain)| Update `[env.production.vars].FRONTEND_ORIGINS` in `wrangler.toml`, run `npm run deploy:worker` |
 | Frontend connects but never loads game state                          | `VITE_WORKER_URL` was empty at build time; client is hitting the wrong host                         | Rebuild with `VITE_WORKER_URL=https://el-impostor-worker-production.jvallejoarguez.workers.dev`      |
 | Worker deploy errors with code `10097`                                | Migration uses `new_classes` on free plan                                                           | Switch to `new_sqlite_classes`                                                                       |
 | Worker deploy succeeds but rooms can't be created (500 in DO call)    | DO binding missing under `[env.production]`                                                         | Add `[[env.production.durable_objects.bindings]]` block                                              |
@@ -180,5 +177,4 @@ If costs ever start mattering, the most likely culprit is the watchdog/heartbeat
 
 ## Open follow-ups
 
-- The plan's Step 7 suggests baking `VITE_WORKER_URL` into the root `package.json`'s `build` script. Currently it's passed inline; either is fine, but if a future contributor runs `npm run build -w frontend` without the env var, the produced bundle will fail at runtime in production. Worth adding a script wrapper.
-- Pages preview deployments (anything not on `--branch main`) currently won't pass CORS because `FRONTEND_ORIGIN` is exact-match. If we want to preview branches, the worker would need to allow `*.el-impostor-djf.pages.dev` (regex) or fall back to a loose CORS policy in non-production envs.
+- Pages preview deployments (anything not on `--branch main`) currently won't pass CORS unless their origin is added to `FRONTEND_ORIGINS`. If we want to preview branches, the worker would need to allow `*.el-impostor-djf.pages.dev` (regex) or fall back to a loose CORS policy in non-production envs.

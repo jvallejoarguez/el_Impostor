@@ -11,19 +11,31 @@ function generateCode() {
   return code
 }
 
-function corsHeaders(env) {
+function allowedOrigins(env) {
+  const configured = env.FRONTEND_ORIGINS || env.FRONTEND_ORIGIN || ''
+  return configured.split(',').map((origin) => origin.trim()).filter(Boolean)
+}
+
+function corsHeaders(request, env) {
+  const origin = request.headers.get('Origin')
+  const origins = allowedOrigins(env)
+  const allowOrigin = origins.includes('*')
+    ? '*'
+    : (origin && origins.includes(origin)) ? origin : origins[0] || '*'
+
   return {
-    'Access-Control-Allow-Origin': env.FRONTEND_ORIGIN || '*',
+    'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '86400',
+    'Vary': 'Origin',
   }
 }
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url)
-    const cors = corsHeaders(env)
+    const cors = corsHeaders(request, env)
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: cors })

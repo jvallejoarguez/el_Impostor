@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "concurrently -n frontend,worker -c cyan,yellow \"npm run dev -w frontend\" \"npm run dev -w worker\"",
     "deploy:worker": "npm run deploy -w worker",
-    "deploy:frontend": "npm run build -w frontend && wrangler pages deploy frontend/dist --project-name el-impostor",
+    "deploy:frontend": "VITE_WORKER_URL=https://el-impostor-worker-production.jvallejoarguez.workers.dev npm run build -w frontend && wrangler pages deploy frontend/dist --project-name el-impostor --branch main --commit-dirty=true",
     "deploy": "npm run deploy:worker && npm run deploy:frontend"
   },
   "devDependencies": {

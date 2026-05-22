@@ -12,10 +12,10 @@ Real-time multiplayer over WebSockets. Anonymous play — no accounts.
 
 | Surface  | URL                                                                |
 |----------|--------------------------------------------------------------------|
-| Frontend | https://el-impostor-djf.pages.dev                                  |
+| Frontend | https://juegoimpostor.app                                          |
 | Worker   | https://el-impostor-worker-production.jvallejoarguez.workers.dev   |
 
-Cloudflare account: `jvallejoarguez@gmail.com` (free tier). Pages project name: `el-impostor` (the `-djf` suffix is auto-appended because `el-impostor.pages.dev` was already taken). Worker name: `el-impostor-worker-production` (the `-production` suffix comes from deploying with `--env production`).
+Cloudflare account: `jvallejoarguez@gmail.com` (free tier). Pages project name: `el-impostor`; the fallback Pages URL is `https://el-impostor-djf.pages.dev` because `el-impostor.pages.dev` was already taken. Worker name: `el-impostor-worker-production` (the `-production` suffix comes from deploying with `--env production`).
 
 See [`docs/deployment.md`](docs/deployment.md) for the full deployment story, gotchas hit, and the exact redeploy commands.
 
@@ -36,17 +36,13 @@ Open http://localhost:3000 in 3 browser tabs to simulate 3 players.
 # 1. Worker (must run first — Pages build needs the worker URL)
 npm run deploy:worker
 
-# 2. Build frontend with the worker URL baked in
-VITE_WORKER_URL=https://el-impostor-worker-production.jvallejoarguez.workers.dev \
-  npm run build -w frontend
-
-# 3. Pages — pin to main, otherwise it deploys to a branch preview
+# 2. Build frontend with the worker URL baked in and deploy Pages.
+#    Pin to main, otherwise it deploys to a branch preview
 #    and the canonical el-impostor-djf.pages.dev shows "Deployment Not Found".
-npx wrangler pages deploy frontend/dist \
-  --project-name el-impostor --branch main --commit-dirty=true
+npm run deploy:frontend
 ```
 
-`FRONTEND_ORIGIN` lives in `worker/wrangler.toml` under `[env.production.vars]`. If the Pages URL ever changes, update it there and rerun step 1.
+`FRONTEND_ORIGINS` lives in `worker/wrangler.toml` under `[env.production.vars]`. If the public frontend domains ever change, update it there and rerun step 1.
 
 Full walkthrough and troubleshooting: [`docs/deployment.md`](docs/deployment.md).
 

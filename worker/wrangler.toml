@@ -4,6 +4,7 @@ compatibility_date = "2024-09-23"
 
 [vars]
 FRONTEND_ORIGIN = "http://localhost:3000"
+FRONTEND_ORIGINS = "http://localhost:3000"
 
 [[durable_objects.bindings]]
 name = "GAME_ROOM"
@@ -15,12 +16,13 @@ tag = "v1"
 new_sqlite_classes = ["GameRoom"]
 
 # Production env — wrangler does not auto-inherit durable_objects across
-# envs, so we redeclare the binding here. Override FRONTEND_ORIGIN to your
-# Pages URL after the first Pages deploy.
+# envs, so we redeclare the binding here. Override FRONTEND_ORIGINS when
+# adding or removing public frontend domains.
 [env.production]
 
 [env.production.vars]
-FRONTEND_ORIGIN = "https://el-impostor-djf.pages.dev"
+FRONTEND_ORIGIN = "https://juegoimpostor.app"
+FRONTEND_ORIGINS = "https://juegoimpostor.app,https://www.juegoimpostor.app,https://el-impostor-djf.pages.dev"
 
 [[env.production.durable_objects.bindings]]
 name = "GAME_ROOM"
