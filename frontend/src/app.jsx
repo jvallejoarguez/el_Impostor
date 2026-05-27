@@ -1,11 +1,12 @@
 // frontend/src/app.jsx
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { HomeScreen, JoinScreen } from './components/screens-entry.jsx'
 import { LobbyScreen, CountdownScreen } from './components/screens-lobby.jsx'
 import { RoleRevealScreen, GameplayScreen } from './components/screens-game.jsx'
 import { BetweenRoundScreen, VotingScreen, ResultsScreen } from './components/screens-vote.jsx'
 import { useGameSocket, WORKER_BASE } from './ws/useGameSocket.js'
 import { initSounds } from './audio/soundManager.js'
+import { clearInviteCodeFromUrl, getInviteCodeFromUrl, track } from './analytics.js'
 
 // Theming defaults (keep existing theme system intact)
 const DEFAULT_THEME = {
@@ -25,6 +26,7 @@ export default function App() {
   const [joinError, setJoinError] = useState(null)
   const [createError, setCreateError] = useState(null)
   const [theme] = useState(DEFAULT_THEME)
+  const trackedPhaseRef = useRef(null)
 
   const { gameState, myRole, myId, connectionState, lastError, connect, disconnect, send } =
     useGameSocket()
@@ -50,6 +52,24 @@ export default function App() {
   const myPlayer = gameState?.players?.find(p => p.id === myId) ?? null
   const amOwner = myPlayer?.isOwner ?? false
 
+  useEffect(() => {
+    const inviteCode = getInviteCodeFromUrl()
+    if (!inviteCode) return
+    setRoomCode(inviteCode)
+    setScreen('join')
+    track('invite_link_opened', { roomCode: inviteCode })
+  }, [])
+
+  useEffect(() => {
+    if (!phase) return
+    if (trackedPhaseRef.current === phase) return
+    trackedPhaseRef.current = phase
+    track(`phase_${phase}`, {
+      roomCode: gameState?.code || roomCode,
+      playerCount: gameState?.players?.filter(p => p.connected !== false).length,
+    })
+  }, [phase, gameState?.code, gameState?.players, roomCode])
+
   // ── Navigation helpers ────────────────────────────────────────
 
   const handleSoundsInit = useCallback(() => {
@@ -67,6 +87,7 @@ export default function App() {
       if (!code) throw new Error('No room code returned')
       setRoomCode(code)
       connect(code, name)
+      track('create_room', { roomCode: code })
       setScreen('lobby')
     } catch {
       setCreateError('No se pudo crear la sala. Inténtalo de nuevo.')
@@ -79,11 +100,13 @@ export default function App() {
     setRoomCode(code)
     setJoinError(null)
     connect(code, name)
+    track('join_room', { roomCode: code })
     setScreen('lobby')
   }, [connect, handleSoundsInit])
 
   const handleLeaveRoom = useCallback(() => {
     disconnect()
+    clearInviteCodeFromUrl()
     setScreen('home')
     setRoomCode('')
     setPlayerName('')
@@ -91,9 +114,9 @@ export default function App() {
 
   // ── Game actions (delegate to server via send()) ──────────────
 
-  const handleReady = useCallback(() => send('READY'), [send])
-  const handleUpdateRules = useCallback((rules) => send('UPDATE_RULES', { rules }), [send])
-  const handleStartGame = useCallback(() => send('START_GAME'), [send])
+  const handleReady = useCallback(() => { track('ready'); send('READY') }, [send])
+  const handleUpdateRules = useCallback((rules) => { track('update_rules'); send('UPDATE_RULES', { rules }) }, [send])
+  const handleStartGame = useCallback(() => { track('start_game', { roomCode }); send('START_GAME') }, [roomCode, send])
   const handleSubmitWord = useCallback((word) => send('SUBMIT_WORD', { word }), [send])
   const handleBetweenVote = useCallback((choice) => send('BETWEEN_VOTE', { choice }), [send])
   const handleCastVote = useCallback((targetId) => send('CAST_VOTE', { targetId }), [send])
@@ -132,8 +155,9 @@ export default function App() {
       <JoinScreen
         theme={theme}
         error={joinError || lastError}
+        initialCode={roomCode}
         onJoin={handleJoinRoom}
-        onBack={() => setScreen('home')}
+        onBack={() => { clearInviteCodeFromUrl(); setScreen('home') }}
       />
     )
   }

@@ -78,6 +78,21 @@ function HomeScreen({ theme, mode, error, onCreateRoom, onJoinRoom, onSubmitName
         <Arrow/>
         <HowItWorksStep num="3" title="Descubre al impostor"/>
       </div>
+
+      <nav className="home-seo-links" aria-label="Guías de El Impostor" style={{
+        display: "flex",
+        gap: 16,
+        flexWrap: "wrap",
+        justifyContent: "center",
+        marginTop: 22,
+        fontSize: 13,
+        fontWeight: 700,
+        color: "var(--ink-soft)",
+      }}>
+        <a href="/juego-impostor-online/">Juego online</a>
+        <a href="/como-jugar/">Cómo jugar</a>
+        <a href="/palabras-para-el-impostor/">Palabras</a>
+      </nav>
     </div>
   );
 }
@@ -160,10 +175,20 @@ function Arrow() {
 }
 
 // === JOIN SCREEN ===
-function JoinScreen({ theme, error, onJoin, onBack }) {
-  const [code, setCode] = React.useState(["", "", "", ""]);
+function toCodeArray(value = "") {
+  const chars = value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4).split("");
+  return [0, 1, 2, 3].map(i => chars[i] || "");
+}
+
+function JoinScreen({ theme, error, initialCode = "", onJoin, onBack }) {
+  const [code, setCode] = React.useState(() => toCodeArray(initialCode));
   const [name, setName] = React.useState("");
   const inputsRef = React.useRef([]);
+
+  React.useEffect(() => {
+    if (!initialCode) return;
+    setCode(toCodeArray(initialCode));
+  }, [initialCode]);
 
   const fillFrom = (startIdx, raw) => {
     const cleaned = (raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -225,6 +250,18 @@ function JoinScreen({ theme, error, onJoin, onBack }) {
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <Sticker color="teal" rotate={-3} size="lg">Unirse a sala</Sticker>
         </div>
+
+        {initialCode && (
+          <p style={{
+            margin: "-12px 0 22px",
+            textAlign: "center",
+            color: "var(--ink-soft)",
+            fontSize: 13,
+            fontWeight: 700,
+          }}>
+            Código cargado desde tu invitación
+          </p>
+        )}
 
         <label style={labelStyle}>Tu nombre</label>
         <input

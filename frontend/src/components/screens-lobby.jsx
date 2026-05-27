@@ -2,16 +2,40 @@ import React from 'react'
 import { Sticker, Avatar, hashSeed } from './primitives.jsx'
 import { play } from '../audio/soundManager.js'
 import { WORD_CATEGORIES, normalizeWordCategories, wordCategoriesLabel } from '../wordCategories.js'
+import { getInviteUrl, getWhatsAppShareUrl, sharePayload, track } from '../analytics.js'
 
 // components/screens-lobby.jsx — Lobby, countdown
 
 function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onStartGame, onLeave }) {
   const [copied, setCopied] = React.useState(false);
+  const [shared, setShared] = React.useState(false);
+  const inviteUrl = getInviteUrl(room.code);
+  const inviteText = `Únete a mi sala de El Impostor (${room.code})`;
 
   const copyCode = () => {
     navigator.clipboard?.writeText(room.code);
+    track('copy_room_code', { roomCode: room.code });
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  };
+
+  const copyInvite = () => {
+    navigator.clipboard?.writeText(inviteUrl);
+    track('share_invite', { roomCode: room.code, method: 'copy_link' });
+    setShared(true);
+    setTimeout(() => setShared(false), 1600);
+  };
+
+  const shareInvite = async () => {
+    const method = await sharePayload({
+      title: 'El Impostor',
+      text: inviteText,
+      url: inviteUrl,
+    }, { roomCode: room.code, phase: room.phase });
+    if (method && method !== 'cancelled') {
+      setShared(true);
+      setTimeout(() => setShared(false), 1600);
+    }
   };
 
   // Owner is implicitly ready; non-owners must mark ready
@@ -30,6 +54,9 @@ function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onSta
           <Sticker color="mustard" rotate={-2} size="lg">Sala · {room.code}</Sticker>
           <button onClick={copyCode} className="btn btn--sm" style={{ padding: "10px 14px" }}>
             {copied ? "✓ Copiado" : "⧉ Copiar"}
+          </button>
+          <button onClick={shareInvite} className="btn btn--primary btn--sm" style={{ padding: "10px 14px" }}>
+            {shared ? "✓ Listo" : "Invitar"}
           </button>
         </div>
         <div className="spacer" style={{ width: 80 }}/>
@@ -73,6 +100,39 @@ function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onSta
                 Esperando...
               </div>
             ))}
+          </div>
+
+          <div style={{
+            marginTop: 20,
+            padding: 16,
+            background: "var(--cream-deep)",
+            border: "2.5px dashed var(--ink)",
+            borderRadius: 14,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 10,
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}>
+            <div style={{ minWidth: 180 }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 14 }}>Invitación</div>
+              <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 3, overflowWrap: "anywhere" }}>
+                {inviteUrl}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button onClick={copyInvite} className="btn btn--sm">{shared ? "✓ Copiado" : "Copiar link"}</button>
+              <a
+                className="btn btn--teal btn--sm"
+                href={getWhatsAppShareUrl(inviteText, inviteUrl)}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => track('share_invite', { roomCode: room.code, method: 'whatsapp' })}
+                style={{ textDecoration: "none" }}
+              >
+                WhatsApp
+              </a>
+            </div>
           </div>
         </div>
 

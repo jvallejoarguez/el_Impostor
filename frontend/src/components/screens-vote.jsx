@@ -1,6 +1,7 @@
 import React from 'react'
 import { Sticker, Avatar } from './primitives.jsx'
 import { play } from '../audio/soundManager.js'
+import { getInviteUrl, getWhatsAppShareUrl, sharePayload, track } from '../analytics.js'
 
 // components/screens-vote.jsx — between-round, voting, results
 
@@ -211,10 +212,25 @@ function ResultsScreen({ theme, room, myId, onPlayAgain, onBackToLobby }) {
   const voteTally = result.tally || {};
   const winner = imposterFound ? "jugadores" : "impostor";
   const bg = imposterFound ? "var(--teal)" : "var(--red)";
+  const resultText = `Partida de El Impostor: ganan ${winner}. El impostor era ${imposter.name} y la palabra era ${secretWord}.`;
+  const inviteUrl = getInviteUrl(room.code);
 
   React.useEffect(() => {
     play(result.found ? 'win' : 'lose');
+    track('finish_game', {
+      roomCode: room.code,
+      winner,
+      players: room.players.length,
+    });
   }, []);
+
+  const shareResult = async () => {
+    await sharePayload({
+      title: 'Resultado de El Impostor',
+      text: resultText,
+      url: inviteUrl,
+    }, { roomCode: room.code, phase: 'results', methodContext: 'result' });
+  };
 
   return (
     <div className="screen-pad" style={{ minHeight: "100vh", padding: 24, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
@@ -308,6 +324,19 @@ function ResultsScreen({ theme, room, myId, onPlayAgain, onBackToLobby }) {
       </div>
 
       <div style={{ display: "flex", gap: 16, marginTop: 28, flexWrap: "wrap", justifyContent: "center" }}>
+        <button onClick={shareResult} className="btn btn--teal">
+          Compartir resultado
+        </button>
+        <a
+          className="btn btn--mustard"
+          href={getWhatsAppShareUrl(resultText, inviteUrl)}
+          target="_blank"
+          rel="noreferrer"
+          onClick={() => track('share_invite', { roomCode: room.code, method: 'whatsapp_result' })}
+          style={{ textDecoration: "none" }}
+        >
+          WhatsApp
+        </a>
         <button onClick={onPlayAgain} className="btn btn--primary">
           ↻ Otra partida
         </button>
