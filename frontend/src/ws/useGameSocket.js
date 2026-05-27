@@ -11,11 +11,13 @@ function getOrCreatePlayerId() {
   return id
 }
 
+const PRODUCTION_WORKER_URL = 'https://el-impostor-worker-production.jvallejoarguez.workers.dev'
+
 export const WORKER_BASE = import.meta.env.VITE_WORKER_URL ||
-  (import.meta.env.DEV ? 'http://localhost:8787' : '')
+  (import.meta.env.DEV ? 'http://localhost:8787' : PRODUCTION_WORKER_URL)
 // In dev we hit wrangler directly (bypassing Vite proxy — its WebSocket
 // support is unreliable). Worker CORS allows http://localhost:3000.
-// In production, set VITE_WORKER_URL=https://el-impostor-worker.<account>.workers.dev
+// In production, VITE_WORKER_URL can override the canonical Worker URL above.
 
 export function useGameSocket() {
   const [gameState, setGameState] = useState(null)
