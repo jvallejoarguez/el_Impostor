@@ -1,12 +1,44 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="El Impostor">
-  <rect width="64" height="64" rx="14" fill="#F5EBD6"/>
-  <path d="M8 11h42a6 6 0 0 1 6 6v30a6 6 0 0 1-6 6H14a6 6 0 0 1-6-6Z" fill="#E63946" stroke="#1A1410" stroke-width="4"/>
-  <path d="M15 18h34M15 46h24" stroke="#F4B942" stroke-width="4" stroke-linecap="round"/>
-  <path d="M18 30c4-8 24-8 28 0 2 4 0 12-6 14-5 2-11 2-16 0-6-2-8-10-6-14Z" fill="#1A1410"/>
-  <circle cx="25" cy="34" r="5" fill="#FBF4E2"/>
-  <circle cx="39" cy="34" r="5" fill="#FBF4E2"/>
-  <circle cx="26.5" cy="35" r="2" fill="#1A1410"/>
-  <circle cx="40.5" cy="35" r="2" fill="#1A1410"/>
-  <path d="M30 42c2 1.5 5 1.5 7 0" stroke="#FBF4E2" stroke-width="2.5" stroke-linecap="round"/>
-  <path d="M45 10 57 4l-3 13" fill="#3DA5A0" stroke="#1A1410" stroke-width="3" stroke-linejoin="round"/>
+  <defs>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" result="n"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.04"/>
+      </feComponentTransfer>
+    </filter>
+  </defs>
+
+  <rect width="64" height="64" rx="15" fill="#FBF4E2"/>
+  <rect width="64" height="64" rx="15" fill="#1A1410" opacity="0.03" filter="url(#grain)"/>
+
+  <!-- hard shadow (site avatar style) -->
+  <circle cx="35" cy="35" r="23" fill="#1A1410"/>
+
+  <!-- impostor blob -->
+  <circle cx="31" cy="31" r="23" fill="#E63946" stroke="#1A1410" stroke-width="2.5"/>
+
+  <circle cx="22" cy="36" r="3.2" fill="#1A1410" opacity="0.14"/>
+  <circle cx="40" cy="36" r="3.2" fill="#1A1410" opacity="0.14"/>
+
+  <circle cx="23" cy="27" r="3.4" fill="#1A1410"/>
+  <circle cx="39" cy="27" r="3.4" fill="#1A1410"/>
+  <circle cx="24.2" cy="25.8" r="1.1" fill="#FBF4E2"/>
+  <circle cx="40.2" cy="25.8" r="1.1" fill="#FBF4E2"/>
+
+  <!-- domino mask (logo O signature) -->
+  <g transform="translate(31 27)">
+    <ellipse cx="-8" cy="0" rx="7.2" ry="5.8" fill="#1A1410" stroke="#FBF4E2" stroke-width="1.4"/>
+    <circle cx="-8" cy="0" r="2.6" fill="#FBF4E2"/>
+    <circle cx="-8" cy="0" r="1.1" fill="#1A1410"/>
+    <ellipse cx="8" cy="0" rx="7.2" ry="5.8" fill="#1A1410" stroke="#FBF4E2" stroke-width="1.4"/>
+    <circle cx="8" cy="0" r="2.6" fill="#FBF4E2"/>
+    <circle cx="8" cy="0" r="1.1" fill="#1A1410"/>
+    <rect x="-1.4" y="-1.4" width="2.8" height="2.8" fill="#1A1410" stroke="#FBF4E2" stroke-width="0.8"/>
+  </g>
+
+  <path d="M 22 37.5 Q 31 44.5 40 37.5" stroke="#1A1410" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+
+  <!-- mustard accent dot (sticker energy) -->
+  <circle cx="50" cy="14" r="5.5" fill="#F4B942" stroke="#1A1410" stroke-width="1.8"/>
 </svg>
