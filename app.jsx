@@ -201,7 +201,8 @@ function App() {
     setWords(w => ({ ...w, [currentId]: word }));
     const next = activePlayerIdx + 1;
     if (next >= room.players.length) {
-      // round ended
+      // Let everyone read the final word before showing the next decision screen.
+      const LAST_WORD_READ_DELAY_MS = 2500;
       setTimeout(() => {
         if (room.currentRound >= room.rules.roundsBeforeVote) {
           setScreen("voting");
@@ -212,7 +213,7 @@ function App() {
           setBetweenVote(null);
           setScreen("between");
         }
-      }, 1500);
+      }, LAST_WORD_READ_DELAY_MS);
     } else {
       setActivePlayerIdx(next);
       setTimer({ remaining: room.rules.turnTime, total: room.rules.turnTime });
