@@ -28,7 +28,9 @@ function RoleRevealScreen({ theme, myRole, revealStyle = "flash" }) {
 
   const bg = isImposter ? "var(--red)" : "var(--teal)";
   const fg = "var(--paper)";
-  const revealWordSize = secretWord.length > 18 ? "min(10vw, 72px)" : "min(22vw, 180px)";
+  const revealText = isImposter ? "IMPOSTOR" : secretWord.toUpperCase();
+  const longestRevealSegment = Math.max(...revealText.split(/\s+/).map(segment => segment.length), 1);
+  const revealWordSize = `min(22vw, ${(116 / longestRevealSegment).toFixed(2)}vw, 180px)`;
 
   if (revealStyle === "card") {
     return (
@@ -145,7 +147,7 @@ function RoleRevealScreen({ theme, myRole, revealStyle = "flash" }) {
       position: "fixed", inset: 0, zIndex: 50,
     }}>
       {phase >= 1 && (
-        <div className="flash" style={{ textAlign: "center" }}>
+        <div className="flash" style={{ textAlign: "center", width: "100%" }}>
           <div style={{
             fontFamily: "var(--font-display)",
             fontSize: "min(14vw, 96px)",
@@ -162,9 +164,11 @@ function RoleRevealScreen({ theme, myRole, revealStyle = "flash" }) {
             lineHeight: 1,
             WebkitTextStroke: "3px var(--ink)",
             maxWidth: "min(92vw, 980px)",
-            overflowWrap: "anywhere",
+            margin: "0 auto",
+            overflowWrap: "normal",
+            wordBreak: "normal",
           }}>
-            {isImposter ? "IMPOSTOR" : secretWord.toUpperCase()}
+            {revealText}
           </div>
         </div>
       )}

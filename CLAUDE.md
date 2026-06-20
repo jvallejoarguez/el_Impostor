@@ -37,8 +37,7 @@ Open http://localhost:3000 in 3 browser tabs to simulate 3 players.
 npm run deploy:worker
 
 # 2. Build frontend with the worker URL baked in and deploy Pages.
-#    Pin to main, otherwise it deploys to a branch preview
-#    and the canonical el-impostor-djf.pages.dev shows "Deployment Not Found".
+#    Pin to main, otherwise it deploys to a branch preview.
 npm run deploy:frontend
 ```
 

@@ -91,17 +91,48 @@
     </script>
   </head>
   <body>
-    <noscript>
-      <main style="max-width: 720px; margin: 40px auto; padding: 24px; font-family: system-ui, sans-serif; line-height: 1.5;">
-        <h1>El Impostor</h1>
+    <div id="root">
+      <main
+        style="max-width: 880px; margin: 40px auto; padding: 24px; font-family: system-ui, sans-serif; line-height: 1.55; color: #111827;"
+      >
+        <header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 48px;">
+          <a href="/" style="font-weight: 800; color: #111827; text-decoration: none;">El Impostor</a>
+          <nav aria-label="Guías" style="display: flex; flex-wrap: wrap; gap: 14px;">
+            <a href="/juego-impostor-online/" style="color: #b91c1c;">Juego online</a>
+            <a href="/como-jugar/" style="color: #b91c1c;">Cómo jugar</a>
+            <a href="/palabras-para-el-impostor/" style="color: #b91c1c;">Palabras</a>
+          </nav>
+        </header>
+        <p style="font-weight: 700; color: #b91c1c; text-transform: uppercase; letter-spacing: .08em;">Gratis · 3-12 jugadores · Sin instalar</p>
+        <h1 style="font-size: clamp(2.25rem, 8vw, 4.75rem); line-height: .95; margin: 0 0 20px; max-width: 760px;">
+          El Impostor online
+        </h1>
         <p>
-          El Impostor es un juego de palabras online gratis para 3-12 jugadores. Crea una sala privada,
-          comparte el código con tus amigos y descubre quién no conoce la palabra secreta.
+          El Impostor es un juego de palabras y deducción social para jugar con amigos desde el navegador.
+          Crea una sala privada, comparte el enlace y descubre quién no conoce la palabra secreta antes de que
+          consiga engañar al grupo.
         </p>
-        <p>Activa JavaScript para crear o unirte a una partida.</p>
+        <p>
+          En cada ronda, casi todos los jugadores reciben la misma palabra. El impostor debe improvisar pistas
+          creíbles sin revelar que está perdido. Después de las pistas, el grupo debate y vota al sospechoso.
+        </p>
+        <p>
+          Activa JavaScript para crear o unirte a una partida. También puedes leer las
+          <a href="/como-jugar/" style="color: #b91c1c;">reglas de El Impostor</a>,
+          ver ideas de <a href="/palabras-para-el-impostor/" style="color: #b91c1c;">palabras para jugar</a>
+          o abrir la página del <a href="/juego-impostor-online/" style="color: #b91c1c;">juego impostor online</a>.
+        </p>
+        <section style="margin-top: 40px;">
+          <h2>Cómo funciona una partida</h2>
+          <ol>
+            <li>Un jugador crea una sala privada y comparte el enlace con sus amigos.</li>
+            <li>Cada participante recibe su rol: jugador normal o impostor.</li>
+            <li>Todos dan pistas sobre la palabra secreta sin decirla directamente.</li>
+            <li>El grupo vota al sospechoso y descubre si el impostor fue atrapado.</li>
+          </ol>
+        </section>
       </main>
-    </noscript>
-    <div id="root"></div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
