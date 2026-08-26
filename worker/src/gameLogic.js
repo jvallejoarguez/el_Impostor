@@ -17,6 +17,11 @@ export const WORD_CATEGORY_IDS = [
   'tiktokers',
   'videojuegos',
   'libros',
+  'cine_series',
+  'musica',
+  'futbol',
+  'creadores_latam',
+  'emociones',
 ]
 
 const WORD_CATEGORY_SET = new Set(WORD_CATEGORY_IDS)

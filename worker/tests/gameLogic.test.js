@@ -6,6 +6,7 @@ import {
   applyConfirmVote, computeResult, WORD_CATEGORY_IDS,
 } from '../src/gameLogic.js'
 import words from '../src/words.json'
+import { WORD_CATEGORIES as FRONTEND_WORD_CATEGORIES } from '../../frontend/src/wordCategories.js'
 
 const makeState = (overrides = {}) => ({
   code: 'TEST',
@@ -159,18 +160,28 @@ describe('applyUpdateRules', () => {
 })
 
 describe('words catalog', () => {
+  it('keeps frontend and server category ids in sync', () => {
+    expect(FRONTEND_WORD_CATEGORIES.map(category => category.id)).toEqual(WORD_CATEGORY_IDS)
+  })
+
   it('uses only known categories and balanced enough pools', () => {
     const validCategories = new Set(WORD_CATEGORY_IDS.filter(id => id !== 'all'))
     const counts = {}
+    const seen = new Set()
     for (const item of words) {
       expect(item.word).toBeTruthy()
       expect(item.hint).toBeTruthy()
       expect(validCategories.has(item.category)).toBe(true)
+      expect(item.hint.split(/\s+/).length).toBeLessThanOrEqual(3)
+      const key = `${item.category}:${item.word.toLocaleLowerCase('es')}`
+      expect(seen.has(key)).toBe(false)
+      seen.add(key)
       counts[item.category] = (counts[item.category] || 0) + 1
     }
     for (const category of validCategories) {
-      expect(counts[category]).toBeGreaterThanOrEqual(12)
+      expect(counts[category]).toBe(20)
     }
+    expect(words).toHaveLength(400)
   })
 })
 

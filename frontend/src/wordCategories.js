@@ -15,6 +15,11 @@ export const WORD_CATEGORIES = [
   { id: "tiktokers", label: "TikTokers" },
   { id: "videojuegos", label: "Videojuegos" },
   { id: "libros", label: "Libros" },
+  { id: "cine_series", label: "Cine y series" },
+  { id: "musica", label: "Música" },
+  { id: "futbol", label: "Fútbol" },
+  { id: "creadores_latam", label: "Creadores LATAM" },
+  { id: "emociones", label: "Emociones" },
 ]
 
 export function wordCategoryLabel(id) {

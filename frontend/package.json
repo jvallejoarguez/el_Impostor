@@ -3,6 +3,9 @@
   "private": true,
   "scripts": {
     "dev": "vite --port 3000",
+    "seo:generate": "node ../scripts/generate-seo-pages.mjs",
+    "seo:check": "node ../scripts/generate-seo-pages.mjs --check",
+    "prebuild": "npm run seo:generate",
     "build": "vite build",
     "preview": "vite preview"
   },
