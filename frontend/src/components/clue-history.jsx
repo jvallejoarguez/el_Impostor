@@ -9,6 +9,6 @@ export function PlayerClues({ history = [], playerId }) {
 export function ClueHistory({ room, avatarStyle, expanded = false }) {
   return <details className="card clue-history" open={expanded || undefined}>
     <summary>Pistas de la partida <span>{room.wordHistory?.length || 0}</span></summary>
-    <div className="clue-history-list">{room.players.map(p => <div className="clue-history-player" key={p.id}><div className="clue-person"><Avatar name={p.name} style={avatarStyle} size={30}/><strong>{p.name}</strong></div><PlayerClues history={room.wordHistory} playerId={p.id}/></div>)}</div>
+    <div className="clue-history-list">{room.players.map(p => <div className="clue-history-player" key={p.id}><div className="clue-person"><Avatar name={p.name} avatarId={p.avatarId} style={avatarStyle} size={30}/><strong>{p.name}</strong></div><PlayerClues history={room.wordHistory} playerId={p.id}/></div>)}</div>
   </details>
 }

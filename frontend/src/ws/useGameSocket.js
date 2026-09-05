@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createServerClock } from './serverClock.js'
 import { saveSession } from '../session.js'
+import { readAvatarPreference } from '../avatarPreferences.js'
 
 function getOrCreatePlayerId() {
   try {
@@ -141,7 +142,7 @@ export function useGameSocket() {
   const connect = useCallback((code, name) => {
     stopTimers()
     closeSocket()
-    connectionRef.current = { code, name }
+    connectionRef.current = { code, name, avatarId: readAvatarPreference() }
     retriesRef.current = 0
     hadStateRef.current = false
     clockRef.current.reset()

@@ -9,15 +9,16 @@ import { initSounds } from './audio/soundManager.js'
 import { captureCampaign, track, trackOnce } from './analytics.js'
 import { readSession, clearSession, entryFromUrl, updateEntryUrl } from './session.js'
 import { ServerClockContext } from './ws/useServerCountdown.js'
+import { saveAvatarPreference } from './avatarPreferences.js'
 
 // Theming defaults (keep existing theme system intact)
 const DEFAULT_THEME = {
-  primaryColor: '#E63946',
+  primaryColor: '#B8432E',
   logoVariant: 'stacked',
-  avatarStyle: 'blob',
+  avatarStyle: 'club',
   circleLayout: 'orbit',
   revealStyle: 'flash',
-  typography: 'archivo',
+  typography: 'club',
   dark: false,
 }
 
@@ -41,6 +42,7 @@ export default function App() {
     document.documentElement.style.setProperty('--red', theme.primaryColor)
     document.documentElement.setAttribute('data-theme', theme.dark ? 'dark' : 'light')
     const fonts = {
+      club: ['Fraunces', 'Space Grotesk', 'JetBrains Mono'],
       archivo: ['Archivo Black', 'Space Grotesk', 'JetBrains Mono'],
       bricolage: ['Bricolage Grotesque', 'Space Grotesk', 'JetBrains Mono'],
       condensed: ['Anton', 'Space Grotesk', 'JetBrains Mono'],
@@ -149,6 +151,11 @@ export default function App() {
 
   const handleReady = useCallback(() => { track('ready'); send('READY') }, [send])
   const handleUpdateRules = useCallback((rules) => { track('update_rules'); send('UPDATE_RULES', { rules }) }, [send])
+  const handleSelectAvatar = useCallback((avatarId) => {
+    if (!send('UPDATE_AVATAR', { avatarId })) return false
+    saveAvatarPreference(avatarId)
+    return true
+  }, [send])
   const handleStartGame = useCallback(() => { track('start_game', { roomCode }); send('START_GAME') }, [roomCode, send])
   const handleSubmitWord = useCallback((word) => send('SUBMIT_WORD', { word }), [send])
   const handleBetweenVote = useCallback((choice) => send('BETWEEN_VOTE', { choice }), [send])
@@ -227,6 +234,7 @@ export default function App() {
           amOwner={amOwner}
           onReady={handleReady}
           onUpdateRules={handleUpdateRules}
+          onSelectAvatar={handleSelectAvatar}
           onStartGame={handleStartGame}
           onLeave={handleLeaveRoom}
         />

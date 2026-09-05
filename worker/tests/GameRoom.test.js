@@ -33,6 +33,48 @@ async function trio() {
 }
 
 describe('room flow and private roles', () => {
+  it('broadcasts a chosen avatar, ignores spoofed player IDs and preserves it across reconnect and replay', async () => {
+    const {room, players, send, join} = await trio()
+    await send(players[1], 'UPDATE_AVATAR', {playerId:'Ana', avatarId:0})
+    expect(room.state.players.find(p => p.id === 'Bruno').avatarId).toBe(0)
+    const before = room.state.players.find(p => p.id === 'Ana').avatarId
+    for (const ws of players) expect(messages(ws, 'STATE').at(-1).payload.players.find(p => p.id === 'Bruno').avatarId).toBe(0)
+    const rejoined = await join('Bruno')
+    expect(messages(rejoined, 'STATE').at(-1).payload.players.find(p => p.id === 'Bruno').avatarId).toBe(0)
+    expect(room.state.players.find(p => p.id === 'Ana').avatarId).toBe(before)
+    await send(players[0], 'START_GAME')
+    await send(rejoined, 'UPDATE_AVATAR', {avatarId:11})
+    expect(room.state.players.find(p => p.id === 'Bruno').avatarId).toBe(0)
+    await room.alarm(); await room.alarm()
+    for (const [i, ws] of [players[0], rejoined, players[2]].entries()) {
+      await send(ws, 'SUBMIT_WORD', {word:`Pista${i}`})
+    }
+    await room.alarm()
+    await send(players[0], 'BETWEEN_VOTE', {choice:'vote'})
+    await send(rejoined, 'BETWEEN_VOTE', {choice:'vote'})
+    await room.alarm()
+    expect(room.state.phase).toBe('results')
+    await send(rejoined, 'PLAY_AGAIN')
+    expect(room.state.players.find(p => p.id === 'Bruno').avatarId).toBe(0)
+  })
+
+  it('rejects invalid avatar payloads and accepts a chosen avatar on initial join', async () => {
+    const {room, players, send, join} = await trio()
+    const initial = room.state
+    for (const avatarId of [null, -1, 12, 1.5, '2', {}, true]) {
+      await send(players[0], 'UPDATE_AVATAR', {avatarId})
+      expect(room.state).toBe(initial)
+    }
+    const newcomer = await join('Diego')
+    // A fresh room also accepts the portrait chosen before entry.
+    const isolated = await setup()
+    const ws = {send:vi.fn(), close:vi.fn(), serializeAttachment:vi.fn()}
+    isolated.sockets.push(ws)
+    await isolated.send(ws, 'JOIN', {name:'Elena', playerId:'Elena', code:'TEST', avatarId:11})
+    expect(isolated.room.state.players[0].avatarId).toBe(11)
+    expect(messages(newcomer, 'STATE').at(-1).payload).not.toHaveProperty('secretWord')
+  })
+
   it('plays two rounds, preserves the clue history, reconnects and replays', async () => {
     const { room, players, send, join, ctx } = await trio()
     await send(players[0], 'START_GAME')

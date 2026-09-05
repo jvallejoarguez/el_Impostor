@@ -315,7 +315,7 @@ function GameplayScreen({ theme, room, myId, myRole, onSubmitWord }) {
       }}>
         {isRoundReview ? (
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <Avatar name={players[activePlayerIdx]?.name ?? ""} style={theme.avatarStyle} size={48} speaking/>
+            <Avatar name={players[activePlayerIdx]?.name ?? ""} avatarId={players[activePlayerIdx]?.avatarId} style={theme.avatarStyle} size={48} speaking/>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: "var(--font-display)", fontSize: 16 }}>
                 Última pista de la ronda
@@ -336,7 +336,7 @@ function GameplayScreen({ theme, room, myId, myRole, onSubmitWord }) {
         ) : isMyTurn ? (
           <div className="input-row" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <div className="turn-info" style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 200 }}>
-              <Avatar name={players[myIdx]?.name ?? ""} style={theme.avatarStyle} size={48} speaking/>
+              <Avatar name={players[myIdx]?.name ?? ""} avatarId={players[myIdx]?.avatarId} style={theme.avatarStyle} size={48} speaking/>
               <div>
                 <div style={{ fontFamily: "var(--font-display)", fontSize: 16 }}>Tu turno</div>
                 <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>Escribe una palabra relacionada</div>
@@ -364,7 +364,7 @@ function GameplayScreen({ theme, room, myId, myRole, onSubmitWord }) {
           </div>
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <Avatar name={players[activePlayerIdx]?.name ?? ""} style={theme.avatarStyle} size={48} speaking/>
+            <Avatar name={players[activePlayerIdx]?.name ?? ""} avatarId={players[activePlayerIdx]?.avatarId} style={theme.avatarStyle} size={48} speaking/>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: "var(--font-display)", fontSize: 16 }}>
                 {players[activePlayerIdx]?.name ?? ""} está pensando...
@@ -409,7 +409,7 @@ function CircleLayout({ players, activeIdx, words, layout, avatarStyle, timeFrac
   if (N > 6) return <div className="large-group" ref={wrapRef}>
     <div className="large-group-turn"><TimerRing remaining={timerRemaining} total={timerTotal} frac={timeFrac} size={70}/><strong>Turno de {players[activeIdx]?.name}</strong></div>
     <div className="large-group-grid">{players.map((p, i) => <div className={`large-group-player ${i === activeIdx ? 'is-active' : ''}`} key={p.id}>
-      <Avatar name={p.name} style={avatarStyle} size={40} speaking={i === activeIdx}/><strong>{p.name}</strong><span>{words[p.id] || 'Aún sin pista'}</span>
+      <Avatar name={p.name} avatarId={p.avatarId} style={avatarStyle} size={40} speaking={i === activeIdx}/><strong>{p.name}</strong><span>{words[p.id] || 'Aún sin pista'}</span>
     </div>)}</div>
   </div>;
 
@@ -425,7 +425,7 @@ function CircleLayout({ players, activeIdx, words, layout, avatarStyle, timeFrac
             position: "absolute", inset: -30, borderRadius: "50%",
             background: "radial-gradient(circle, rgba(244,185,66,0.4) 0%, transparent 70%)",
           }}/>
-          <Avatar name={active.name} style={avatarStyle} size={160} speaking/>
+          <Avatar name={active.name} avatarId={active.avatarId} style={avatarStyle} size={160} speaking/>
           <div style={{ textAlign: "center", marginTop: 12, fontFamily: "var(--font-display)", fontSize: 22 }}>{active.name}</div>
           {/* impostor identity is private during play — color all word bubbles neutrally */}
           {words[active.id] && <WordBubble text={words[active.id]} color="teal"/>}
@@ -436,7 +436,7 @@ function CircleLayout({ players, activeIdx, words, layout, avatarStyle, timeFrac
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", maxWidth: 700, opacity: 0.5 }}>
           {others.map(p => (
             <div key={p.id} style={{ textAlign: "center" }}>
-              <Avatar name={p.name} style={avatarStyle} size={44}/>
+              <Avatar name={p.name} avatarId={p.avatarId} style={avatarStyle} size={44}/>
               {words[p.id] && <div style={{ fontSize: 10, color: "var(--ink-soft)", marginTop: 2 }}>{words[p.id]}</div>}
             </div>
           ))}
@@ -492,7 +492,7 @@ function CircleLayout({ players, activeIdx, words, layout, avatarStyle, timeFrac
               zIndex: active ? 5 : 1,
             }}>
               <div style={{ textAlign: "center" }}>
-                <Avatar name={p.name} style={avatarStyle} size={avatarSize} speaking={active}/>
+                <Avatar name={p.name} avatarId={p.avatarId} style={avatarStyle} size={avatarSize} speaking={active}/>
                 <div style={{ fontFamily: "var(--font-display)", fontSize: 12, marginTop: 4 }}>{p.name}</div>
               </div>
               {words[p.id] && <WordBubble text={words[p.id]} color="teal" compact/>}

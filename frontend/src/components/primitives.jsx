@@ -1,4 +1,5 @@
 import React from 'react'
+import { ClubAvatar } from './club-avatars.jsx'
 
 // components/primitives.jsx — Logo, Avatar, shared bits
 
@@ -149,7 +150,8 @@ function hashSeed(str) {
 const AVATAR_COLORS = ["#F4B942", "#3DA5A0", "#E63946", "#B5A7E6", "#F5A3B8", "#7FB069", "#F07438", "#4A90E2"];
 const ANIMALS = ["🦊","🐻","🐼","🐸","🦉","🐺","🦁","🐨","🦄","🐵","🐙","🐢"];
 
-function Avatar({ name, style = "blob", size = 72, speaking = false, eliminated = false, showCrown = false }) {
+function Avatar({ name, avatarId, style = "blob", size = 72, speaking = false, eliminated = false, showCrown = false }) {
+  if (style === "club") return <ClubAvatar name={name} character={avatarId} size={size} speaking={speaking} eliminated={eliminated} showCrown={showCrown}/>;
   const seed = hashSeed(name || "X");
   const color = AVATAR_COLORS[seed % AVATAR_COLORS.length];
   const shape = seed % 3; // 0 circle, 1 squircle, 2 hex

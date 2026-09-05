@@ -1,4 +1,5 @@
 // worker/src/gameLogic.js
+import { avatarIndex, isAvatarId } from '../../shared/avatars.js'
 
 export const WORD_CATEGORY_IDS = [
   'all',
@@ -84,15 +85,22 @@ function sanitizeRules(state, patch = {}) {
   return next
 }
 
-export function applyJoin(state, { id, name, isOwner }) {
+export function applyJoin(state, { id, name, isOwner, avatarId }) {
   const existing = state.players.find(p => p.id === id)
   if (existing) {
     return { ...state, players: state.players.map(p => p.id === id ? { ...p, connected: true } : p) }
   }
   return {
     ...state,
-    players: [...state.players, { id, name, connected: true, ready: false, isOwner: !!isOwner }],
+    players: [...state.players, { id, name, avatarId: avatarIndex(name, avatarId), connected: true, ready: false, isOwner: !!isOwner }],
   }
+}
+
+export function applyUpdateAvatar(state, { playerId, avatarId }) {
+  if (state.phase !== 'lobby' || !isAvatarId(avatarId)) return state
+  const player = state.players.find(p => p.id === playerId)
+  if (!player || player.connected === false || player.avatarId === avatarId) return state
+  return { ...state, players: state.players.map(p => p.id === playerId ? { ...p, avatarId } : p) }
 }
 
 export function applyReady(state, playerId) {

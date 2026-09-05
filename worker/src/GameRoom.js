@@ -1,6 +1,6 @@
 // worker/src/GameRoom.js
 import {
-  applyJoin, applyReady, applyUpdateRules, applyStartGame,
+  applyJoin, applyReady, applyUpdateRules, applyUpdateAvatar, applyStartGame,
   applySubmitWord, applyBetweenVote, applyCastVote,
   applyConfirmVote, computeResult, firstConnectedPlayerIdx, normalizeCategories,
 } from './gameLogic.js'
@@ -111,6 +111,12 @@ export class GameRoom {
         break
       case 'UPDATE_RULES':
         if (playerId) { this.state = applyUpdateRules(this.state, { playerId, rules: msg.payload?.rules || {} }); this._broadcast() }
+        break
+      case 'UPDATE_AVATAR':
+        if (playerId) {
+          const next = applyUpdateAvatar(this.state, { playerId, avatarId: msg.payload?.avatarId })
+          if (next !== this.state) { this.state = next; this._broadcast() }
+        }
         break
       case 'START_GAME':
         if (playerId) await this._handleStartGame(playerId)
@@ -245,7 +251,7 @@ export class GameRoom {
 
   // ── Handlers ──────────────────────────────────────────────
 
-  async _handleJoin(ws, { name, code, playerId }) {
+  async _handleJoin(ws, { name, code, playerId, avatarId }) {
     if (typeof playerId !== 'string' || !playerId || playerId.length > 100 ||
         typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 16) {
       ws.send(JSON.stringify({ type: 'ERROR', payload: { message: 'Escribe un nombre de 2 a 16 caracteres.' } }))
@@ -292,7 +298,7 @@ export class GameRoom {
     if (isOwner) this.state = { ...this.state, players: this.state.players.map(p => ({ ...p, isOwner: false })) }
     this.sessions.set(playerId, ws)
     try { ws.serializeAttachment({ playerId }) } catch {}
-    this.state = applyJoin(this.state, { id: playerId, name, isOwner })
+    this.state = applyJoin(this.state, { id: playerId, name, isOwner, avatarId })
     this._broadcast()
   }
 

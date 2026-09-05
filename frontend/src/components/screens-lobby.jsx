@@ -1,232 +1,107 @@
-import React from 'react'
-import { Sticker, Avatar } from './primitives.jsx'
+import React, { useState } from 'react'
+import { Avatar } from './primitives.jsx'
+import { AvatarPickerButton } from './avatar-picker.jsx'
+import { RoomRadio } from './room-radio.jsx'
+import { Sheet } from './sheet.jsx'
 import { play } from '../audio/soundManager.js'
 import { useServerCountdown } from '../ws/useServerCountdown.js'
 import { WORD_CATEGORIES, normalizeWordCategories, wordCategoriesLabel } from '../wordCategories.js'
-import { getInviteUrl, getWhatsAppShareUrl, sharePayload, track } from '../analytics.js'
+import { getInviteUrl, sharePayload, track } from '../analytics.js'
 
-// components/screens-lobby.jsx — Lobby, countdown
+function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onSelectAvatar, onStartGame, onLeave }) {
+  const [feedback, setFeedback] = useState('')
+  const [showInvite, setShowInvite] = useState(false)
+  const [showCategories, setShowCategories] = useState(false)
+  const inviteUrl = getInviteUrl(room.code)
+  const connected = room.players.filter(p => p.connected !== false)
+  const waiting = connected.filter(p => !p.ready && !p.isOwner)
+  const missing = Math.max(0, 3 - connected.length)
+  const canStart = amOwner && !missing && !waiting.length
+  const iAmReady = room.players.find(p => p.id === myId)?.ready
+  const categoryValue = room.rules.wordCategories ?? room.rules.wordCategory ?? 'all'
+  const status = missing ? `Falta${missing === 1 ? '' : 'n'} ${missing} para empezar`
+    : waiting.length ? `${waiting.length} ${waiting.length === 1 ? 'persona por confirmar' : 'personas por confirmar'}` : 'Todo el grupo está listo'
 
-function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onStartGame, onLeave }) {
-  const [feedback, setFeedback] = React.useState('');
-  const inviteUrl = getInviteUrl(room.code);
-  const inviteText = `Únete a mi sala de El Impostor (${room.code})`;
-  const connected = room.players.filter(p => p.connected !== false);
-  const waiting = connected.filter(p => !p.ready && !p.isOwner);
-  const missing = Math.max(0, 3 - connected.length);
-  const canStart = amOwner && !missing && !waiting.length;
-  const iAmReady = room.players.find(p => p.id === myId)?.ready;
-  const categories = wordCategoriesLabel(room.rules.wordCategories ?? room.rules.wordCategory ?? 'all');
-  const status = missing ? `Invita a ${missing} ${missing === 1 ? 'amigo más' : 'amigos más'} para empezar.`
-    : waiting.length ? `Esperando a ${waiting.map(p => p.id === myId ? 'ti' : p.name).join(', ')}. Marcad «Estoy listo» para empezar.`
-    : 'Todo el grupo está listo.';
-
-  const copy = async (value, kind) => {
+  const copyCode = async () => {
     try {
-      if (!navigator.clipboard?.writeText) throw new Error();
-      await navigator.clipboard.writeText(value);
-      setFeedback(kind === 'code' ? 'Código copiado.' : 'Enlace copiado. Compártelo con tus amigos.');
-      track(kind === 'code' ? 'copy_room_code' : 'share_invite', { method: 'copy_link' });
-    } catch { setFeedback('No se pudo copiar. Mantén pulsado el enlace de invitación para copiarlo.'); }
-  };
+      await navigator.clipboard.writeText(room.code)
+      setFeedback('Código copiado.')
+      track('copy_room_code')
+    } catch { setShowInvite(true) }
+  }
   const invite = async () => {
     try {
-      const method = await sharePayload({ title: 'El Impostor', text: inviteText, url: inviteUrl });
-      if (method && method !== 'cancelled') setFeedback(method === 'native' ? 'Invitación compartida.' : 'Invitación copiada. Pégala en tu grupo.');
-    } catch { setFeedback('Usa el enlace de invitación o el botón de WhatsApp para invitar.'); }
-  };
+      const method = await sharePayload({title:'El Impostor', text:`Únete a mi sala de El Impostor (${room.code})`, url:inviteUrl})
+      if (method && method !== 'cancelled') setFeedback(method === 'native' ? 'Invitación compartida.' : 'Enlace copiado. Pégalo en tu grupo.')
+    } catch { setShowInvite(true) }
+  }
 
-  return (
-    <main className="lobby-page screen-pad">
-      <header className="lobby-header">
-        <button onClick={onLeave} className="btn btn--ghost btn--sm">← Salir</button>
-        <div className="room-code-row">
-          <Sticker color="mustard" rotate={-2}>Sala · {room.code}</Sticker>
-          <button onClick={() => copy(room.code, 'code')} className="text-button" aria-label="Copiar código de sala">Copiar código</button>
+  return <main className="room-lobby">
+    <header className="room-topbar">
+      <button type="button" onClick={onLeave} className="room-leave" aria-label="Salir de la sala">← Salir</button>
+      <h1>Sala de espera</h1>
+      <button type="button" className="room-code" onClick={copyCode} aria-label={`Copiar código de sala ${room.code}`}><span>{room.code}</span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M15 5V3H3v13h2"/></svg></button>
+    </header>
+    <div className="room-panels">
+      <section className="room-group" aria-labelledby="players-title">
+        <div className="room-section-heading"><h2 id="players-title">El grupo</h2><span>{connected.length} / {room.rules.maxPlayers}</span></div>
+        <div className="room-roster">
+          {room.players.map(p => <div key={p.id} className={`room-person ${p.connected === false ? 'is-disconnected' : ''}`}>
+            {p.id === myId ? <AvatarPickerButton name={p.name} avatarId={p.avatarId} onSelect={onSelectAvatar} size={76} showCrown={p.isOwner}/>
+              : <Avatar name={p.name} avatarId={p.avatarId} style={theme.avatarStyle} size={76} showCrown={p.isOwner}/>}
+            <strong title={p.name}>{p.name}{p.id === myId && <small> · tú</small>}</strong>
+            <span className={`room-person-status ${p.ready || p.isOwner ? 'is-ready' : ''}`}>{p.connected === false ? 'Sin conexión' : p.isOwner ? '★ Anfitrión' : p.ready ? '✓ Listo' : 'Preparándose'}</span>
+          </div>)}
+          {Array.from({length:missing}, (_, i) => <button type="button" className="room-empty-seat" key={`seat-${i}`} onClick={invite} aria-label="Invitar a un jugador"><span aria-hidden="true">＋</span><small>Invitar</small></button>)}
         </div>
-      </header>
-      <div className="lobby-heading">
-        <p className="eyebrow-text">{missing ? 'Reúne a tu grupo' : `Ya sois ${connected.length}`}</p>
-        <h1>Que empiecen las sospechas.</h1>
-        <p>Un secreto. Tus amigos. Alguien tendrá que improvisar.</p>
-      </div>
-      <div className="lobby-layout">
-        <section className="card lobby-players" aria-labelledby="players-title">
-          <div className="section-heading"><h2 id="players-title">El grupo</h2><span>{connected.length} / {room.rules.maxPlayers}</span></div>
-          <div className="lobby-player-list">
-            {room.players.map(p => <PlayerCard key={p.id} player={p} avatarStyle={theme.avatarStyle} isMe={p.id === myId}/>)}
-          </div>
-          {missing > 0 && <p className="lobby-empty">{missing === 1 ? 'Falta una persona para la primera partida.' : `Faltan ${missing} personas para la primera partida.`}</p>}
-          <div className="invite-actions">
-            <button onClick={invite} className="btn btn--teal btn--sm">Invitar amigos ↗</button>
-            <a className="btn btn--ghost btn--sm" href={getWhatsAppShareUrl(inviteText, inviteUrl)} target="_blank" rel="noreferrer" onClick={() => track('share_invite', { method: 'whatsapp' })}>WhatsApp</a>
-          </div>
-          <details className="invite-details">
-            <summary>Ver enlace de invitación</summary>
-            <p className="invite-url">{inviteUrl}</p>
-            <button className="text-button" onClick={() => copy(inviteUrl, 'link')}>Copiar enlace</button>
-          </details>
-          <p className="inline-feedback" role="status">{feedback}</p>
-        </section>
-        <aside className="lobby-controls">
-          <div className="card lobby-start">
-            <p className="lobby-status" role="status">{status}</p>
-            {amOwner ? <button className="btn btn--primary btn--block" disabled={!canStart} onClick={onStartGame}>
-              {missing ? `Faltan ${missing} ${missing === 1 ? 'jugador' : 'jugadores'}` : waiting.length ? 'Esperando al grupo' : 'Empezar partida →'}
-            </button> : <button className={`btn btn--block ${iAmReady ? 'btn--teal' : 'btn--mustard'}`} disabled={iAmReady} onClick={onReady}>{iAmReady ? '✓ Listo' : 'Estoy listo →'}</button>}
-            <p className="lobby-help">{amOwner ? 'Tú eres el anfitrión.' : 'El anfitrión empezará cuando estéis listos.'} Jugad juntos o por llamada.</p>
-          </div>
-          <div className="card lobby-settings">
-            <p className="eyebrow-text">Vuestra partida</p>
-            <p className="rules-summary">{categories} · {room.rules.turnTime} s · {room.rules.roundsBeforeVote} {room.rules.roundsBeforeVote === 1 ? 'ronda' : 'rondas'}</p>
-            {amOwner ? <details>
-              <summary>Personalizar partida</summary>
-              <div className="rules-fields">
-                <RuleRow label="Tiempo por turno" value={`${room.rules.turnTime}s`} min={10} max={60} step={5} current={room.rules.turnTime} editable onChange={v => onUpdateRules({ turnTime: v })}/>
-                <RuleRow label="Rondas antes de votar" value={room.rules.roundsBeforeVote} min={1} max={5} step={1} current={room.rules.roundsBeforeVote} editable onChange={v => onUpdateRules({ roundsBeforeVote: v })}/>
-                <CategoryRow value={room.rules.wordCategories ?? room.rules.wordCategory ?? 'all'} editable onChange={v => onUpdateRules({ wordCategories: v })}/>
-                <RuleRow label="Máximo de jugadores" value={room.rules.maxPlayers} min={Math.max(3, connected.length)} max={12} step={1} current={room.rules.maxPlayers} editable onChange={v => onUpdateRules({ maxPlayers: v })}/>
-                <ToggleRow label="Dar una pista al impostor" value={room.rules.imposterHasHint} editable onChange={v => onUpdateRules({ imposterHasHint: v })}/>
-              </div>
-            </details> : <p className="lobby-help">{room.rules.imposterHasHint ? 'El impostor recibe una pista.' : 'El impostor juega sin pista.'} El anfitrión puede ajustar las reglas.</p>}
-          </div>
-        </aside>
-      </div>
-    </main>
-  );
-}
-
-function PlayerCard({ player, avatarStyle, isMe }) {
-  const disconnected = player.connected === false;
-  return <div className={`lobby-player ${disconnected ? 'is-disconnected' : ''}`}>
-    <Avatar name={player.name} style={avatarStyle} size={46} showCrown={player.isOwner}/>
-    <div className="lobby-player-name"><strong>{player.name}</strong><small>{[isMe && 'Tú', player.isOwner && 'Anfitrión'].filter(Boolean).join(' · ')}</small></div>
-    <span className={`player-status ${player.ready || player.isOwner ? 'is-ready' : ''}`}>{disconnected ? 'Sin conexión' : player.ready || player.isOwner ? '✓ Listo' : 'Esperando'}</span>
-  </div>;
-}
-
-function RuleRow({ label, value, min, max, step, current, editable, onChange, suffix = "" }) {
-  return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <span style={{ fontSize: 14, fontWeight: 600 }}>{label}</span>
-        <span style={{
-          fontFamily: "var(--font-mono)", fontSize: 15, fontWeight: 700,
-          padding: "2px 10px",
-          background: "var(--mustard)",
-          border: "2px solid var(--ink)",
-          borderRadius: 8,
-        }}>{value}</span>
-      </div>
-      {editable && (
-        <input
-          aria-label={label}
-          type="range" min={min} max={max} step={step} value={current}
-          onChange={e => onChange(Number(e.target.value))}
-          style={{ width: "100%", accentColor: "var(--red)" }}
-        />
-      )}
+        <div className="room-social"><button type="button" onClick={invite} className="room-invite">＋ Invitar amigos</button><RoomRadio code={room.code}/></div>
+        <p className="room-feedback" role="status">{feedback}</p>
+        {showInvite && <div className="room-invite-fallback"><label htmlFor="room-invite-link">Copia este enlace para invitar</label><input id="room-invite-link" readOnly value={inviteUrl} onFocus={e => e.target.select()}/></div>}
+      </section>
+      <section className="room-settings" aria-labelledby="settings-title">
+        <div className="room-section-heading"><h2 id="settings-title">{amOwner ? 'Personalizar partida' : 'La partida'}</h2><span aria-hidden="true">⚙</span></div>
+        {!amOwner && <p className="room-host-note">El anfitrión ajusta las reglas.</p>}
+        <button type="button" className="room-category-button" onClick={() => setShowCategories(true)} aria-haspopup="dialog"><span><small>Categorías</small><strong>{wordCategoriesLabel(categoryValue)}</strong></span><span aria-hidden="true">›</span></button>
+        <div className="room-quick-rules">
+          <RuleStepper label="Tiempo por turno" value={room.rules.turnTime} min={10} max={60} step={5} suffix=" s" editable={amOwner} onChange={v => onUpdateRules({turnTime:v})}/>
+          <RuleStepper label="Rondas antes de votar" value={room.rules.roundsBeforeVote} min={1} max={5} step={1} editable={amOwner} onChange={v => onUpdateRules({roundsBeforeVote:v})}/>
+        </div>
+        <div className="room-extra-rules">
+          <label className="room-capacity"><span>Plazas</span>{amOwner ? <select aria-label="Máximo de jugadores" value={room.rules.maxPlayers} onChange={e => onUpdateRules({maxPlayers:Number(e.target.value)})}>{Array.from({length:10}, (_, i) => i + 3).map(n => <option key={n} value={n} disabled={n < connected.length}>{n}</option>)}</select> : <strong>{room.rules.maxPlayers}</strong>}</label>
+          <div className="room-hint"><span>Pista al impostor</span>{amOwner ? <button type="button" className="room-switch" role="switch" aria-checked={room.rules.imposterHasHint} aria-label="Dar una pista al impostor" onClick={() => onUpdateRules({imposterHasHint:!room.rules.imposterHasHint})}><span/></button> : <strong>{room.rules.imposterHasHint ? 'Sí' : 'No'}</strong>}</div>
+        </div>
+      </section>
     </div>
-  );
+    <footer className="room-launch">
+      <p role="status"><span className={`room-ready-dot ${!missing && !waiting.length ? 'is-ready' : ''}`}/>{status}</p>
+      {amOwner ? <button type="button" className="btn btn--primary" disabled={!canStart} onClick={onStartGame}>Empezar partida →</button>
+        : <button type="button" className={`btn ${iAmReady ? 'btn--teal' : 'btn--primary'}`} disabled={iAmReady} onClick={onReady}>{iAmReady ? '✓ Estás listo' : 'Estoy listo →'}</button>}
+    </footer>
+    {showCategories && <Sheet title="Categorías" onClose={() => setShowCategories(false)} className="category-sheet"><CategoryPicker value={categoryValue} editable={amOwner} onChange={v => onUpdateRules({wordCategories:v})}/><button type="button" className="btn btn--primary sheet-done" onClick={() => setShowCategories(false)}>Listo</button></Sheet>}
+  </main>
 }
 
-function CategoryRow({ value, editable, onChange }) {
-  const selectedCategories = normalizeWordCategories(value);
-  const toggleCategory = (categoryId) => {
-    if (!editable) return;
-    if (categoryId === "all") {
-      onChange(["all"]);
-      return;
-    }
-    const current = selectedCategories.includes("all") ? [] : selectedCategories;
-    const next = current.includes(categoryId)
-      ? current.filter(id => id !== categoryId)
-      : [...current, categoryId];
-    onChange(next.length === 0 ? ["all"] : next);
-  };
-
-  return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 12 }}>
-        <span style={{ fontSize: 14, fontWeight: 600 }}>Categorías</span>
-        <span style={{
-          fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 700,
-          padding: "2px 10px",
-          background: "var(--lavender)",
-          border: "2px solid var(--ink)",
-          borderRadius: 8,
-        }}>
-          {wordCategoriesLabel(selectedCategories)}
-        </span>
-      </div>
-      <div className="category-grid" style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-        gap: 8,
-      }}>
-        {WORD_CATEGORIES.map(category => {
-          const selected = selectedCategories.includes(category.id);
-          return (
-            <button
-              key={category.id}
-              type="button"
-              disabled={!editable}
-              aria-pressed={selected}
-              onClick={() => toggleCategory(category.id)}
-              style={{
-                minHeight: 34,
-                padding: "6px 10px",
-                background: selected ? "var(--ink)" : "var(--paper)",
-                color: selected ? "var(--paper)" : "var(--ink)",
-                border: "2px solid var(--ink)",
-                borderRadius: 8,
-                boxShadow: selected ? "2px 2px 0 var(--mustard)" : "2px 2px 0 var(--ink)",
-                fontSize: 12,
-                fontWeight: 800,
-                textTransform: "uppercase",
-                cursor: editable ? "pointer" : "default",
-                opacity: editable || selected ? 1 : 0.55,
-              }}
-            >
-              {category.label}
-            </button>
-          );
-        })}
-      </div>
-
-    </div>
-  );
+function RuleStepper({ label, value, min, max, step, suffix = '', editable, onChange }) {
+  return <div className="room-stepper"><span>{label}</span><div>{editable && <button type="button" aria-label={`Reducir ${label.toLowerCase()}`} disabled={value <= min} onClick={() => onChange(Math.max(min, value - step))}>−</button>}<output aria-label={label}>{value}{suffix}</output>{editable && <button type="button" aria-label={`Aumentar ${label.toLowerCase()}`} disabled={value >= max} onClick={() => onChange(Math.min(max, value + step))}>＋</button>}</div></div>
 }
 
-function ToggleRow({ label, value, editable, onChange }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-      <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{label}</span>
-      <button
-        role="switch" aria-checked={value} aria-label={label}
-        disabled={!editable}
-        onClick={() => onChange(!value)}
-        style={{
-          width: 52, height: 30,
-          borderRadius: 999,
-          background: value ? "var(--teal)" : "var(--cream-deep)",
-          border: "2.5px solid var(--ink)",
-          position: "relative",
-          boxShadow: "2px 2px 0 var(--ink)",
-          cursor: editable ? "pointer" : "default",
-          opacity: editable ? 1 : 0.7,
-        }}
-      >
-        <div style={{
-          position: "absolute",
-          top: 1, left: value ? 22 : 1,
-          width: 22, height: 22, borderRadius: "50%",
-          background: "var(--paper)", border: "2px solid var(--ink)",
-          transition: "left .15s ease",
-        }}/>
-      </button>
-    </div>
-  );
+function CategoryPicker({ value, editable, onChange }) {
+  const [query, setQuery] = useState('')
+  const selected = normalizeWordCategories(value)
+  const toggle = id => {
+    if (id === 'all') return onChange(['all'])
+    const current = selected.includes('all') ? [] : selected
+    const next = current.includes(id) ? current.filter(item => item !== id) : [...current, id]
+    onChange(next.length ? next : ['all'])
+  }
+  const normalize = text => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  const visible = WORD_CATEGORIES.filter(category => normalize(category.label).includes(normalize(query)))
+  return <>
+    <p className="sheet-intro">{editable ? 'Mezcla las que os apetezcan. Se guardan al tocar.' : 'Estas son las categorías que ha elegido el anfitrión.'}</p>
+    <input className="category-search" type="search" aria-label="Buscar categorías" placeholder="Buscar una categoría…" value={query} onChange={e => setQuery(e.target.value)}/>
+    <div className="room-category-options">{visible.map(category => <button type="button" key={category.id} disabled={!editable} aria-pressed={selected.includes(category.id)} onClick={() => toggle(category.id)}><span>{category.label}</span><span aria-hidden="true">{selected.includes(category.id) ? '✓' : '＋'}</span></button>)}</div>
+    {!visible.length && <p role="status">No hay categorías con ese nombre.</p>}
+  </>
 }
 
 // === COUNTDOWN ===

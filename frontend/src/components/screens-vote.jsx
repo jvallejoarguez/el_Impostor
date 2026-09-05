@@ -112,7 +112,7 @@ function VotingScreen({ theme, room, myId, onCastVote, onConfirmVote }) {
     <div className="voting-list">{room.players.map(p => {
       const selected = myVote === p.id;
       return <button key={p.id} className={`suspect-card ${selected ? 'is-selected' : ''}`} onClick={() => onVote(p.id)} disabled={confirmed} aria-pressed={selected} aria-label={`Votar a ${p.name}`}>
-        <Avatar name={p.name} style={avatarStyle} size={54}/>
+        <Avatar name={p.name} avatarId={p.avatarId} style={avatarStyle} size={54}/>
         <span className="suspect-content"><strong>{p.name} {p.id === myId && <small>(tú)</small>}</strong><PlayerClues history={room.wordHistory} playerId={p.id}/></span>
         <span className="suspect-check" aria-hidden="true">{selected ? '✓' : ''}</span>
       </button>;
@@ -195,7 +195,7 @@ function ResultsScreen({ theme, room, myId, onPlayAgain, onBackToLobby }) {
       }}>
         <div className="imposter-row" style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 24 }}>
           <div style={{ position: "relative", flexShrink: 0 }}>
-            <Avatar name={imposter.name} style={avatarStyle} size={96}/>
+            <Avatar name={imposter.name} avatarId={imposter.avatarId} style={avatarStyle} size={96}/>
             {/* mask overlay */}
             <div style={{
               position: "absolute", top: "30%", left: "10%", right: "10%",
@@ -238,7 +238,7 @@ function ResultsScreen({ theme, room, myId, onPlayAgain, onBackToLobby }) {
                   border: "2.5px solid var(--ink)", borderRadius: 999,
                   fontSize: 13, fontWeight: 600,
                 }}>
-                  <Avatar name={p.name} style={avatarStyle} size={24}/>
+                  <Avatar name={p.name} avatarId={p.avatarId} style={avatarStyle} size={24}/>
                   {p.name} · {count}
                 </div>
               );

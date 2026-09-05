@@ -81,9 +81,10 @@ Client → Server: `{ type, payload }`
 
 | Type           | Payload                          | Notes                        |
 |----------------|----------------------------------|------------------------------|
-| JOIN           | `{ name, code, playerId }`       | First message on connect     |
+| JOIN           | `{ name, code, playerId, avatarId? }` | First message on connect; optional avatar ID 0–11 |
 | READY          | `{}`                             | Lobby only                   |
 | UPDATE_RULES   | `{ rules: Partial<Rules> }`      | Owner only, lobby only       |
+| UPDATE_AVATAR  | `{ avatarId: number }`           | Own avatar only, lobby only; validated ID 0–11 |
 | START_GAME     | `{}`                             | Owner only, 3+ players ready |
 | SUBMIT_WORD    | `{ word: string }`               | Active player's turn         |
 | BETWEEN_VOTE   | `{ choice: "continue"\|"vote" }` | Between-round phase          |
