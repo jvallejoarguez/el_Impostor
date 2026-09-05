@@ -2,15 +2,16 @@
 import {
   applyJoin, applyReady, applyUpdateRules, applyStartGame,
   applySubmitWord, applyBetweenVote, applyCastVote,
-  applyConfirmVote, computeResult, firstConnectedPlayerIdx,
+  applyConfirmVote, computeResult, firstConnectedPlayerIdx, normalizeCategories,
 } from './gameLogic.js'
 import words from './words.json'
 
 const ROUND_REVIEW_MS = 3500
 const VOTING_MS = 30000
 
-const INITIAL_STATE = (code) => ({
+const INITIAL_STATE = (code, category = 'all') => ({
   code,
+  gameId: null,
   phase: 'lobby',
   players: [],
   rules: {
@@ -18,7 +19,7 @@ const INITIAL_STATE = (code) => ({
     roundsBeforeVote: 2,
     maxPlayers: 8,
     imposterHasHint: true,
-    wordCategories: ['all'],
+    wordCategories: normalizeCategories(category),
   },
   impostorIdx: null,
   secretWord: null,
@@ -76,7 +77,7 @@ export class GameRoom {
     if (url.pathname === '/claim') {
       const code = url.searchParams.get('code') || 'UNKNOWN'
       if (!this.state) {
-        this.state = INITIAL_STATE(code)
+        this.state = INITIAL_STATE(code, url.searchParams.get('category'))
         await this._save()
       }
       return Response.json({ ok: true })
@@ -100,7 +101,7 @@ export class GameRoom {
 
     switch (msg.type) {
       case 'PING':
-        try { ws.send(JSON.stringify({ type: 'PONG' })) } catch {}
+        try { ws.send(JSON.stringify({ type: 'PONG', serverNow: Date.now(), clientSentAt: msg.payload?.clientSentAt })) } catch {}
         break
       case 'JOIN':
         await this._handleJoin(ws, msg.payload || {})
@@ -136,6 +137,11 @@ export class GameRoom {
   }
 
   async webSocketClose(ws) {
+    // Complete the closing handshake so clients can release the old connection.
+    try { ws.close(1000, 'closed') } catch {}
+    // A replaced connection can close after its replacement has already joined.
+    const attachedId = ws.deserializeAttachment?.()?.playerId
+    if (attachedId && this.sessions.has(attachedId) && this.sessions.get(attachedId) !== ws) return
     const playerId = this._playerIdForWs(ws)
     if (!playerId || !this.state) return
     this.sessions.delete(playerId)
@@ -169,10 +175,11 @@ export class GameRoom {
     switch (this.state.phase) {
       case 'countdown': {
         // Countdown finished → roleReveal + send private ROLE messages
-        this.state = { ...this.state, phase: 'roleReveal' }
+        const revealEnd = Date.now() + 6000
+        this.state = { ...this.state, phase: 'roleReveal', timerEnd: revealEnd }
         this._sendRoleMessages()
         this._broadcast()
-        await this.ctx.storage.setAlarm(Date.now() + 6000)
+        await this.ctx.storage.setAlarm(revealEnd)
         break
       }
 
@@ -239,8 +246,13 @@ export class GameRoom {
   // ── Handlers ──────────────────────────────────────────────
 
   async _handleJoin(ws, { name, code, playerId }) {
-    console.log('[GameRoom] JOIN attempt', { code, name, playerId, hasState: !!this.state, players: this.state?.players.length })
-    if (!playerId) return
+    if (typeof playerId !== 'string' || !playerId || playerId.length > 100 ||
+        typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 16) {
+      ws.send(JSON.stringify({ type: 'ERROR', payload: { message: 'Escribe un nombre de 2 a 16 caracteres.' } }))
+      ws.close(1008, 'invalid_join')
+      return
+    }
+    name = name.trim()
     // Reject join for unclaimed rooms — only POST /rooms creates a room.
     if (!this.state) {
       ws.send(JSON.stringify({ type: 'ERROR', payload: { message: 'Sala no encontrada' } }))
@@ -276,7 +288,8 @@ export class GameRoom {
       ws.close()
       return
     }
-    const isOwner = this.state.players.length === 0
+    const isOwner = !this.state.players.some(p => p.connected && p.isOwner)
+    if (isOwner) this.state = { ...this.state, players: this.state.players.map(p => ({ ...p, isOwner: false })) }
     this.sessions.set(playerId, ws)
     try { ws.serializeAttachment({ playerId }) } catch {}
     this.state = applyJoin(this.state, { id: playerId, name, isOwner })
@@ -285,19 +298,21 @@ export class GameRoom {
 
   async _handleStartGame(playerId) {
     const player = this.state?.players.find(p => p.id === playerId)
-    if (!player?.isOwner) return
+    if (!player?.isOwner || this.state.phase !== 'lobby') return
     const wordPair = this._pickWordPair()
     const next = applyStartGame(this.state, wordPair)
     if (next.phase !== 'countdown') return // requirements not met
     const countdownEnd = Date.now() + 4000
-    this.state = { ...next, timerEnd: countdownEnd }
+    this.state = { ...next, gameId: crypto.randomUUID(), timerEnd: countdownEnd }
     this._broadcast()
     // 4-second countdown then alarm fires → roleReveal
     await this.ctx.storage.setAlarm(countdownEnd)
   }
 
   async _handleBetweenVote(playerId, choice) {
-    this.state = applyBetweenVote(this.state, { playerId, choice })
+    const next = applyBetweenVote(this.state, { playerId, choice })
+    if (next === this.state) return
+    this.state = next
     if (this.state.phase === 'playing') {
       const nextTurnEnd = Date.now() + this.state.rules.turnTime * 1000
       this.state = { ...this.state, timerEnd: nextTurnEnd }
@@ -314,8 +329,11 @@ export class GameRoom {
   }
 
   async _handleSubmitWord(playerId, { word }) {
-    const trimmed = (word || '').trim().slice(0, 20) || '...'
-    this.state = applySubmitWord(this.state, { playerId, word: trimmed })
+    if (typeof word !== 'string' || !word.trim()) return
+    const trimmed = word.trim().slice(0, 20)
+    const next = applySubmitWord(this.state, { playerId, word: trimmed })
+    if (next === this.state) return // rejected actions must never restart another player's timer
+    this.state = next
 
     if (this.state.phase === 'playing') {
       const nextTurnEnd = Date.now() + this.state.rules.turnTime * 1000
@@ -348,7 +366,7 @@ export class GameRoom {
   }
 
   _handlePlayAgain() {
-    if (!this.state) return
+    if (this.state?.phase !== 'results') return
     const remaining = this.state.players.filter(p => p.connected)
     if (remaining.length === 0) return
     this.state = {
@@ -361,7 +379,7 @@ export class GameRoom {
 
   _handleBackToLobby(playerId) {
     const player = this.state?.players.find(p => p.id === playerId)
-    if (!player?.isOwner) return
+    if (!player?.isOwner || this.state.phase !== 'results') return
     this.state = {
       ...INITIAL_STATE(this.state.code),
       players: this.state.players
@@ -456,13 +474,15 @@ export class GameRoom {
     if (!this.state) return
     // Fire-and-forget persistence — don't block the broadcast on storage I/O.
     this._save().catch(() => {})
-    const msg = JSON.stringify({ type: 'STATE', payload: this._publicState() })
+    const msg = JSON.stringify({ type: 'STATE', serverNow: Date.now(), payload: this._publicState() })
     // Source of truth is ctx.getWebSockets(): it survives hibernation and
-    // includes every accepted socket, even ones this instance never saw a
-    // JOIN for. this.sessions is a fast lookup index, not authoritative.
+    // includes accepted sockets. Only the current, joined connection for
+    // each player receives state; replaced and unjoined sockets are skipped.
     const sockets = this.ctx.getWebSockets()
     const seen = new Set()
     for (const ws of sockets) {
+      const playerId = ws.deserializeAttachment?.()?.playerId
+      if (!playerId || this.sessions.get(playerId) !== ws) continue
       seen.add(ws)
       try { ws.send(msg) } catch {}
     }
@@ -487,6 +507,7 @@ export class GameRoom {
     try {
       const att = ws.deserializeAttachment?.()
       if (att?.playerId) {
+        if (this.sessions.has(att.playerId) && this.sessions.get(att.playerId) !== ws) return null
         this.sessions.set(att.playerId, ws)
         return att.playerId
       }

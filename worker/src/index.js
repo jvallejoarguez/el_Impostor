@@ -51,7 +51,8 @@ export default {
         const { active } = await res.json()
         if (!active) {
           // Claim immediately so a concurrent POST cannot pick the same code.
-          await stub.fetch(new Request(`http://internal/claim?code=${candidate}`))
+          const category = encodeURIComponent(url.searchParams.get('category') || 'all')
+          await stub.fetch(new Request(`http://internal/claim?code=${candidate}&category=${category}`))
           code = candidate
           break
         }

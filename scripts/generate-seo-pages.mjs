@@ -6,7 +6,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const PUBLIC_DIR = path.join(ROOT, 'frontend', 'public')
 const WORDS_PATH = path.join(ROOT, 'worker', 'src', 'words.json')
 const BASE_URL = 'https://juegoimpostor.app'
-const LAST_MODIFIED = '2026-08-26'
+const LAST_MODIFIED = '2026-09-03'
 const CHECK_ONLY = process.argv.includes('--check')
 
 const categories = [
@@ -275,7 +275,7 @@ function siteHeader() {
 function siteFooter() {
   return `<footer class="wrap footer">
       <strong>El Impostor</strong> · Juego de palabras online gratis para 3–12 personas.
-      <span class="footer-links"><a href="/">Crear sala</a> · <a href="/como-jugar/">Reglas</a> · <a href="/palabras-para-el-impostor/">Todas las palabras</a></span>
+      <span class="footer-links"><a href="/?create=1">Crear sala</a> · <a href="/como-jugar/">Reglas</a> · <a href="/palabras-para-el-impostor/">Todas las palabras</a></span>
     </footer>`
 }
 
@@ -351,7 +351,7 @@ function categoryPage(category, words) {
         <h1>${html(title)}</h1>
         <p class="lead">${html(category.intro)}</p>
         <div class="cta-row">
-          <a class="btn primary" href="/">Jugar con ${html(category.label.toLocaleLowerCase('es'))}</a>
+          <a class="btn primary" href="/?category=${encodeURIComponent(category.id)}">Jugar con ${html(category.label.toLocaleLowerCase('es'))}</a>
           <a class="btn" href="/palabras-para-el-impostor/">Ver 400 palabras</a>
         </div>
       </section>
@@ -393,9 +393,9 @@ function categoryPage(category, words) {
         <div>
           <span class="card-kicker">Del listado a la partida</span>
           <h2>Juega online sin preparar tarjetas</h2>
-          <p>En la sala, el anfitrión puede elegir una o varias categorías y decidir si el impostor conoce una pista. El servidor reparte la palabra en privado y nadie tiene que quedarse fuera organizando.</p>
+          <p>El enlace prepara una sala con ${html(category.label.toLocaleLowerCase('es'))}. Escribe tu nombre e invita al grupo. Después puedes combinar categorías y elegir si el impostor recibe una pista. Cada persona ve su papel en privado.</p>
         </div>
-        <a class="btn primary" href="/">Crear sala gratis</a>
+        <a class="btn primary" href="/?category=${encodeURIComponent(category.id)}">Crear sala con ${html(category.label.toLocaleLowerCase('es'))}</a>
       </section>
 
       <section class="section">
@@ -470,7 +470,7 @@ function hubPage(wordsByCategory) {
         <h1>400 palabras para El Impostor</h1>
         <p class="lead">Palabras conocidas, pistas menos obvias y dificultad gradual. Hemos ordenado el catálogo que usa el juego para que puedas elegir una temática, preparar una partida o inspirarte antes de crear una sala.</p>
         <div class="cta-row">
-          <a class="btn primary" href="/">Jugar ahora</a>
+          <a class="btn primary" href="/?create=1">Jugar ahora</a>
           <a class="btn" href="#categorias">Explorar categorías</a>
         </div>
       </section>
@@ -546,7 +546,7 @@ function hubPage(wordsByCategory) {
 
       <section class="section callout">
         <div><span class="card-kicker">Todo preparado</span><h2>Elige categorías y empieza</h2><p>El servidor reparte la palabra y el rol en privado. Solo necesitas compartir el enlace con 3–12 personas.</p></div>
-        <a class="btn primary" href="/">Crear sala gratis</a>
+        <a class="btn primary" href="/?create=1">Crear sala gratis</a>
       </section>
     </main>
     ${siteFooter()}
@@ -594,8 +594,8 @@ async function main() {
 
   const staticUrls = [
     { loc: '/', modified: LAST_MODIFIED },
-    { loc: '/juego-impostor-online/', modified: '2026-05-27' },
-    { loc: '/como-jugar/', modified: '2026-05-27' },
+    { loc: '/juego-impostor-online/', modified: LAST_MODIFIED },
+    { loc: '/como-jugar/', modified: LAST_MODIFIED },
     { loc: '/palabras-para-el-impostor/', modified: LAST_MODIFIED },
     ...categories.map((category) => ({
       loc: `/palabras-para-el-impostor/${category.slug}/`,

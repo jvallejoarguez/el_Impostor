@@ -1,253 +1,108 @@
 import React from 'react'
-import { Sticker, Avatar, hashSeed } from './primitives.jsx'
+import { Sticker, Avatar } from './primitives.jsx'
 import { play } from '../audio/soundManager.js'
+import { useServerCountdown } from '../ws/useServerCountdown.js'
 import { WORD_CATEGORIES, normalizeWordCategories, wordCategoriesLabel } from '../wordCategories.js'
 import { getInviteUrl, getWhatsAppShareUrl, sharePayload, track } from '../analytics.js'
 
 // components/screens-lobby.jsx — Lobby, countdown
 
 function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onStartGame, onLeave }) {
-  const [copied, setCopied] = React.useState(false);
-  const [shared, setShared] = React.useState(false);
+  const [feedback, setFeedback] = React.useState('');
   const inviteUrl = getInviteUrl(room.code);
   const inviteText = `Únete a mi sala de El Impostor (${room.code})`;
+  const connected = room.players.filter(p => p.connected !== false);
+  const waiting = connected.filter(p => !p.ready && !p.isOwner);
+  const missing = Math.max(0, 3 - connected.length);
+  const canStart = amOwner && !missing && !waiting.length;
+  const iAmReady = room.players.find(p => p.id === myId)?.ready;
+  const categories = wordCategoriesLabel(room.rules.wordCategories ?? room.rules.wordCategory ?? 'all');
+  const status = missing ? `Invita a ${missing} ${missing === 1 ? 'amigo más' : 'amigos más'} para empezar.`
+    : waiting.length ? `Esperando a ${waiting.map(p => p.id === myId ? 'ti' : p.name).join(', ')}. Marcad «Estoy listo» para empezar.`
+    : 'Todo el grupo está listo.';
 
-  const copyCode = () => {
-    navigator.clipboard?.writeText(room.code);
-    track('copy_room_code', { roomCode: room.code });
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+  const copy = async (value, kind) => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error();
+      await navigator.clipboard.writeText(value);
+      setFeedback(kind === 'code' ? 'Código copiado.' : 'Enlace copiado. Compártelo con tus amigos.');
+      track(kind === 'code' ? 'copy_room_code' : 'share_invite', { method: 'copy_link' });
+    } catch { setFeedback('No se pudo copiar. Mantén pulsado el enlace de invitación para copiarlo.'); }
   };
-
-  const copyInvite = () => {
-    navigator.clipboard?.writeText(inviteUrl);
-    track('share_invite', { roomCode: room.code, method: 'copy_link' });
-    setShared(true);
-    setTimeout(() => setShared(false), 1600);
+  const invite = async () => {
+    try {
+      const method = await sharePayload({ title: 'El Impostor', text: inviteText, url: inviteUrl });
+      if (method && method !== 'cancelled') setFeedback(method === 'native' ? 'Invitación compartida.' : 'Invitación copiada. Pégala en tu grupo.');
+    } catch { setFeedback('Usa el enlace de invitación o el botón de WhatsApp para invitar.'); }
   };
-
-  const shareInvite = async () => {
-    const method = await sharePayload({
-      title: 'El Impostor',
-      text: inviteText,
-      url: inviteUrl,
-    }, { roomCode: room.code, phase: room.phase });
-    if (method && method !== 'cancelled') {
-      setShared(true);
-      setTimeout(() => setShared(false), 1600);
-    }
-  };
-
-  // Owner is implicitly ready; non-owners must mark ready
-  const connectedPlayers = room.players.filter(p => p.connected !== false);
-  const allReady = connectedPlayers.every(p => p.ready || p.isOwner);
-  const canStart = amOwner && connectedPlayers.length >= 3 && allReady;
-  const myPlayer = room.players.find(p => p.id === myId);
-  const iAmReady = myPlayer?.ready ?? false;
 
   return (
-    <div className="screen-pad" style={{ minHeight: "100vh", padding: "24px", maxWidth: 1280, margin: "0 auto" }}>
-      {/* top bar */}
-      <div className="lobby-topbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
+    <main className="lobby-page screen-pad">
+      <header className="lobby-header">
         <button onClick={onLeave} className="btn btn--ghost btn--sm">← Salir</button>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-          <Sticker color="mustard" rotate={-2} size="lg">Sala · {room.code}</Sticker>
-          <button onClick={copyCode} className="btn btn--sm" style={{ padding: "10px 14px" }}>
-            {copied ? "✓ Copiado" : "⧉ Copiar"}
-          </button>
-          <button onClick={shareInvite} className="btn btn--primary btn--sm" style={{ padding: "10px 14px" }}>
-            {shared ? "✓ Listo" : "Invitar"}
-          </button>
+        <div className="room-code-row">
+          <Sticker color="mustard" rotate={-2}>Sala · {room.code}</Sticker>
+          <button onClick={() => copy(room.code, 'code')} className="text-button" aria-label="Copiar código de sala">Copiar código</button>
         </div>
-        <div className="spacer" style={{ width: 80 }}/>
+      </header>
+      <div className="lobby-heading">
+        <p className="eyebrow-text">{missing ? 'Reúne a tu grupo' : `Ya sois ${connected.length}`}</p>
+        <h1>Que empiecen las sospechas.</h1>
+        <p>Un secreto. Tus amigos. Alguien tendrá que improvisar.</p>
       </div>
-
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 360px",
-        gap: 24,
-      }} className="lobby-grid">
-        {/* LEFT — players */}
-        <div className="card lobby-card" style={{ padding: 28, background: "var(--paper)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 20 }}>
-            <h2 style={h2Style}>Jugadores</h2>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, color: "var(--ink-soft)" }}>
-              {room.players.length} / {room.rules?.maxPlayers ?? '?'}
-            </span>
+      <div className="lobby-layout">
+        <section className="card lobby-players" aria-labelledby="players-title">
+          <div className="section-heading"><h2 id="players-title">El grupo</h2><span>{connected.length} / {room.rules.maxPlayers}</span></div>
+          <div className="lobby-player-list">
+            {room.players.map(p => <PlayerCard key={p.id} player={p} avatarStyle={theme.avatarStyle} isMe={p.id === myId}/>)}
           </div>
-
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-            gap: 16,
-          }}>
-            {room.players.map(p => (
-              <PlayerCard key={p.id} player={p} avatarStyle={theme.avatarStyle} isMe={p.id === myId}/>
-            ))}
-            {Array.from({ length: Math.max(0, 4 - room.players.length) }).map((_, i) => (
-              <div key={`empty-${i}`} className="dashed" style={{
-                padding: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
-                minHeight: 140, justifyContent: "center",
-                color: "var(--ink-soft)",
-                fontSize: 13,
-              }}>
-                <div style={{
-                  width: 60, height: 60, borderRadius: "50%",
-                  border: "2.5px dashed var(--ink-soft)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 24, color: "var(--ink-soft)",
-                }}>?</div>
-                Esperando...
+          {missing > 0 && <p className="lobby-empty">{missing === 1 ? 'Falta una persona para la primera partida.' : `Faltan ${missing} personas para la primera partida.`}</p>}
+          <div className="invite-actions">
+            <button onClick={invite} className="btn btn--teal btn--sm">Invitar amigos ↗</button>
+            <a className="btn btn--ghost btn--sm" href={getWhatsAppShareUrl(inviteText, inviteUrl)} target="_blank" rel="noreferrer" onClick={() => track('share_invite', { method: 'whatsapp' })}>WhatsApp</a>
+          </div>
+          <details className="invite-details">
+            <summary>Ver enlace de invitación</summary>
+            <p className="invite-url">{inviteUrl}</p>
+            <button className="text-button" onClick={() => copy(inviteUrl, 'link')}>Copiar enlace</button>
+          </details>
+          <p className="inline-feedback" role="status">{feedback}</p>
+        </section>
+        <aside className="lobby-controls">
+          <div className="card lobby-start">
+            <p className="lobby-status" role="status">{status}</p>
+            {amOwner ? <button className="btn btn--primary btn--block" disabled={!canStart} onClick={onStartGame}>
+              {missing ? `Faltan ${missing} ${missing === 1 ? 'jugador' : 'jugadores'}` : waiting.length ? 'Esperando al grupo' : 'Empezar partida →'}
+            </button> : <button className={`btn btn--block ${iAmReady ? 'btn--teal' : 'btn--mustard'}`} disabled={iAmReady} onClick={onReady}>{iAmReady ? '✓ Listo' : 'Estoy listo →'}</button>}
+            <p className="lobby-help">{amOwner ? 'Tú eres el anfitrión.' : 'El anfitrión empezará cuando estéis listos.'} Jugad juntos o por llamada.</p>
+          </div>
+          <div className="card lobby-settings">
+            <p className="eyebrow-text">Vuestra partida</p>
+            <p className="rules-summary">{categories} · {room.rules.turnTime} s · {room.rules.roundsBeforeVote} {room.rules.roundsBeforeVote === 1 ? 'ronda' : 'rondas'}</p>
+            {amOwner ? <details>
+              <summary>Personalizar partida</summary>
+              <div className="rules-fields">
+                <RuleRow label="Tiempo por turno" value={`${room.rules.turnTime}s`} min={10} max={60} step={5} current={room.rules.turnTime} editable onChange={v => onUpdateRules({ turnTime: v })}/>
+                <RuleRow label="Rondas antes de votar" value={room.rules.roundsBeforeVote} min={1} max={5} step={1} current={room.rules.roundsBeforeVote} editable onChange={v => onUpdateRules({ roundsBeforeVote: v })}/>
+                <CategoryRow value={room.rules.wordCategories ?? room.rules.wordCategory ?? 'all'} editable onChange={v => onUpdateRules({ wordCategories: v })}/>
+                <RuleRow label="Máximo de jugadores" value={room.rules.maxPlayers} min={Math.max(3, connected.length)} max={12} step={1} current={room.rules.maxPlayers} editable onChange={v => onUpdateRules({ maxPlayers: v })}/>
+                <ToggleRow label="Dar una pista al impostor" value={room.rules.imposterHasHint} editable onChange={v => onUpdateRules({ imposterHasHint: v })}/>
               </div>
-            ))}
+            </details> : <p className="lobby-help">{room.rules.imposterHasHint ? 'El impostor recibe una pista.' : 'El impostor juega sin pista.'} El anfitrión puede ajustar las reglas.</p>}
           </div>
-
-          <div style={{
-            marginTop: 20,
-            padding: 16,
-            background: "var(--cream-deep)",
-            border: "2.5px dashed var(--ink)",
-            borderRadius: 14,
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 10,
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}>
-            <div style={{ minWidth: 180 }}>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 14 }}>Invitación</div>
-              <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 3, overflowWrap: "anywhere" }}>
-                {inviteUrl}
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button onClick={copyInvite} className="btn btn--sm">{shared ? "✓ Copiado" : "Copiar link"}</button>
-              <a
-                className="btn btn--teal btn--sm"
-                href={getWhatsAppShareUrl(inviteText, inviteUrl)}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => track('share_invite', { roomCode: room.code, method: 'whatsapp' })}
-                style={{ textDecoration: "none" }}
-              >
-                WhatsApp
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT — rules */}
-        <div className="card lobby-card" style={{ padding: 28, background: "var(--card)", alignSelf: "start" }}>
-          <h2 style={h2Style}>Reglas</h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: 18, marginTop: 16 }}>
-            <RuleRow
-              label="Tiempo por turno"
-              value={`${room.rules.turnTime}s`}
-              min={10} max={60} step={5}
-              current={room.rules.turnTime}
-              editable={amOwner}
-              onChange={v => onUpdateRules({ turnTime: v })}
-              suffix="s"
-            />
-            <RuleRow
-              label="Rondas antes de votar"
-              value={`${room.rules.roundsBeforeVote}`}
-              min={1} max={5} step={1}
-              current={room.rules.roundsBeforeVote}
-              editable={amOwner}
-              onChange={v => onUpdateRules({ roundsBeforeVote: v })}
-            />
-            <CategoryRow
-              value={room.rules.wordCategories ?? room.rules.wordCategory ?? "all"}
-              editable={amOwner}
-              onChange={v => onUpdateRules({ wordCategories: v })}
-            />
-            <RuleRow
-              label="Máx. jugadores"
-              value={`${room.rules.maxPlayers}`}
-              min={3} max={12} step={1}
-              current={room.rules.maxPlayers}
-              editable={amOwner}
-              onChange={v => onUpdateRules({ maxPlayers: v })}
-            />
-            <ToggleRow
-              label="El impostor conoce la pista"
-              value={room.rules.imposterHasHint}
-              editable={amOwner}
-              onChange={v => onUpdateRules({ imposterHasHint: v })}
-            />
-          </div>
-
-          <div style={{ marginTop: 28, paddingTop: 20, borderTop: "2.5px dashed var(--ink-soft)" }}>
-            {amOwner ? (
-              <button
-                className="btn btn--primary btn--block btn--lg"
-                disabled={!canStart}
-                onClick={onStartGame}
-              >
-                {connectedPlayers.length < 3 ? "Faltan jugadores" : !allReady ? "Esperando ready..." : "Empezar partida"}
-              </button>
-            ) : (
-              <button
-                className={`btn btn--block btn--lg ${iAmReady ? "btn--teal" : "btn--mustard"}`}
-                disabled={iAmReady}
-                onClick={onReady}
-              >
-                {iAmReady ? "✓ Listo" : "Marcar listo"}
-              </button>
-            )}
-            <p style={{ textAlign: "center", fontSize: 12, color: "var(--ink-soft)", marginTop: 12, marginBottom: 0 }}>
-              {amOwner ? "Eres el dueño de la sala" : "Esperando que el dueño empiece"}
-            </p>
-          </div>
-        </div>
+        </aside>
       </div>
-
-      <style>{`
-        @media (max-width: 820px) {
-          .lobby-grid { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
-    </div>
+    </main>
   );
 }
 
 function PlayerCard({ player, avatarStyle, isMe }) {
   const disconnected = player.connected === false;
-  return (
-    <div style={{
-      padding: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
-      background: "var(--card)",
-      border: "3px solid var(--ink)",
-      borderRadius: 16,
-      boxShadow: "4px 4px 0 var(--ink)",
-      position: "relative",
-      transform: `rotate(${(hashSeed(player.name) % 5 - 2) * 0.7}deg)`,
-      opacity: disconnected ? 0.5 : 1,
-    }} className="pop">
-      {isMe && (
-        <div style={{
-          position: "absolute", top: -8, left: -8,
-          padding: "2px 8px",
-          background: "var(--mustard)", color: "var(--ink)",
-          border: "2px solid var(--ink)", borderRadius: 8,
-          fontSize: 10, fontWeight: 700, letterSpacing: "0.08em",
-          textTransform: "uppercase",
-        }}>Tú</div>
-      )}
-      <Avatar name={player.name} style={avatarStyle} size={64} showCrown={player.isOwner}/>
-      <div style={{ fontFamily: "var(--font-display)", fontSize: 14, textAlign: "center" }}>{player.name}</div>
-      {disconnected ? (
-        <span style={{ fontSize: 11, color: "var(--ink-soft)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>Desconectado</span>
-      ) : player.isOwner ? (
-        <Sticker color="mustard" rotate={0} size="sm">Dueño</Sticker>
-      ) : player.ready ? (
-        <Sticker color="teal" rotate={0} size="sm">✓ Listo</Sticker>
-      ) : (
-        <span style={{ fontSize: 11, color: "var(--ink-soft)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>Esperando...</span>
-      )}
-    </div>
-  );
+  return <div className={`lobby-player ${disconnected ? 'is-disconnected' : ''}`}>
+    <Avatar name={player.name} style={avatarStyle} size={46} showCrown={player.isOwner}/>
+    <div className="lobby-player-name"><strong>{player.name}</strong><small>{[isMe && 'Tú', player.isOwner && 'Anfitrión'].filter(Boolean).join(' · ')}</small></div>
+    <span className={`player-status ${player.ready || player.isOwner ? 'is-ready' : ''}`}>{disconnected ? 'Sin conexión' : player.ready || player.isOwner ? '✓ Listo' : 'Esperando'}</span>
+  </div>;
 }
 
 function RuleRow({ label, value, min, max, step, current, editable, onChange, suffix = "" }) {
@@ -265,6 +120,7 @@ function RuleRow({ label, value, min, max, step, current, editable, onChange, su
       </div>
       {editable && (
         <input
+          aria-label={label}
           type="range" min={min} max={max} step={step} value={current}
           onChange={e => onChange(Number(e.target.value))}
           style={{ width: "100%", accentColor: "var(--red)" }}
@@ -315,6 +171,7 @@ function CategoryRow({ value, editable, onChange }) {
               key={category.id}
               type="button"
               disabled={!editable}
+              aria-pressed={selected}
               onClick={() => toggleCategory(category.id)}
               style={{
                 minHeight: 34,
@@ -336,11 +193,7 @@ function CategoryRow({ value, editable, onChange }) {
           );
         })}
       </div>
-      <style>{`
-        @media (max-width: 420px) {
-          .category-grid { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
+
     </div>
   );
 }
@@ -350,6 +203,7 @@ function ToggleRow({ label, value, editable, onChange }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
       <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{label}</span>
       <button
+        role="switch" aria-checked={value} aria-label={label}
         disabled={!editable}
         onClick={() => onChange(!value)}
         style={{
@@ -375,23 +229,12 @@ function ToggleRow({ label, value, editable, onChange }) {
   );
 }
 
-const h2Style = {
-  fontFamily: "var(--font-display)",
-  fontSize: 28,
-  margin: 0,
-  letterSpacing: 0,
-};
-
 // === COUNTDOWN ===
 // Server drives phase transition via alarm; this component is a 4s visual animation only.
-function CountdownScreen({ theme }) {
-  const [n, setN] = React.useState(3);
-  React.useEffect(() => {
-    play('tick');
-    if (n <= 0) return;
-    const t = setTimeout(() => setN(n - 1), 1000);
-    return () => clearTimeout(t);
-  }, [n]);
+function CountdownScreen({ theme, timerEnd }) {
+  const remaining = useServerCountdown(timerEnd, 4);
+  const n = Math.max(0, remaining - 1);
+  React.useEffect(() => { if (n > 0) play('tick'); }, [n]);
 
   return (
     <div style={{

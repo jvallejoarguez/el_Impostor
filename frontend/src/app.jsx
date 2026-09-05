@@ -6,7 +6,9 @@ import { RoleRevealScreen, GameplayScreen } from './components/screens-game.jsx'
 import { BetweenRoundScreen, VotingScreen, ResultsScreen } from './components/screens-vote.jsx'
 import { useGameSocket, WORKER_BASE } from './ws/useGameSocket.js'
 import { initSounds } from './audio/soundManager.js'
-import { clearInviteCodeFromUrl, getInviteCodeFromUrl, track } from './analytics.js'
+import { captureCampaign, track, trackOnce } from './analytics.js'
+import { readSession, clearSession, entryFromUrl, updateEntryUrl } from './session.js'
+import { ServerClockContext } from './ws/useServerCountdown.js'
 
 // Theming defaults (keep existing theme system intact)
 const DEFAULT_THEME = {
@@ -20,15 +22,18 @@ const DEFAULT_THEME = {
 }
 
 export default function App() {
-  const [screen, setScreen] = useState('home')
-  const [playerName, setPlayerName] = useState('')
-  const [roomCode, setRoomCode] = useState('')
+  const [entry] = useState(() => entryFromUrl(window.location.search, readSession()))
+  const [screen, setScreen] = useState(entry.screen)
+  const [playerName, setPlayerName] = useState(entry.name)
+  const [roomCode, setRoomCode] = useState(entry.code)
+  const [category, setCategory] = useState(entry.category)
+  const [creating, setCreating] = useState(false)
+  const createRequestRef = useRef(null)
   const [joinError, setJoinError] = useState(null)
   const [createError, setCreateError] = useState(null)
   const [theme] = useState(DEFAULT_THEME)
-  const trackedPhaseRef = useRef(null)
 
-  const { gameState, myRole, myId, connectionState, lastError, connect, disconnect, send } =
+  const { gameState, myRole, myId, connectionState, lastError, connect, disconnect, send, clock } =
     useGameSocket()
 
   // Apply theme variables to document (preserved from previous app.jsx behavior)
@@ -53,22 +58,27 @@ export default function App() {
   const amOwner = myPlayer?.isOwner ?? false
 
   useEffect(() => {
-    const inviteCode = getInviteCodeFromUrl()
-    if (!inviteCode) return
-    setRoomCode(inviteCode)
-    setScreen('join')
-    track('invite_link_opened', { roomCode: inviteCode })
-  }, [])
+    captureCampaign()
+    if (entry.resume) connect(entry.code, entry.name)
+    else if (entry.screen === 'join') track('invite_link_opened')
+    return () => createRequestRef.current?.abort()
+  }, [entry, connect])
 
   useEffect(() => {
-    if (!phase) return
-    if (trackedPhaseRef.current === phase) return
-    trackedPhaseRef.current = phase
-    track(`phase_${phase}`, {
-      roomCode: gameState?.code || roomCode,
-      playerCount: gameState?.players?.filter(p => p.connected !== false).length,
-    })
-  }, [phase, gameState?.code, gameState?.players, roomCode])
+    if (!gameState) return
+    updateEntryUrl(gameState.code)
+    setPlayerName(myPlayer?.name || playerName)
+    const props = { gameId: gameState.gameId, playerCount: gameState.players.filter(p => p.connected !== false).length }
+    if (gameState.gameId) {
+      trackOnce(`${gameState.gameId}:${phase}`, `phase_${phase}`, props)
+      if (phase === 'playing') trackOnce(`${gameState.gameId}:started`, 'game_started', props)
+      if (phase === 'results') trackOnce(`${gameState.gameId}:finished`, 'finish_game', props)
+    }
+  }, [gameState, phase, myPlayer?.name, playerName])
+
+  useEffect(() => {
+    if (connectionState === 'failed') clearSession()
+  }, [connectionState])
 
   // ── Navigation helpers ────────────────────────────────────────
 
@@ -77,40 +87,63 @@ export default function App() {
   }, [])
 
   const handleCreateRoom = useCallback(async (name) => {
+    if (createRequestRef.current) return
     handleSoundsInit()
     setCreateError(null)
     setPlayerName(name)
+    setCreating(true)
+    const controller = new AbortController()
+    createRequestRef.current = controller
+    const timeout = setTimeout(() => controller.abort(), 12000)
     try {
-      const res = await fetch(`${WORKER_BASE}/rooms`, { method: 'POST' })
+      const res = await fetch(`${WORKER_BASE}/rooms?category=${encodeURIComponent(category)}`, { method: 'POST', signal: controller.signal })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const { code } = await res.json()
       if (!code) throw new Error('No room code returned')
+      if (createRequestRef.current !== controller) return
+      clearSession()
       setRoomCode(code)
       connect(code, name)
-      track('create_room', { roomCode: code })
+      track('create_room', { category })
       setScreen('lobby')
     } catch {
-      setCreateError('No se pudo crear la sala. Inténtalo de nuevo.')
+      if (createRequestRef.current === controller) setCreateError('No se pudo crear la sala. Comprueba tu conexión e inténtalo de nuevo.')
+    } finally {
+      clearTimeout(timeout)
+      if (createRequestRef.current === controller) { createRequestRef.current = null; setCreating(false) }
     }
-  }, [connect, handleSoundsInit])
+  }, [connect, category, handleSoundsInit])
 
   const handleJoinRoom = useCallback((name, code) => {
     handleSoundsInit()
     setPlayerName(name)
     setRoomCode(code)
     setJoinError(null)
+    clearSession()
     connect(code, name)
-    track('join_room', { roomCode: code })
+    track('join_room')
     setScreen('lobby')
   }, [connect, handleSoundsInit])
 
   const handleLeaveRoom = useCallback(() => {
+    createRequestRef.current?.abort()
+    createRequestRef.current = null
+    setCreating(false)
+    setCreateError(null)
+    setJoinError(null)
     disconnect()
-    clearInviteCodeFromUrl()
+    clearSession()
+    updateEntryUrl()
     setScreen('home')
     setRoomCode('')
-    setPlayerName('')
+    setCategory('all')
   }, [disconnect])
+
+  const editConnection = () => {
+    disconnect()
+    clearSession()
+    setScreen('join')
+  }
 
   // ── Game actions (delegate to server via send()) ──────────────
 
@@ -121,7 +154,7 @@ export default function App() {
   const handleBetweenVote = useCallback((choice) => send('BETWEEN_VOTE', { choice }), [send])
   const handleCastVote = useCallback((targetId) => send('CAST_VOTE', { targetId }), [send])
   const handleConfirmVote = useCallback(() => send('CONFIRM_VOTE'), [send])
-  const handlePlayAgain = useCallback(() => send('PLAY_AGAIN'), [send])
+  const handlePlayAgain = useCallback(() => { track('play_again_requested', { gameId: gameState?.gameId }); send('PLAY_AGAIN') }, [send, gameState?.gameId])
   const handleBackToLobby = useCallback(() => send('BACK_TO_LOBBY'), [send])
 
   // ── Screen routing ────────────────────────────────────────────
@@ -144,8 +177,11 @@ export default function App() {
         theme={theme}
         mode="create"
         error={createError}
+        creating={creating}
+        category={category}
+        initialName={playerName}
         onSubmitName={handleCreateRoom}
-        onBack={() => { setCreateError(null); setScreen('home') }}
+        onBack={handleLeaveRoom}
       />
     )
   }
@@ -156,8 +192,10 @@ export default function App() {
         theme={theme}
         error={joinError || lastError}
         initialCode={roomCode}
+        initialName={playerName}
+        onCreateRoom={() => { disconnect(); setRoomCode(''); setScreen('create') }}
         onJoin={handleJoinRoom}
-        onBack={() => { clearInviteCodeFromUrl(); setScreen('home') }}
+        onBack={handleLeaveRoom}
       />
     )
   }
@@ -165,9 +203,16 @@ export default function App() {
   // From here on, we need gameState
   if (!gameState) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'Space Grotesk, sans-serif' }}>
-        Conectando...
-      </div>
+      <main className="connection-screen screen-pad">
+        <section className="card connection-card" aria-labelledby="connection-title">
+          <p className="eyebrow-text">Sala {roomCode}</p>
+          <h1 id="connection-title">{connectionState === 'failed' ? 'No hemos podido entrar' : 'Entrando en la sala…'}</h1>
+          <p role={lastError ? 'alert' : 'status'}>{lastError || `Conectando como ${playerName}. Tu sitio te espera.`}</p>
+          <button className="btn btn--primary btn--block" onClick={() => connect(roomCode, playerName)}>Reintentar conexión</button>
+          <button className="btn btn--ghost btn--block" onClick={editConnection}>Cambiar nombre o código</button>
+          <button className="text-button" onClick={handleLeaveRoom}>Volver al inicio</button>
+        </section>
+      </main>
     )
   }
 
@@ -188,10 +233,10 @@ export default function App() {
       )
       break
     case 'countdown':
-      screenEl = <CountdownScreen theme={theme} />
+      screenEl = <CountdownScreen theme={theme} timerEnd={gameState.timerEnd} />
       break
     case 'roleReveal':
-      screenEl = <RoleRevealScreen theme={theme} myRole={myRole} revealStyle={theme.revealStyle} />
+      screenEl = <RoleRevealScreen theme={theme} myRole={myRole} timerEnd={gameState.timerEnd} revealStyle={theme.revealStyle} />
       break
     case 'playing':
     case 'roundReview':
@@ -233,14 +278,15 @@ export default function App() {
   }
 
   return (
-    <>
+    <ServerClockContext.Provider value={clock}>
       {screenEl}
-      {connectionState === 'reconnecting' && <ReconnectBanner />}
-    </>
+      {!['lobby', 'countdown', 'roleReveal'].includes(phase) && <footer className="game-exit"><button className="text-button" onClick={handleLeaveRoom}>Salir de la sala</button></footer>}
+      {connectionState !== 'connected' && <ReconnectBanner onLeave={handleLeaveRoom} />}
+    </ServerClockContext.Provider>
   )
 }
 
-function ReconnectBanner() {
+function ReconnectBanner({ onLeave }) {
   // Only paint after 800ms of disconnection — avoids flicker for instant reconnects.
   const [show, setShow] = React.useState(false)
   React.useEffect(() => {
@@ -266,6 +312,7 @@ function ReconnectBanner() {
         animation: 'pulse 1s ease-in-out infinite',
       }}/>
       Reconectando…
+      <button className="reconnect-exit" onClick={onLeave}>Salir</button>
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}`}</style>
     </div>
   )

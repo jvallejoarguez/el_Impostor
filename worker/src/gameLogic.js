@@ -38,7 +38,7 @@ function connectedPlayerIndices(state) {
     .filter(idx => idx !== null)
 }
 
-function normalizeCategories(value) {
+export function normalizeCategories(value) {
   const raw = Array.isArray(value) ? value : [value]
   const filtered = raw
     .filter(category => typeof category === 'string' && WORD_CATEGORY_SET.has(category))
@@ -111,6 +111,7 @@ export function applyUpdateRules(state, { playerId, rules }) {
 }
 
 export function applyStartGame(state, wordPair) {
+  if (state.phase !== 'lobby') return state
   const connected = state.players.filter(p => p.connected)
   if (connected.length < 3) return state
   if (!connected.every(p => p.ready || p.isOwner)) return state
@@ -191,7 +192,7 @@ export function applyBetweenVote(state, { playerId, choice }) {
     }
   }
 
-  if (newVotes.vote.length >= majority) {
+  if (newVotes.vote.length >= majority || newVotes.continue.length + newVotes.vote.length >= connectedCount) {
     return {
       ...state,
       phase: 'voting',
@@ -204,12 +205,14 @@ export function applyBetweenVote(state, { playerId, choice }) {
 
 export function applyCastVote(state, { voterId, targetId }) {
   if (state.phase !== 'voting') return state
+  if (state.confirmedVotes?.includes(voterId)) return state
   if (!state.players.some(p => p.id === targetId)) return state
   return { ...state, votes: { ...state.votes, [voterId]: targetId } }
 }
 
 export function applyConfirmVote(state, voterId) {
   if (state.phase !== 'voting') return state
+  if (!state.votes[voterId]) return state
   const confirmed = (state.confirmedVotes || [])
   if (confirmed.includes(voterId)) return state
   const newConfirmed = [...confirmed, voterId]
@@ -231,12 +234,15 @@ export function computeResult(state) {
     tally[targetId] = (tally[targetId] || 0) + 1
   }
 
-  const mostVotedId = Object.entries(tally).sort((a, b) => b[1] - a[1])[0]?.[0]
+  const ranked = Object.entries(tally).sort((a, b) => b[1] - a[1])
+  const mostVotedId = ranked[0]?.[0]
+  const tied = ranked.length > 1 && ranked[0][1] === ranked[1][1]
   const impostor = state.players[state.impostorIdx]
-  const found = mostVotedId === impostor?.id
+  const found = !tied && mostVotedId === impostor?.id
 
   return {
     found,
+    tied,
     impostorId: impostor?.id,
     impostorName: impostor?.name,
     tally,

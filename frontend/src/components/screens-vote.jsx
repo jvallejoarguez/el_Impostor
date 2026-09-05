@@ -1,6 +1,9 @@
 import React from 'react'
 import { Sticker, Avatar } from './primitives.jsx'
 import { play } from '../audio/soundManager.js'
+import { PlayerClues, ClueHistory } from './clue-history.jsx'
+import { useServerCountdown } from '../ws/useServerCountdown.js'
+import { downloadResultCard } from '../resultCard.js'
 import { getInviteUrl, getWhatsAppShareUrl, sharePayload, track } from '../analytics.js'
 
 // components/screens-vote.jsx — between-round, voting, results
@@ -20,10 +23,10 @@ function BetweenRoundScreen({ theme, room, myId, onVote }) {
       <Sticker color="ink" rotate={-2} size="lg">Fin de ronda {room.currentRound}</Sticker>
 
       <h1 className="between-title" style={{ fontFamily: "var(--font-display)", fontSize: 48, marginTop: 24, marginBottom: 8, textAlign: "center" }}>
-        ¿Qué hacen ahora?
+        ¿Otra ronda o lo tenéis claro?
       </h1>
       <p style={{ color: "var(--ink-soft)", textAlign: "center", maxWidth: 480, marginTop: 0 }}>
-        Voten entre seguir jugando otra ronda o ir directo a la votación.
+        Elegid si queréis más pistas o si ya podéis señalar a alguien.
       </p>
 
       <div style={{ display: "flex", gap: 24, marginTop: 40, flexWrap: "wrap", justifyContent: "center" }}>
@@ -32,6 +35,7 @@ function BetweenRoundScreen({ theme, room, myId, onVote }) {
           subtitle="Más pistas, más dudas"
           count={votesToContinue}
           total={total}
+          disabled={myVote != null}
           selected={myVote === "continue"}
           color="teal"
           onClick={() => myVote == null && onVote("continue")}
@@ -42,6 +46,7 @@ function BetweenRoundScreen({ theme, room, myId, onVote }) {
           subtitle="Descubrir al impostor"
           count={votesToVote}
           total={total}
+          disabled={myVote != null}
           selected={myVote === "vote"}
           color="red"
           onClick={() => myVote == null && onVote("vote")}
@@ -50,16 +55,17 @@ function BetweenRoundScreen({ theme, room, myId, onVote }) {
       </div>
 
       <div style={{ marginTop: 36, fontSize: 13, color: "var(--ink-soft)" }}>
-        Gana la opción con más votos
+        {myVote ? "Tu elección está guardada. Esperando al grupo…" : "En caso de empate, se pasa a votar."}
       </div>
+      <ClueHistory room={room} avatarStyle={theme.avatarStyle}/>
     </div>
   );
 }
 
-function VoteCard({ title, subtitle, count, total, selected, color, onClick, icon }) {
+function VoteCard({ title, subtitle, count, total, selected, color, onClick, icon, disabled }) {
   const bg = color === "red" ? "var(--red)" : "var(--teal)";
   return (
-    <button className="vote-card" onClick={onClick} style={{
+    <button className="vote-card" disabled={disabled} aria-pressed={selected} onClick={onClick} style={{
       width: 240, padding: 24,
       background: selected ? bg : "var(--card)",
       color: selected ? "var(--paper)" : "var(--ink)",
@@ -91,18 +97,7 @@ function VotingScreen({ theme, room, myId, onCastVote, onConfirmVote }) {
   const myVote = votes[myId] || null;
   const confirmed = (room.confirmedVotes || []).includes(myId);
 
-  // Local live countdown derived from server's votingTimerEnd.
-  const computeRemaining = () => {
-    if (!room.votingTimerEnd) return 0;
-    return Math.max(0, Math.ceil((room.votingTimerEnd - Date.now()) / 1000));
-  };
-  const [timer, setTimer] = React.useState(computeRemaining);
-  React.useEffect(() => {
-    setTimer(computeRemaining());
-    const id = setInterval(() => setTimer(computeRemaining()), 250);
-    return () => clearInterval(id);
-  }, [room.votingTimerEnd]);
-
+  const timer = useServerCountdown(room.votingTimerEnd, 30);
   const onVote = (id) => {
     if (!confirmed) {
       play('voteCast');
@@ -111,93 +106,23 @@ function VotingScreen({ theme, room, myId, onCastVote, onConfirmVote }) {
   };
   const onConfirm = () => { if (myVote && !confirmed) onConfirmVote(); };
 
-  return (
-    <div className="screen-pad" style={{
-      minHeight: "100vh",
-      padding: 24,
-      position: "relative",
-    }}>
-      {/* blurred bg */}
-      <div style={{
-        position: "fixed", inset: 0,
-        background: "var(--ink)",
-        backgroundImage: "radial-gradient(circle at 20% 30%, var(--red) 0%, transparent 40%), radial-gradient(circle at 80% 70%, var(--teal) 0%, transparent 40%)",
-        filter: "blur(60px) saturate(1.2)",
-        opacity: 0.35,
-        zIndex: 0,
-      }}/>
-      <div style={{ position: "relative", zIndex: 2 }}>
-        <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <Sticker color="red" rotate={-3} size="lg">Tiempo de votar</Sticker>
-          <h1 style={{ fontFamily: "var(--font-display)", fontSize: "min(10vw, 64px)", margin: "16px 0 4px", letterSpacing: 0 }}>
-            ¿Quién es el impostor?
-          </h1>
-          <p style={{ color: "var(--ink-soft)", margin: 0, fontWeight: 600 }}>
-            Elige al jugador que crees que no tiene la palabra
-          </p>
-        </div>
-
-        <div className="voting-grid" style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-          gap: 18,
-          maxWidth: 900, margin: "0 auto",
-        }}>
-          {room.players.map(p => {
-            const selected = myVote === p.id;
-            const voteCount = Object.values(votes).filter(v => v === p.id).length;
-            return (
-              <button key={p.id} className="voting-card" onClick={() => onVote(p.id)} style={{
-                padding: 18,
-                background: selected ? "var(--red)" : "var(--card)",
-                color: selected ? "var(--paper)" : "var(--ink)",
-                border: "3px solid var(--ink)",
-                borderRadius: 18,
-                boxShadow: selected ? "6px 6px 0 var(--ink)" : "4px 4px 0 var(--ink)",
-                cursor: "pointer",
-                transform: selected ? "translate(-2px,-2px) rotate(-1.5deg)" : "rotate(0)",
-                transition: "all .12s",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
-                position: "relative",
-              }}>
-                <Avatar name={p.name} style={avatarStyle} size={80}/>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: 16 }}>{p.name}</div>
-                {voteCount > 0 && (
-                  <div style={{
-                    position: "absolute", top: -10, right: -10,
-                    width: 30, height: 30, borderRadius: "50%",
-                    background: "var(--mustard)", color: "var(--ink)",
-                    border: "2.5px solid var(--ink)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontFamily: "var(--font-display)", fontSize: 14,
-                    boxShadow: "2px 2px 0 var(--ink)",
-                  }}>{voteCount}</div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        <div style={{ marginTop: 32, display: "flex", justifyContent: "center", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
-          <div style={{
-            padding: "8px 16px",
-            background: "var(--ink)", color: "var(--paper)",
-            borderRadius: 999,
-            fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700,
-          }}>
-            {timer}s restantes
-          </div>
-          <button
-            onClick={onConfirm}
-            disabled={!myVote || confirmed}
-            className="btn btn--primary"
-          >
-            {confirmed ? "✓ Voto confirmado" : "Confirmar voto →"}
-          </button>
-        </div>
-      </div>
+  const selectedName = room.players.find(p => p.id === myVote)?.name;
+  return <main className="voting-page screen-pad">
+    <header className="voting-heading"><Sticker color="red" rotate={-2}>Tiempo de votar</Sticker><h1>¿Quién está fingiendo?</h1><p>Repasa las pistas, elige a alguien y confirma tu voto.</p></header>
+    <div className="voting-list">{room.players.map(p => {
+      const selected = myVote === p.id;
+      return <button key={p.id} className={`suspect-card ${selected ? 'is-selected' : ''}`} onClick={() => onVote(p.id)} disabled={confirmed} aria-pressed={selected} aria-label={`Votar a ${p.name}`}>
+        <Avatar name={p.name} style={avatarStyle} size={54}/>
+        <span className="suspect-content"><strong>{p.name} {p.id === myId && <small>(tú)</small>}</strong><PlayerClues history={room.wordHistory} playerId={p.id}/></span>
+        <span className="suspect-check" aria-hidden="true">{selected ? '✓' : ''}</span>
+      </button>;
+    })}</div>
+    <div className="vote-confirmation card">
+      <div className="vote-progress"><span className="vote-timer">{timer} s</span><span>{(room.confirmedVotes || []).length} / {room.players.filter(p => p.connected !== false).length} votos confirmados</span></div>
+      <p role="status">{confirmed ? `Has votado a ${selectedName}. Esperando al grupo…` : selectedName ? `Vas a votar a ${selectedName}. Al confirmar no podrás cambiarlo.` : 'Selecciona a un jugador para votar.'}</p>
+      <button className="btn btn--primary btn--block" disabled={!myVote || confirmed} onClick={onConfirm}>{confirmed ? '✓ Voto confirmado' : 'Confirmar voto →'}</button>
     </div>
-  );
+  </main>;
 }
 
 // === RESULTS ===
@@ -210,26 +135,25 @@ function ResultsScreen({ theme, room, myId, onPlayAgain, onBackToLobby }) {
     || { id: result.impostorId, name: result.impostorName || "?" };
   const secretWord = result.secretWord || "—";
   const voteTally = result.tally || {};
-  const winner = imposterFound ? "jugadores" : "impostor";
+  const winner = imposterFound ? "el grupo" : "el impostor";
+  const [feedback, setFeedback] = React.useState('');
   const bg = imposterFound ? "var(--teal)" : "var(--red)";
-  const resultText = `Partida de El Impostor: ganan ${winner}. El impostor era ${imposter.name} y la palabra era ${secretWord}.`;
+  const resultText = `Partida de El Impostor: gana ${winner}. El impostor era ${imposter.name} y la palabra era ${secretWord}.`;
   const inviteUrl = getInviteUrl(room.code);
 
   React.useEffect(() => {
     play(result.found ? 'win' : 'lose');
-    track('finish_game', {
-      roomCode: room.code,
-      winner,
-      players: room.players.length,
-    });
-  }, []);
+  }, [result.found]);
 
   const shareResult = async () => {
-    await sharePayload({
-      title: 'Resultado de El Impostor',
-      text: resultText,
-      url: inviteUrl,
-    }, { roomCode: room.code, phase: 'results', methodContext: 'result' });
+    try {
+      const method = await sharePayload({ title: 'Resultado de El Impostor', text: resultText, url: inviteUrl }, { phase: 'results', methodContext: 'result' });
+      if (method === 'copy_fallback') setFeedback('Resultado y enlace copiados. Pégalos en tu grupo.');
+    } catch { setFeedback('No se pudo compartir. Puedes guardar la tarjeta o usar WhatsApp.'); }
+  };
+  const saveCard = async () => {
+    try { await downloadResultCard(room); setFeedback('Tarjeta descargada. Lista para compartir.'); track('download_result_card', { gameId: room.gameId }); }
+    catch { setFeedback('No se pudo guardar la tarjeta. Prueba a compartir el resultado.'); }
   };
 
   return (
@@ -248,7 +172,7 @@ function ResultsScreen({ theme, room, myId, onPlayAgain, onBackToLobby }) {
         transform: "rotate(-2deg)",
         textAlign: "center",
       }}>
-        {imposterFound ? "Impostor descubierto" : "Impostor se salió con la suya"}
+        {imposterFound ? "Impostor descubierto" : "El impostor se ha salido con la suya"}
       </div>
 
       <h1 className="results-title" style={{
@@ -259,7 +183,7 @@ function ResultsScreen({ theme, room, myId, onPlayAgain, onBackToLobby }) {
         textAlign: "center",
         lineHeight: 0.9,
       }}>
-        GANAN <span style={{ color: bg, WebkitTextStroke: "2px var(--ink)" }}>
+        GANA <span style={{ color: bg, WebkitTextStroke: "2px var(--ink)" }}>
           {winner.toUpperCase()}
         </span>
       </h1>
@@ -323,29 +247,18 @@ function ResultsScreen({ theme, room, myId, onPlayAgain, onBackToLobby }) {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 16, marginTop: 28, flexWrap: "wrap", justifyContent: "center" }}>
-        <button onClick={shareResult} className="btn btn--teal">
-          Compartir resultado
-        </button>
-        <a
-          className="btn btn--mustard"
-          href={getWhatsAppShareUrl(resultText, inviteUrl)}
-          target="_blank"
-          rel="noreferrer"
-          onClick={() => track('share_invite', { roomCode: room.code, method: 'whatsapp_result' })}
-          style={{ textDecoration: "none" }}
-        >
-          WhatsApp
-        </a>
-        <button onClick={onPlayAgain} className="btn btn--primary">
-          ↻ Otra partida
-        </button>
-        {onBackToLobby && (
-          <button onClick={onBackToLobby} className="btn btn--mustard">
-            Volver al lobby
-          </button>
-        )}
+      {result.tied && <p className="helper-text">Empate en los votos: el impostor escapa.</p>}
+      <div className="results-actions">
+        <button onClick={onPlayAgain} className="btn btn--primary btn--block">↻ Otra partida</button>
+        {onBackToLobby && <button onClick={onBackToLobby} className="btn btn--ghost btn--block">Cambiar reglas</button>}
+        <details className="result-share"><summary>Comparte cómo ha acabado</summary><div className="result-share-actions">
+          <button onClick={shareResult} className="btn btn--ghost btn--sm">Compartir resultado</button>
+          <button onClick={saveCard} className="btn btn--ghost btn--sm">Guardar tarjeta</button>
+          <a className="text-button" href={getWhatsAppShareUrl(resultText, inviteUrl)} target="_blank" rel="noreferrer" onClick={() => track('share_invite', { method: 'whatsapp_result' })}>WhatsApp ↗</a>
+        </div></details>
+        <p className="inline-feedback" role="status">{feedback}</p>
       </div>
+      <ClueHistory room={room} avatarStyle={avatarStyle}/>
     </div>
   );
 }

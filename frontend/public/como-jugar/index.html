@@ -10,26 +10,49 @@
     <meta property="og:title" content="Cómo jugar a El Impostor online" />
     <meta property="og:description" content="Reglas simples para jugar al juego del impostor con amigos desde el navegador." />
     <meta property="og:url" content="https://juegoimpostor.app/como-jugar/" />
-    <meta property="og:image" content="https://juegoimpostor.app/og-image.svg" />
+    <meta property="og:image" content="https://juegoimpostor.app/og-image-v2.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://juegoimpostor.app/og-image-v2.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="stylesheet" href="/seo.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;600;800&display=swap" rel="stylesheet" />
     <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "HowTo",
-        "name": "Cómo jugar a El Impostor online",
-        "description": "Reglas rápidas para jugar al juego del impostor con amigos.",
-        "image": "https://juegoimpostor.app/og-image.svg",
-        "totalTime": "PT10M",
-        "step": [
-          { "@type": "HowToStep", "name": "Crea una sala", "text": "Un jugador crea una sala y comparte el enlace con el grupo." },
-          { "@type": "HowToStep", "name": "Revisa tu rol", "text": "La mayoría recibe la misma palabra secreta. El impostor no la conoce." },
-          { "@type": "HowToStep", "name": "Da una pista", "text": "Cada jugador dice una palabra relacionada sin revelar demasiado." },
-          { "@type": "HowToStep", "name": "Vota", "text": "El grupo vota quién cree que es el impostor." }
-        ]
-      }
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "Cómo jugar a El Impostor online",
+  "description": "Reglas para jugar con amigos, escribir pistas y votar desde el navegador.",
+  "image": "https://juegoimpostor.app/og-image-v2.png",
+  "step": [
+    {
+      "@type": "HowToStep",
+      "name": "Crea una sala e invita",
+      "text": "Reúne de 3 a 12 personas. Una crea la sala y comparte el enlace; el resto escribe su nombre y marca Estoy listo. El anfitrión empieza la partida."
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Mira tu papel en privado",
+      "text": "Todos menos uno reciben la misma palabra secreta. El impostor recibe una pista si esa opción está activada; si no, tiene que improvisar sin ayuda."
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Escribe una pista en tu turno",
+      "text": "Cada persona escribe una palabra relacionada, de hasta 20 caracteres. El tiempo por turno se puede ajustar entre 10 y 60 segundos. Si se agota, el turno avanza."
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Comentad las sospechas y votad",
+      "text": "Tras cada ronda podéis pedir más pistas o votar. Al alcanzar las rondas configuradas se pasa a la votación. Revisad el historial, elegid a alguien y confirmad el voto antes de que pasen 30 segundos."
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Descubre el resultado y repite",
+      "text": "Si el impostor recibe más votos que cualquier otra persona, gana el grupo. Si hay empate en el primer puesto o no se le descubre, escapa. Otra partida reúne de nuevo al mismo grupo en la sala."
+    }
+  ]
+}
     </script>
   </head>
   <body>
@@ -46,30 +69,36 @@
         <h1>Cómo jugar a El Impostor online</h1>
         <p class="lead">El Impostor es un juego de palabras y deducción social para grupos. Todos intentan demostrar que conocen la palabra secreta, excepto una persona que debe improvisar sin que la descubran.</p>
         <div class="cta-row">
-          <a class="btn primary" href="/">Crear sala</a>
+          <a class="btn primary" href="/?create=1">Crear sala</a>
           <a class="btn" href="/palabras-para-el-impostor/">Ver palabras</a>
         </div>
       </section>
 
-      <section class="grid" aria-label="Resumen de reglas">
-        <article class="card">
-          <h2>1. Crea una sala</h2>
-          <p>Abre una sala privada, copia el enlace e invita a tus amigos por WhatsApp, Discord o videollamada.</p>
-        </article>
-        <article class="card">
-          <h2>2. Recibe tu rol</h2>
-          <p>Los jugadores normales ven la palabra secreta. El impostor no la ve y tiene que deducirla escuchando al resto.</p>
-        </article>
-        <article class="card">
-          <h2>3. Vota al sospechoso</h2>
-          <p>Después de una o varias rondas de pistas, todos votan. Si encuentran al impostor, gana el grupo.</p>
-        </article>
+      <section class="grid" aria-label="Reglas paso a paso">
+        <article class="card"><h2>1. Crea una sala e invita</h2><p>Reúne de 3 a 12 personas. Una crea la sala y comparte el enlace; el resto escribe su nombre y marca Estoy listo. El anfitrión empieza la partida.</p></article>
+        <article class="card"><h2>2. Mira tu papel en privado</h2><p>Todos menos uno reciben la misma palabra secreta. El impostor recibe una pista si esa opción está activada; si no, tiene que improvisar sin ayuda.</p></article>
+        <article class="card"><h2>3. Escribe una pista en tu turno</h2><p>Cada persona escribe una palabra relacionada, de hasta 20 caracteres. El tiempo por turno se puede ajustar entre 10 y 60 segundos. Si se agota, el turno avanza.</p></article>
+        <article class="card"><h2>4. Comentad las sospechas y votad</h2><p>Tras cada ronda podéis pedir más pistas o votar. Al alcanzar las rondas configuradas se pasa a la votación. Revisad el historial, elegid a alguien y confirmad el voto antes de que pasen 30 segundos.</p></article>
+        <article class="card"><h2>5. Descubre el resultado y repite</h2><p>Si el impostor recibe más votos que cualquier otra persona, gana el grupo. Si hay empate en el primer puesto o no se le descubre, escapa. Otra partida reúne de nuevo al mismo grupo en la sala.</p></article>
+      </section>
+
+      <section class="section">
+        <h2>Un ejemplo: la palabra es «León»</h2>
+        <p>Ana y Bruno conocen la palabra. Clara es la impostora y solo ve la pista «Trono». Ana escribe «Sabana», Bruno escribe «Melena» y Clara prueba con «Corona».</p>
+        <p>«Corona» encaja con la idea de un rey, pero no demuestra que Clara sepa qué animal es. El grupo puede pedir otra ronda para compararla con las nuevas pistas o votar a Clara. Una pista extraña no siempre delata al impostor: a veces alguien intenta ser demasiado sutil.</p>
+        <div class="cta-row"><a class="btn primary" href="/?category=animales">Probar con animales</a><a class="btn" href="/palabras-para-el-impostor/animales/">Ver las palabras de animales</a></div>
+      </section>
+      <section class="section">
+        <h2>¿En persona o a distancia?</h2>
+        <p>Cada persona usa su navegador en móvil, tablet u ordenador, sin instalar nada ni crear una cuenta. Si estáis juntos, ocultad vuestra palabra con el botón del secreto para que nadie la vea.</p>
+        <p>Para jugar a distancia, mantened una llamada de voz aparte, por ejemplo en Discord o WhatsApp. La app gestiona las pistas escritas y los votos; la conversación del grupo va por vuestra llamada.</p>
+        <p>Si recargas la pestaña, la app intenta recuperar tu nombre, tu sala y tu papel. Al salir con el botón «Salir», se borra esa sesión de la pestaña.</p>
       </section>
 
       <section class="section">
         <h2>Consejos para jugadores</h2>
         <ul>
-          <li>Di pistas relacionadas, pero no demasiado obvias.</li>
+          <li>Escribe pistas relacionadas, pero no demasiado obvias.</li>
           <li>Observa quién usa palabras genéricas como "cosa", "lugar" o "depende".</li>
           <li>No acuses demasiado pronto: el impostor puede copiar tu razonamiento.</li>
         </ul>
@@ -78,14 +107,14 @@
       <section class="section">
         <h2>Consejos si eres el impostor</h2>
         <ul>
-          <li>Escucha las primeras pistas antes de arriesgar una palabra concreta.</li>
+          <li>Lee las primeras pistas antes de arriesgar una palabra concreta.</li>
           <li>Usa pistas amplias que puedan encajar con muchas categorías.</li>
           <li>Si alguien duda, apóyate en esa duda para desviar la atención.</li>
         </ul>
       </section>
     </main>
     <footer class="wrap footer">
-      <a href="/">Jugar gratis a El Impostor</a> · <a href="/juego-impostor-online/">Juego del impostor online</a>
+      <a href="/?create=1">Jugar gratis a El Impostor</a> · <a href="/juego-impostor-online/">Juego del impostor online</a>
     </footer>
   </body>
 </html>

@@ -1,172 +1,170 @@
-// frontend/src/ws/useGameSocket.js
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createServerClock } from './serverClock.js'
+import { saveSession } from '../session.js'
 
 function getOrCreatePlayerId() {
-  const key = 'el-impostor-player-id'
-  let id = sessionStorage.getItem(key)
-  if (!id) {
-    id = crypto.randomUUID()
+  try {
+    const key = 'el-impostor-player-id'
+    const id = sessionStorage.getItem(key) || crypto.randomUUID()
     sessionStorage.setItem(key, id)
-  }
-  return id
+    return id
+  } catch { return crypto.randomUUID() }
 }
 
 const PRODUCTION_WORKER_URL = 'https://el-impostor-worker-production.jvallejoarguez.workers.dev'
-
 export const WORKER_BASE = import.meta.env.VITE_WORKER_URL ||
   (import.meta.env.DEV ? 'http://localhost:8787' : PRODUCTION_WORKER_URL)
-// In dev we hit wrangler directly (bypassing Vite proxy — its WebSocket
-// support is unreliable). Worker CORS allows http://localhost:3000.
-// In production, VITE_WORKER_URL can override the canonical Worker URL above.
 
 export function useGameSocket() {
   const [gameState, setGameState] = useState(null)
-  const [myRole, setMyRole] = useState(null)     // { isImpostor, word, hint }
+  const [myRole, setMyRole] = useState(null)
   const [connectionState, setConnectionState] = useState('disconnected')
   const [lastError, setLastError] = useState(null)
-
+  const [myId] = useState(getOrCreatePlayerId)
+  const clockRef = useRef(createServerClock())
+  const connectionRef = useRef(null)
   const wsRef = useRef(null)
-  const retryTimerRef = useRef(null)
-  const retryCountRef = useRef(0)
-  const activeCodeRef = useRef(null)
-  const activeNameRef = useRef(null)
-  const heartbeatRef = useRef(null)
-  const watchdogRef = useRef(null)
-  const lastMessageAtRef = useRef(0)
-  const myIdRef = useRef(null)
-  if (!myIdRef.current) myIdRef.current = getOrCreatePlayerId()
-  const myId = myIdRef.current
+  const timersRef = useRef({})
+  const retriesRef = useRef(0)
+  const hadStateRef = useRef(false)
+  const openRef = useRef(null)
 
-  const HEARTBEAT_MS = 20000     // send PING every 20s
-  const WATCHDOG_MS = 35000      // if no message in 35s, assume dead and reconnect
-
-  const send = useCallback((type, payload = {}) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type, payload }))
-    }
+  const stopTimers = useCallback(() => {
+    Object.values(timersRef.current).forEach(clearTimeout)
+    timersRef.current = {}
   }, [])
 
-  const _stopTimers = () => {
-    clearInterval(heartbeatRef.current)
-    clearInterval(watchdogRef.current)
-    heartbeatRef.current = null
-    watchdogRef.current = null
-  }
+  const closeSocket = useCallback(() => {
+    const socket = wsRef.current
+    wsRef.current = null // ignore late callbacks from an obsolete socket
+    try { socket?.close() } catch {}
+  }, [])
 
-  const connect = useCallback((code, name) => {
-    clearTimeout(retryTimerRef.current)
-    _stopTimers()
-    if (wsRef.current) {
-      const old = wsRef.current
-      wsRef.current = null   // orphan it so onclose's `wsRef.current !== ws` check skips retry
-      try { old.close() } catch {}
-    }
-    activeCodeRef.current = code
-    activeNameRef.current = name
-    retryCountRef.current = 0
-    _openConnection(code, name)
+  const send = useCallback((type, payload = {}) => {
+    if (wsRef.current?.readyState !== WebSocket.OPEN) return false
+    wsRef.current.send(JSON.stringify({ type, payload }))
+    return true
   }, [])
 
   const disconnect = useCallback(() => {
-    activeCodeRef.current = null
-    activeNameRef.current = null
-    clearTimeout(retryTimerRef.current)
-    _stopTimers()
-    wsRef.current?.close()
-    wsRef.current = null
+    connectionRef.current = null
+    stopTimers()
+    closeSocket()
+    hadStateRef.current = false
+    clockRef.current.reset()
     setGameState(null)
     setMyRole(null)
     setLastError(null)
     setConnectionState('disconnected')
-  }, [])
+  }, [closeSocket, stopTimers])
 
-  function _openConnection(code, name) {
-    clearTimeout(retryTimerRef.current)
-    _stopTimers()
-    const wsUrl = `${WORKER_BASE.replace(/^http/, 'ws')}/rooms/${code}/ws`
-    setConnectionState(prev => prev === 'connected' ? 'reconnecting' : 'connecting')
-
-    console.log('[ws] opening', wsUrl)
-    const ws = new WebSocket(wsUrl)
+  function openConnection() {
+    const connection = connectionRef.current
+    if (!connection) return
+    stopTimers()
+    closeSocket()
+    const ws = new WebSocket(`${WORKER_BASE.replace(/^http/, 'ws')}/rooms/${connection.code}/ws`)
     wsRef.current = ws
+    let joined = false
+    let lastMessageAt = performance.now()
+    setConnectionState(hadStateRef.current ? 'reconnecting' : 'connecting')
+
+    const ping = () => {
+      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'PING', payload: { clientSentAt: performance.now() } }))
+    }
+
+    // Includes opening the socket and waiting for JOIN to be accepted.
+    timersRef.current.join = setTimeout(() => {
+      if (wsRef.current !== ws || joined) return
+      setLastError('La conexión está tardando. Puedes reintentarlo o volver a la entrada.')
+      try { ws.close() } catch {}
+    }, 12000)
 
     ws.onopen = () => {
       if (wsRef.current !== ws) return
-      console.log('[ws] open, sending JOIN', { code, name, playerId: myIdRef.current })
-      retryCountRef.current = 0
-      lastMessageAtRef.current = Date.now()
-      setLastError(null)
-      setConnectionState('connected')
-      ws.send(JSON.stringify({ type: 'JOIN', payload: { name, code, playerId: myIdRef.current } }))
-
-      // Heartbeat: keep the WS alive across idle proxies / dev tunnels.
-      heartbeatRef.current = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-          try { ws.send(JSON.stringify({ type: 'PING' })) } catch {}
-        }
-      }, HEARTBEAT_MS)
-
-      // Watchdog: if we haven't heard anything in WATCHDOG_MS, force-close to trigger retry.
-      watchdogRef.current = setInterval(() => {
-        if (Date.now() - lastMessageAtRef.current > WATCHDOG_MS) {
-          try { ws.close() } catch {}
-        }
+      ws.send(JSON.stringify({ type: 'JOIN', payload: { ...connection, playerId: myId } }))
+      ping()
+      timersRef.current.heartbeat = setInterval(ping, 20000)
+      timersRef.current.watchdog = setInterval(() => {
+        if (performance.now() - lastMessageAt > 35000) ws.close()
       }, 5000)
     }
 
-    ws.onmessage = (event) => {
+    ws.onmessage = event => {
       if (wsRef.current !== ws) return
-      lastMessageAtRef.current = Date.now()
       let msg
       try { msg = JSON.parse(event.data) } catch { return }
-      if (msg.type !== 'PONG') console.log('[ws] recv', msg.type, msg.payload)
-      switch (msg.type) {
-        case 'STATE':
-          setGameState(msg.payload)
-          break
-        case 'ROLE':
-          setMyRole(msg.payload)
-          break
-        case 'ERROR':
-          setLastError(msg.payload.message)
-          break
-        case 'PONG':
-          break
+      lastMessageAt = performance.now()
+      const roundTrip = msg.type === 'PONG' && Number.isFinite(msg.clientSentAt)
+        ? Math.max(0, performance.now() - msg.clientSentAt) : 0
+      clockRef.current.sync(msg.serverNow, roundTrip)
+      if (msg.type === 'STATE') {
+        const player = msg.payload?.players?.find(p => p.id === myId)
+        if (!player) return
+        joined = true
+        hadStateRef.current = true
+        retriesRef.current = 0
+        clearTimeout(timersRef.current.join)
+        setLastError(null)
+        setConnectionState('connected')
+        setGameState(msg.payload)
+        if (['lobby', 'countdown'].includes(msg.payload.phase)) setMyRole(null)
+        saveSession({ code: connection.code, name: player.name })
+      } else if (msg.type === 'ROLE') {
+        setMyRole(msg.payload)
+      } else if (msg.type === 'ERROR') {
+        setLastError(msg.payload?.message || 'No se ha podido entrar en la sala.')
+        if (!joined) {
+          connectionRef.current = null
+          stopTimers()
+          closeSocket()
+          setGameState(null)
+          setMyRole(null)
+          setConnectionState('failed')
+        }
       }
     }
 
-    ws.onclose = (event) => {
-      if (wsRef.current !== ws) return  // superseded by a newer socket — do nothing
-      console.log('[ws] close', { code: event.code, reason: event.reason, wasClean: event.wasClean })
-      _stopTimers()
+    ws.onclose = () => {
+      if (wsRef.current !== ws) return
+      stopTimers()
+      wsRef.current = null
+      if (!connectionRef.current) return
       setConnectionState('reconnecting')
-      if (activeCodeRef.current && activeNameRef.current) {
-        // Fast first retry, then exponential backoff: 300ms, 800ms, 1.6s, 3.2s, max 8s.
-        const delay = retryCountRef.current === 0
-          ? 300
-          : Math.min(800 * Math.pow(2, retryCountRef.current - 1), 8000)
-        retryCountRef.current += 1
-        retryTimerRef.current = setTimeout(
-          () => _openConnection(activeCodeRef.current, activeNameRef.current),
-          delay,
-        )
-      } else {
-        setConnectionState('disconnected')
-      }
+      const delay = Math.min(300 * (2 ** retriesRef.current++), 8000)
+      timersRef.current.retry = setTimeout(() => openRef.current(), delay)
     }
-
-    ws.onerror = () => ws.close()
+    ws.onerror = () => { try { ws.close() } catch {} }
   }
+  openRef.current = openConnection
 
-  useEffect(() => () => {
-    activeCodeRef.current = null
-    activeNameRef.current = null
-    clearTimeout(retryTimerRef.current)
-    _stopTimers()
-    const ws = wsRef.current
-    wsRef.current = null
-    try { ws?.close() } catch {}
-  }, [])
+  const connect = useCallback((code, name) => {
+    stopTimers()
+    closeSocket()
+    connectionRef.current = { code, name }
+    retriesRef.current = 0
+    hadStateRef.current = false
+    clockRef.current.reset()
+    setGameState(null)
+    setMyRole(null)
+    setLastError(null)
+    openRef.current()
+  }, [closeSocket, stopTimers])
 
-  return { gameState, myRole, myId, connectionState, lastError, connect, disconnect, send }
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible' || !connectionRef.current) return
+      if (wsRef.current?.readyState === WebSocket.OPEN) send('PING', { clientSentAt: performance.now() })
+      else openRef.current()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      connectionRef.current = null
+      stopTimers()
+      closeSocket()
+    }
+  }, [send, closeSocket, stopTimers])
+
+  return { gameState, myRole, myId, connectionState, lastError, connect, disconnect, send, clock: clockRef.current }
 }
