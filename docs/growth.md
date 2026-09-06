@@ -37,6 +37,14 @@ npm run --silent insights -- 7 --json > .local/informe-7-dias.json
 
 También acepta `INSIGHTS_READ_TOKEN` desde el entorno y `INSIGHTS_URL` para consultar el Worker local. Nunca compartir el JSON completo públicamente: contiene comentarios de jugadores. El informe es texto/JSON local autenticado; no hay un panel público que exponga opiniones.
 
+## Despliegue del consentimiento previo
+
+Publicado el 6 de septiembre de 2026, código `15524a4`. Worker `fb534232-fdff-4337-9b5e-6fe94361fab7`; Pages `https://19f8a36a.el-impostor-djf.pages.dev` y dominio principal verificados.
+
+Validación: 82 pruebas unitarias, cinco escenarios de navegador (incluida partida completa con tres jugadores, rechazo en invitados, feedback y repetición), compilación y comprobación de las 22 páginas SEO. Las pruebas estáticas locales usan `/index.html` explícito porque Vite dev sirve la app como fallback en rutas de directorio; en producción también se verificaron las rutas públicas con barra final.
+
+Comprobación real en `juegoimpostor.app`: cero eventos y almacenamiento opcional antes de aceptar; una visita aceptada confirmada por el servidor; retirada que borra las claves y bloquea eventos tras navegar/recargar; política publicada con el responsable indicado; ninguna conexión a Google Fonts; evento antiguo sin consentimiento rechazado con 403. Esa única visita técnica figura como `source=verification`, `medium=qa`, campaña `consent_check_1788716583627`. No se creó ninguna partida ni opinión adicional en esa comprobación. Los artefactos locales están en `.local/verify-consent.mjs` y `.local/consent-production-mobile.png`, fuera de Git.
+
 ## Qué cuenta cada medida
 
 | Evento | Fuente | Definición |
