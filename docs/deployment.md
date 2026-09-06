@@ -36,6 +36,8 @@ The Pages site is a static SPA. The browser opens a WebSocket directly to the wo
 
 ## Redeploy procedure
 
+Latest verified activation (2026-09-06): source `38a843b`; Worker version `a34bdb09-eda0-4df3-9cb9-136184bf12d0`; Pages deployment `https://22503182.el-impostor-djf.pages.dev`, served by the production custom domain. Migration `v2` and the private report secret are active. A real three-player game, feedback submission and authenticated report retrieval passed on the public deployment. Details and the technical test campaign are recorded in `docs/growth.md`.
+
 Always deploy the worker before the frontend. The frontend build inlines the worker URL, so the worker must exist (or its URL must be known) before the Pages build runs.
 
 ```bash

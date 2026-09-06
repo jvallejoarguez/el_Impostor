@@ -10,6 +10,10 @@
 
 ## Activación en producción
 
+**Activo desde el 6 de septiembre de 2026** en https://juegoimpostor.app. Worker y frontend desplegados; `INSIGHTS_READ_TOKEN` configurado. La copia local de la clave está en `.local/insights-token`, fuera de Git y con permisos de lectura/escritura solo para el propietario. `npm run --silent insights -- 7` ya funciona desde este equipo.
+
+Verificación de producción: invitación por enlace con QR y WhatsApp, partida completa con tres navegadores, opinión guardada y recuperada mediante el informe privado, acceso sin clave rechazado (401), atribución correcta y ausencia de duplicados al recargar resultados. El informe incluye una partida y una opinión de prueba técnica identificadas con la campaña `activation_1788714916844` (`source=verification`, `medium=qa`); no interpretarlas como feedback o captación de jugadores reales.
+
 El push de Git no despliega este proyecto. Desplegar el Worker antes de Pages con `npm run deploy:worker` y `npm run deploy:frontend`, como indica `docs/deployment.md`. La migración `v2` añade `ENGAGEMENT`; no cambia la clase ni los datos de las salas. La ingesta funciona en cuanto se despliega el Worker, sin un proveedor externo ni una clave pública.
 
 El informe requiere una clave privada de al menos 32 caracteres. Para configurarla una sola vez, desde la raíz y con Wrangler autenticado:
@@ -18,10 +22,10 @@ El informe requiere una clave privada de al menos 32 caracteres. Para configurar
 mkdir -p .local
 # No ejecutar de nuevo sobre una clave que ya esté configurada.
 (umask 077; openssl rand -hex 32 > .local/insights-token)
-npx wrangler secret put INSIGHTS_READ_TOKEN --env production < .local/insights-token
+npx wrangler secret put INSIGHTS_READ_TOKEN --config worker/wrangler.toml --env production < .local/insights-token
 ```
 
-`.local/`, `.env*` y `worker/.dev.vars*` están ignorados en Git. La clave nunca debe ponerse en una variable `VITE_`, en una URL o en el frontend. Si ya existe `INSIGHTS_READ_TOKEN`, usar esa clave; cambiarla requiere actualizar ambos sitios. El secreto no se ha configurado en producción durante esta implementación.
+`.local/`, `.env*` y `worker/.dev.vars*` están ignorados en Git. La clave nunca debe ponerse en una variable `VITE_`, en una URL o en el frontend. Si ya existe `INSIGHTS_READ_TOKEN`, usar esa clave; cambiarla requiere actualizar ambos sitios. El secreto ya está configurado en producción: los pasos de creación anteriores son una referencia para una instalación nueva, no deben repetirse sobre la instalación actual.
 
 Leer el informe:
 
