@@ -231,6 +231,7 @@ function jsonLd(value) {
 function head({ title, description, canonical, type = 'article', schema }) {
   return `
     <meta charset="UTF-8" />
+    <script src="/visit.js" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${html(title)}</title>
     <meta name="description" content="${html(description)}" />
@@ -275,7 +276,7 @@ function siteHeader() {
 function siteFooter() {
   return `<footer class="wrap footer">
       <strong>El Impostor</strong> · Juego de palabras online gratis para 3–12 personas.
-      <span class="footer-links"><a href="/?create=1">Crear sala</a> · <a href="/como-jugar/">Reglas</a> · <a href="/palabras-para-el-impostor/">Todas las palabras</a></span>
+      <span class="footer-links"><a href="/?create=1">Crear sala</a> · <a href="/como-jugar/">Reglas</a> · <a href="/palabras-para-el-impostor/">Todas las palabras</a> · <a href="/?privacy=1">Datos y privacidad</a></span>
     </footer>`
 }
 

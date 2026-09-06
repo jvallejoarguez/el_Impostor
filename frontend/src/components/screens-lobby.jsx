@@ -6,13 +6,13 @@ import { Sheet } from './sheet.jsx'
 import { play } from '../audio/soundManager.js'
 import { useServerCountdown } from '../ws/useServerCountdown.js'
 import { WORD_CATEGORIES, normalizeWordCategories, wordCategoriesLabel } from '../wordCategories.js'
-import { getInviteUrl, sharePayload, track } from '../analytics.js'
+import { getInviteUrl, getInviteText, getWhatsAppShareUrl, track } from '../analytics.js'
+import { InviteSheet } from './invite-sheet.jsx'
 
 function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onSelectAvatar, onStartGame, onLeave }) {
   const [feedback, setFeedback] = useState('')
   const [showInvite, setShowInvite] = useState(false)
   const [showCategories, setShowCategories] = useState(false)
-  const inviteUrl = getInviteUrl(room.code)
   const connected = room.players.filter(p => p.connected !== false)
   const waiting = connected.filter(p => !p.ready && !p.isOwner)
   const missing = Math.max(0, 3 - connected.length)
@@ -29,12 +29,7 @@ function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onSel
       track('copy_room_code')
     } catch { setShowInvite(true) }
   }
-  const invite = async () => {
-    try {
-      const method = await sharePayload({title:'El Impostor', text:`Únete a mi sala de El Impostor (${room.code})`, url:inviteUrl})
-      if (method && method !== 'cancelled') setFeedback(method === 'native' ? 'Invitación compartida.' : 'Enlace copiado. Pégalo en tu grupo.')
-    } catch { setShowInvite(true) }
-  }
+  const invite = () => { setShowInvite(true); track('qr_opened', { phase: 'lobby' }) }
 
   return <main className="room-lobby">
     <header className="room-topbar">
@@ -54,9 +49,8 @@ function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onSel
           </div>)}
           {Array.from({length:missing}, (_, i) => <button type="button" className="room-empty-seat" key={`seat-${i}`} onClick={invite} aria-label="Invitar a un jugador"><span aria-hidden="true">＋</span><small>Invitar</small></button>)}
         </div>
-        <div className="room-social"><button type="button" onClick={invite} className="room-invite">＋ Invitar amigos</button><RoomRadio code={room.code}/></div>
+        <div className="room-social"><button type="button" onClick={invite} className="room-invite">＋ Invitar / QR</button><a className="text-button" href={getWhatsAppShareUrl(getInviteText(connected.length), getInviteUrl(room.code, 'whatsapp'))} target="_blank" rel="noreferrer" onClick={() => track('share_invite', { method: 'whatsapp', phase: 'lobby' })}>WhatsApp ↗</a><RoomRadio code={room.code}/></div>
         <p className="room-feedback" role="status">{feedback}</p>
-        {showInvite && <div className="room-invite-fallback"><label htmlFor="room-invite-link">Copia este enlace para invitar</label><input id="room-invite-link" readOnly value={inviteUrl} onFocus={e => e.target.select()}/></div>}
       </section>
       <section className="room-settings" aria-labelledby="settings-title">
         <div className="room-section-heading"><h2 id="settings-title">{amOwner ? 'Personalizar partida' : 'La partida'}</h2><span aria-hidden="true">⚙</span></div>
@@ -77,6 +71,7 @@ function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onSel
       {amOwner ? <button type="button" className="btn btn--primary" disabled={!canStart} onClick={onStartGame}>Empezar partida →</button>
         : <button type="button" className={`btn ${iAmReady ? 'btn--teal' : 'btn--primary'}`} disabled={iAmReady} onClick={onReady}>{iAmReady ? '✓ Estás listo' : 'Estoy listo →'}</button>}
     </footer>
+    {showInvite && <InviteSheet code={room.code} playerCount={connected.length} onClose={() => setShowInvite(false)}/>}
     {showCategories && <Sheet title="Categorías" onClose={() => setShowCategories(false)} className="category-sheet"><CategoryPicker value={categoryValue} editable={amOwner} onChange={v => onUpdateRules({wordCategories:v})}/><button type="button" className="btn btn--primary sheet-done" onClick={() => setShowCategories(false)}>Listo</button></Sheet>}
   </main>
 }

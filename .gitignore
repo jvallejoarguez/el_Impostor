@@ -7,3 +7,11 @@ worker/node_modules/
 worker/.wrangler/
 npm_install.log
 .DS_Store
+.local/
+.env
+.env.*
+!.env.example
+worker/.dev.vars
+worker/.dev.vars.*
+playwright-report/
+test-results/

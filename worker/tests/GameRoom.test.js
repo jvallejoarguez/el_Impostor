@@ -95,7 +95,7 @@ describe('room flow and private roles', () => {
     for (const ws of players) {
       const message = messages(ws, 'STATE').at(-1)
       expect(message.serverNow).toBeGreaterThan(0)
-      for (const key of ['impostorIdx', 'secretWord', 'hint']) expect(message.payload).not.toHaveProperty(key)
+      for (const key of ['impostorIdx', 'secretWord', 'hint', 'engagement']) expect(message.payload).not.toHaveProperty(key)
     }
     await room.alarm()
     expect(room.state.phase).toBe('playing')

@@ -1,7 +1,10 @@
 // worker/src/index.js
 import { GameRoom } from './GameRoom.js'
+import { handleEngagement } from './Engagement.js'
+import { cleanAttribution } from '../../shared/engagement.js'
 
 export { GameRoom }
+export { Engagement } from './Engagement.js'
 
 const CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
 
@@ -26,7 +29,7 @@ function corsHeaders(request, env) {
   return {
     'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin',
   }
@@ -41,6 +44,11 @@ export default {
       return new Response(null, { status: 204, headers: cors })
     }
 
+    if (['/events', '/feedback', '/insights/report'].includes(url.pathname)) {
+      try { return await handleEngagement(request, env, cors) }
+      catch { return Response.json({ error: 'No se ha podido guardar. Inténtalo de nuevo.' }, { status: 503, headers: cors }) }
+    }
+
     // POST /rooms — create a new room, return its code
     if (request.method === 'POST' && url.pathname === '/rooms') {
       let code = null
@@ -52,7 +60,8 @@ export default {
         if (!active) {
           // Claim immediately so a concurrent POST cannot pick the same code.
           const category = encodeURIComponent(url.searchParams.get('category') || 'all')
-          await stub.fetch(new Request(`http://internal/claim?code=${candidate}&category=${category}`))
+          const attribution = new URLSearchParams(cleanAttribution(Object.fromEntries(url.searchParams)))
+          await stub.fetch(new Request(`http://internal/claim?code=${candidate}&category=${category}&${attribution}&wasInvited=${url.searchParams.get('wasInvited') === 'true'}`))
           code = candidate
           break
         }

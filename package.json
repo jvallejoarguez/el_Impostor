@@ -11,9 +11,13 @@
     "deploy:frontend": "VITE_WORKER_URL=https://el-impostor-worker-production.jvallejoarguez.workers.dev npm run build -w frontend && wrangler pages deploy frontend/dist --project-name el-impostor --branch main --commit-dirty=true",
     "deploy": "npm run deploy:worker && npm run deploy:frontend",
     "test": "npm test --workspaces",
-    "test:smoke": "node scripts/smoke-local.mjs"
+    "test:smoke": "node scripts/smoke-local.mjs",
+    "insights": "node scripts/insights-report.mjs",
+    "test:browser": "playwright test",
+    "campaign:link": "node scripts/campaign-link.mjs"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "concurrently": "^8.2.2"
   }
 }

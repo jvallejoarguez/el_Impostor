@@ -1,15 +1,25 @@
+import { cleanAttribution, cleanContext, CLIENT_EVENTS } from '../../shared/engagement.js'
+import { WORKER_BASE, APP_VERSION } from './config.js'
 const PRODUCTION_ORIGIN = 'https://juegoimpostor.app'
 
-let campaign = {}
-
 export function captureCampaign() {
-  try {
-    const params = new URLSearchParams(window.location.search)
-    const keys = ['utm_source', 'utm_medium', 'utm_campaign']
-    const incoming = Object.fromEntries(keys.map(key => [key, params.get(key)]).filter(([, value]) => value && /^[a-zA-Z0-9_-]{1,64}$/.test(value)))
-    campaign = Object.keys(incoming).length ? incoming : JSON.parse(sessionStorage.getItem('el-impostor-campaign') || '{}')
-    sessionStorage.setItem('el-impostor-campaign', JSON.stringify(campaign))
-  } catch {}
+  // visit.js captures campaigns on both static SEO pages and the app before navigation.
+  return getAttribution()
+}
+
+function acquisition() {
+  try { return JSON.parse(sessionStorage.getItem('el-impostor-acquisition') || '{}') || {} } catch { return {} }
+}
+export function measurementEnabled() {
+  try { return navigator.doNotTrack !== '1' && !navigator.globalPrivacyControl && localStorage.getItem('el-impostor-measurement') !== 'off' } catch { return false }
+}
+export function getAttribution() {
+  const saved = acquisition()
+  return cleanAttribution(measurementEnabled() ? { ...saved.attribution, landing: saved.landing } : {})
+}
+export function wasInvited() { return acquisition().invited === true }
+export function setMeasurementEnabled(enabled) {
+  try { localStorage.setItem('el-impostor-measurement', enabled ? 'on' : 'off') } catch {}
 }
 
 export function trackOnce(key, eventName, props) {
@@ -19,14 +29,6 @@ export function trackOnce(key, eventName, props) {
     sessionStorage.setItem('el-impostor-events', JSON.stringify([...seen.slice(-63), key]))
   } catch {}
   track(eventName, props)
-}
-
-function compactProps(props = {}) {
-  return Object.fromEntries(
-    Object.entries(props)
-      .filter(([, value]) => value !== undefined && value !== null && value !== '')
-      .map(([key, value]) => [key, typeof value === 'string' ? value.slice(0, 120) : value]),
-  )
 }
 
 export function getPublicOrigin() {
@@ -39,10 +41,16 @@ export function getPublicOrigin() {
     : PRODUCTION_ORIGIN
 }
 
-export function getInviteUrl(code) {
+export function getInviteUrl(code, method = 'share') {
   const cleanCode = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4)
-  return `${getPublicOrigin()}/?room=${encodeURIComponent(cleanCode)}`
+  return `${getPublicOrigin()}/?room=${encodeURIComponent(cleanCode)}&utm_source=${encodeURIComponent(method)}&utm_medium=invite&utm_campaign=room`
 }
+
+export function getInviteText(playerCount = 1) {
+  const missing = Math.max(0, 3 - playerCount)
+  return `${missing ? `Nos falta${missing === 1 ? '' : 'n'} ${missing} para jugar a El Impostor.` : '¿Una partida de El Impostor?'} Entra aquí, pon tu nombre y listo. Gratis y sin instalar nada.`
+}
+export function getNewGroupUrl() { return `${getPublicOrigin()}/?create=1&utm_source=result&utm_medium=referral&utm_campaign=new_group` }
 
 export function getInviteCodeFromUrl() {
   if (typeof window === 'undefined') return ''
@@ -60,28 +68,15 @@ export function clearInviteCodeFromUrl() {
 }
 
 export function track(eventName, props = {}) {
-  if (typeof window === 'undefined' || !eventName) return
-  const eventProps = compactProps({
-    app: 'el-impostor',
-    path: window.location.pathname,
-    ...campaign,
-    ...props,
-  })
-
-  window.dispatchEvent(new CustomEvent('el-impostor:event', {
-    detail: { event: eventName, props: eventProps },
-  }))
-
-  window.zaraz?.track?.(eventName, eventProps)
-  window.gtag?.('event', eventName, eventProps)
-  window.plausible?.(eventName, { props: eventProps })
-  window.dataLayer?.push?.({ event: eventName, ...eventProps })
-
-  const endpoint = import.meta.env.VITE_ANALYTICS_ENDPOINT
-  if (endpoint && navigator.sendBeacon) {
-    const body = JSON.stringify({ event: eventName, props: eventProps, ts: Date.now() })
-    navigator.sendBeacon(endpoint, new Blob([body], { type: 'application/json' }))
-  }
+  if (typeof window === 'undefined' || !CLIENT_EVENTS.has(eventName) || !measurementEnabled()) return
+  const event = { id: crypto.randomUUID(), event: eventName, attribution: getAttribution(), context: cleanContext({
+    path: acquisition().landing || window.location.pathname, version: APP_VERSION, wasInvited: wasInvited(), ...props,
+  }) }
+  const body = JSON.stringify(event)
+  try {
+    if (navigator.sendBeacon?.(`${WORKER_BASE}/events`, new Blob([body], { type: 'text/plain' }))) return
+  } catch {}
+  fetch(`${WORKER_BASE}/events`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true, credentials: 'omit' }).catch(() => {})
 }
 
 export async function sharePayload({ title, text, url }, props = {}) {

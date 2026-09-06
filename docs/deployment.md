@@ -147,6 +147,8 @@ Always pass `--branch main` (or whichever branch the Pages project considers pro
 
 ## Auth & secrets
 
+**Actualización de crecimiento (septiembre de 2026):** la migración `v2` añade el Durable Object `ENGAGEMENT`. Desplegar el Worker antes de Pages. La ingesta no requiere secreto, pero consultar opiniones y métricas exige `INSIGHTS_READ_TOKEN`; configuración y uso en [growth.md](growth.md). No exponerlo como variable del frontend. El apartado original de abajo describe las credenciales del juego antes de esta incorporación.
+
 - **Wrangler login:** `npx wrangler login` (interactive — opens a browser). `npx wrangler whoami` confirms the active account. The current login is the OAuth token stored in `~/Library/Preferences/.wrangler` for `jvallejoarguez@gmail.com`.
 - **No secrets are required at runtime.** `FRONTEND_ORIGIN` is a plain var; everything else is anonymous. If we ever add secrets, prefer `wrangler secret put NAME --env production` over committing to `wrangler.toml`.
 

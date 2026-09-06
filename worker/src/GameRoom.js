@@ -5,6 +5,8 @@ import {
   applyConfirmVote, computeResult, firstConnectedPlayerIdx, normalizeCategories,
 } from './gameLogic.js'
 import words from './words.json'
+import { recordRoomEvent } from './Engagement.js'
+import { cleanAttribution } from '../../shared/engagement.js'
 
 const ROUND_REVIEW_MS = 3500
 const VOTING_MS = 30000
@@ -78,6 +80,11 @@ export class GameRoom {
       const code = url.searchParams.get('code') || 'UNKNOWN'
       if (!this.state) {
         this.state = INITIAL_STATE(code, url.searchParams.get('category'))
+        this.state.engagement = {
+          id: crypto.randomUUID(), attribution: cleanAttribution(Object.fromEntries(url.searchParams)),
+          completedGames: 0, wasInvited: url.searchParams.get('wasInvited') === 'true',
+        }
+        this._record('room_created', this.state.engagement.id)
         await this._save()
       }
       return Response.json({ ok: true })
@@ -251,7 +258,7 @@ export class GameRoom {
 
   // ── Handlers ──────────────────────────────────────────────
 
-  async _handleJoin(ws, { name, code, playerId, avatarId }) {
+  async _handleJoin(ws, { name, code, playerId, avatarId, attribution, wasInvited }) {
     if (typeof playerId !== 'string' || !playerId || playerId.length > 100 ||
         typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 16) {
       ws.send(JSON.stringify({ type: 'ERROR', payload: { message: 'Escribe un nombre de 2 a 16 caracteres.' } }))
@@ -299,6 +306,7 @@ export class GameRoom {
     this.sessions.set(playerId, ws)
     try { ws.serializeAttachment({ playerId }) } catch {}
     this.state = applyJoin(this.state, { id: playerId, name, isOwner, avatarId })
+    recordRoomEvent(this.ctx, this.env, 'player_joined', crypto.randomUUID(), cleanAttribution(attribution), { wasInvited: wasInvited === true })
     this._broadcast()
   }
 
@@ -379,6 +387,7 @@ export class GameRoom {
       ...INITIAL_STATE(this.state.code),
       players: remaining.map((p, i) => ({ ...p, ready: false, isOwner: i === 0 })),
       rules: this.state.rules,
+      engagement: this.state.engagement,
     }
     this._broadcast()
   }
@@ -392,6 +401,7 @@ export class GameRoom {
         .filter(p => p.connected)
         .map((p, i) => ({ ...p, ready: false, isOwner: i === 0 })),
       rules: this.state.rules, // keep current rules
+      engagement: this.state.engagement,
     }
     this._broadcast()
   }
@@ -478,6 +488,7 @@ export class GameRoom {
 
   _broadcast() {
     if (!this.state) return
+    this._observeMilestones()
     // Fire-and-forget persistence — don't block the broadcast on storage I/O.
     this._save().catch(() => {})
     const msg = JSON.stringify({ type: 'STATE', serverNow: Date.now(), payload: this._publicState() })
@@ -499,8 +510,34 @@ export class GameRoom {
   }
 
   _publicState() {
-    const { impostorIdx, secretWord, hint, ...pub } = this.state
+    const { impostorIdx, secretWord, hint, engagement, ...pub } = this.state
     return pub
+  }
+
+  _record(event, id) {
+    const info = this.state.engagement
+    if (!info) return
+    recordRoomEvent(this.ctx, this.env, event, id, info.attribution, { wasInvited: info.wasInvited })
+  }
+
+  _observeMilestones() {
+    const info = this.state.engagement
+    if (!info) return // Existing rooms remain playable after deploying this version.
+    if (!info.groupReady && this.state.players.filter(p => p.connected).length >= 3) {
+      info.groupReady = true
+      this._record('group_ready', info.id)
+    }
+    if (this.state.phase === 'playing' && info.startedGame !== this.state.gameId) {
+      if (!info.startedGame) this._record('room_activated', info.id)
+      info.startedGame = this.state.gameId
+      this._record('game_started', this.state.gameId)
+      if (info.completedGames > 0) this._record('game_repeated', this.state.gameId)
+    }
+    if (this.state.phase === 'results' && info.finishedGame !== this.state.gameId) {
+      info.finishedGame = this.state.gameId
+      info.completedGames++
+      this._record('game_finished', this.state.gameId)
+    }
   }
 
   _playerIdForWs(ws) {

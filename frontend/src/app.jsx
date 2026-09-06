@@ -6,7 +6,8 @@ import { RoleRevealScreen, GameplayScreen } from './components/screens-game.jsx'
 import { BetweenRoundScreen, VotingScreen, ResultsScreen } from './components/screens-vote.jsx'
 import { useGameSocket, WORKER_BASE } from './ws/useGameSocket.js'
 import { initSounds } from './audio/soundManager.js'
-import { captureCampaign, track, trackOnce } from './analytics.js'
+import { captureCampaign, getAttribution, wasInvited, track } from './analytics.js'
+import { useFeedback } from './components/feedback.jsx'
 import { readSession, clearSession, entryFromUrl, updateEntryUrl } from './session.js'
 import { ServerClockContext } from './ws/useServerCountdown.js'
 import { saveAvatarPreference } from './avatarPreferences.js'
@@ -33,6 +34,9 @@ export default function App() {
   const [joinError, setJoinError] = useState(null)
   const [createError, setCreateError] = useState(null)
   const [theme] = useState(DEFAULT_THEME)
+  const { setContext: setFeedbackContext, offerExitSurvey } = useFeedback()
+  const lobbyEnteredAt = useRef(0)
+  const hasPlayed = useRef(false)
 
   const { gameState, myRole, myId, connectionState, lastError, connect, disconnect, send, clock } =
     useGameSocket()
@@ -70,13 +74,17 @@ export default function App() {
     if (!gameState) return
     updateEntryUrl(gameState.code)
     setPlayerName(myPlayer?.name || playerName)
-    const props = { gameId: gameState.gameId, playerCount: gameState.players.filter(p => p.connected !== false).length }
-    if (gameState.gameId) {
-      trackOnce(`${gameState.gameId}:${phase}`, `phase_${phase}`, props)
-      if (phase === 'playing') trackOnce(`${gameState.gameId}:started`, 'game_started', props)
-      if (phase === 'results') trackOnce(`${gameState.gameId}:finished`, 'finish_game', props)
-    }
   }, [gameState, phase, myPlayer?.name, playerName])
+
+  const playerCount = gameState?.players.filter(p => p.connected !== false).length || 0
+  const feedbackCategory = gameState?.rules?.wordCategories?.join('_') || category
+  useEffect(() => {
+    setFeedbackContext({ phase: ['home', 'create', 'join'].includes(screen) ? screen : phase || 'connecting', gameId: gameState?.gameId, playerCount, category: feedbackCategory })
+  }, [screen, phase, gameState?.gameId, playerCount, feedbackCategory, setFeedbackContext])
+  useEffect(() => {
+    if (phase === 'lobby') lobbyEnteredAt.current = Date.now()
+    if (phase === 'playing' || phase === 'results') hasPlayed.current = true
+  }, [phase])
 
   useEffect(() => {
     if (connectionState === 'failed') clearSession()
@@ -98,7 +106,8 @@ export default function App() {
     createRequestRef.current = controller
     const timeout = setTimeout(() => controller.abort(), 12000)
     try {
-      const res = await fetch(`${WORKER_BASE}/rooms?category=${encodeURIComponent(category)}`, { method: 'POST', signal: controller.signal })
+      const query = new URLSearchParams({ category, ...getAttribution(), wasInvited: String(wasInvited()) })
+      const res = await fetch(`${WORKER_BASE}/rooms?${query}`, { method: 'POST', signal: controller.signal })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const { code } = await res.json()
       if (!code) throw new Error('No room code returned')
@@ -106,10 +115,10 @@ export default function App() {
       clearSession()
       setRoomCode(code)
       connect(code, name)
-      track('create_room', { category })
       setScreen('lobby')
     } catch {
       if (createRequestRef.current === controller) setCreateError('No se pudo crear la sala. Comprueba tu conexión e inténtalo de nuevo.')
+      track('create_failed', { category })
     } finally {
       clearTimeout(timeout)
       if (createRequestRef.current === controller) { createRequestRef.current = null; setCreating(false) }
@@ -123,11 +132,15 @@ export default function App() {
     setJoinError(null)
     clearSession()
     connect(code, name)
-    track('join_room')
+    track('join_attempt')
     setScreen('lobby')
   }, [connect, handleSoundsInit])
 
   const handleLeaveRoom = useCallback(() => {
+    if (phase === 'lobby') {
+      track('lobby_left', { playerCount })
+      if (!hasPlayed.current && Date.now() - lobbyEnteredAt.current >= 20000) offerExitSurvey({ phase: 'lobby', playerCount, category: feedbackCategory })
+    }
     createRequestRef.current?.abort()
     createRequestRef.current = null
     setCreating(false)
@@ -139,7 +152,14 @@ export default function App() {
     setScreen('home')
     setRoomCode('')
     setCategory('all')
-  }, [disconnect])
+  }, [disconnect, phase, playerCount, feedbackCategory, offerExitSurvey])
+
+  const handleCreateIntent = () => { track('create_intent', { category }); setScreen('create') }
+  const handleNewGroup = () => {
+    track('new_group_intent', { wasInvited: wasInvited() })
+    handleLeaveRoom()
+    setScreen('create')
+  }
 
   const editConnection = () => {
     disconnect()
@@ -149,14 +169,14 @@ export default function App() {
 
   // ── Game actions (delegate to server via send()) ──────────────
 
-  const handleReady = useCallback(() => { track('ready'); send('READY') }, [send])
-  const handleUpdateRules = useCallback((rules) => { track('update_rules'); send('UPDATE_RULES', { rules }) }, [send])
+  const handleReady = useCallback(() => send('READY'), [send])
+  const handleUpdateRules = useCallback((rules) => send('UPDATE_RULES', { rules }), [send])
   const handleSelectAvatar = useCallback((avatarId) => {
     if (!send('UPDATE_AVATAR', { avatarId })) return false
     saveAvatarPreference(avatarId)
     return true
   }, [send])
-  const handleStartGame = useCallback(() => { track('start_game', { roomCode }); send('START_GAME') }, [roomCode, send])
+  const handleStartGame = useCallback(() => send('START_GAME'), [send])
   const handleSubmitWord = useCallback((word) => send('SUBMIT_WORD', { word }), [send])
   const handleBetweenVote = useCallback((choice) => send('BETWEEN_VOTE', { choice }), [send])
   const handleCastVote = useCallback((targetId) => send('CAST_VOTE', { targetId }), [send])
@@ -172,7 +192,7 @@ export default function App() {
     return (
       <HomeScreen
         theme={theme}
-        onCreateRoom={() => setScreen('create')}
+        onCreateRoom={handleCreateIntent}
         onJoinRoom={() => setScreen('join')}
       />
     )
@@ -280,6 +300,7 @@ export default function App() {
           myId={myId}
           onPlayAgain={handlePlayAgain}
           onBackToLobby={amOwner ? handleBackToLobby : undefined}
+          onNewGroup={handleNewGroup}
         />
       )
       break

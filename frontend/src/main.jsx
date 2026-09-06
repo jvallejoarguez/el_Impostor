@@ -4,9 +4,11 @@ import App from './app.jsx'
 import './styles.css'
 import './club.css'
 import './room-lobby.css'
+import './growth.css'
+import { FeedbackProvider } from './components/feedback.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <FeedbackProvider><App /></FeedbackProvider>
   </React.StrictMode>
 )

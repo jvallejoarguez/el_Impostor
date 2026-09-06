@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { createServerClock } from './serverClock.js'
 import { saveSession } from '../session.js'
 import { readAvatarPreference } from '../avatarPreferences.js'
+import { getAttribution, wasInvited, track } from '../analytics.js'
+import { WORKER_BASE } from '../config.js'
+export { WORKER_BASE } from '../config.js'
 
 function getOrCreatePlayerId() {
   try {
@@ -11,10 +14,6 @@ function getOrCreatePlayerId() {
     return id
   } catch { return crypto.randomUUID() }
 }
-
-const PRODUCTION_WORKER_URL = 'https://el-impostor-worker-production.jvallejoarguez.workers.dev'
-export const WORKER_BASE = import.meta.env.VITE_WORKER_URL ||
-  (import.meta.env.DEV ? 'http://localhost:8787' : PRODUCTION_WORKER_URL)
 
 export function useGameSocket() {
   const [gameState, setGameState] = useState(null)
@@ -77,6 +76,7 @@ export function useGameSocket() {
     // Includes opening the socket and waiting for JOIN to be accepted.
     timersRef.current.join = setTimeout(() => {
       if (wsRef.current !== ws || joined) return
+      track('join_failed', { method: 'timeout' })
       setLastError('La conexión está tardando. Puedes reintentarlo o volver a la entrada.')
       try { ws.close() } catch {}
     }, 12000)
@@ -116,6 +116,7 @@ export function useGameSocket() {
       } else if (msg.type === 'ERROR') {
         setLastError(msg.payload?.message || 'No se ha podido entrar en la sala.')
         if (!joined) {
+          track('join_failed', { method: 'rejected' })
           connectionRef.current = null
           stopTimers()
           closeSocket()
@@ -142,7 +143,7 @@ export function useGameSocket() {
   const connect = useCallback((code, name) => {
     stopTimers()
     closeSocket()
-    connectionRef.current = { code, name, avatarId: readAvatarPreference() }
+    connectionRef.current = { code, name, avatarId: readAvatarPreference(), attribution: getAttribution(), wasInvited: wasInvited() }
     retriesRef.current = 0
     hadStateRef.current = false
     clockRef.current.reset()

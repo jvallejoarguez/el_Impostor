@@ -10,10 +10,18 @@ FRONTEND_ORIGINS = "http://localhost:3000"
 name = "GAME_ROOM"
 class_name = "GameRoom"
 
+[[durable_objects.bindings]]
+name = "ENGAGEMENT"
+class_name = "Engagement"
+
 # Free-plan Durable Objects must use SQLite-backed storage.
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["GameRoom"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Engagement"]
 
 # Production env — wrangler does not auto-inherit durable_objects across
 # envs, so we redeclare the binding here. Override FRONTEND_ORIGINS when
@@ -27,3 +35,7 @@ FRONTEND_ORIGINS = "https://juegoimpostor.app,https://www.juegoimpostor.app,http
 [[env.production.durable_objects.bindings]]
 name = "GAME_ROOM"
 class_name = "GameRoom"
+
+[[env.production.durable_objects.bindings]]
+name = "ENGAGEMENT"
+class_name = "Engagement"

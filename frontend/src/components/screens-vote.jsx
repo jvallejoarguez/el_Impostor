@@ -4,7 +4,8 @@ import { play } from '../audio/soundManager.js'
 import { PlayerClues, ClueHistory } from './clue-history.jsx'
 import { useServerCountdown } from '../ws/useServerCountdown.js'
 import { downloadResultCard } from '../resultCard.js'
-import { getInviteUrl, getWhatsAppShareUrl, sharePayload, track } from '../analytics.js'
+import { getNewGroupUrl, getWhatsAppShareUrl, sharePayload, track } from '../analytics.js'
+import { PostGameRating } from './feedback.jsx'
 
 // components/screens-vote.jsx — between-round, voting, results
 
@@ -126,7 +127,7 @@ function VotingScreen({ theme, room, myId, onCastVote, onConfirmVote }) {
 }
 
 // === RESULTS ===
-function ResultsScreen({ theme, room, myId, onPlayAgain, onBackToLobby }) {
+function ResultsScreen({ theme, room, myId, onPlayAgain, onBackToLobby, onNewGroup }) {
   const avatarStyle = theme.avatarStyle;
   const result = room.result || {};
   const imposterFound = !!result.found;
@@ -138,8 +139,8 @@ function ResultsScreen({ theme, room, myId, onPlayAgain, onBackToLobby }) {
   const winner = imposterFound ? "el grupo" : "el impostor";
   const [feedback, setFeedback] = React.useState('');
   const bg = imposterFound ? "var(--teal)" : "var(--red)";
-  const resultText = `Partida de El Impostor: gana ${winner}. El impostor era ${imposter.name} y la palabra era ${secretWord}.`;
-  const inviteUrl = getInviteUrl(room.code);
+  const resultText = imposterFound ? `¡Hemos pillado al impostor! ${room.players.length} jugando y una palabra secreta: ${secretWord}. ¿Tú lo habrías descubierto? Juega con tu grupo:` : `El impostor nos la ha colado a todos. La palabra era ${secretWord}. ¿En tu grupo quién disimula mejor?`;
+  const inviteUrl = getNewGroupUrl();
 
   React.useEffect(() => {
     play(result.found ? 'win' : 'lose');
@@ -251,6 +252,7 @@ function ResultsScreen({ theme, room, myId, onPlayAgain, onBackToLobby }) {
       <div className="results-actions">
         <button onClick={onPlayAgain} className="btn btn--primary btn--block">↻ Otra partida</button>
         {onBackToLobby && <button onClick={onBackToLobby} className="btn btn--ghost btn--block">Cambiar reglas</button>}
+        <button onClick={onNewGroup} className="text-button">Jugar con otro grupo →</button>
         <details className="result-share"><summary>Comparte cómo ha acabado</summary><div className="result-share-actions">
           <button onClick={shareResult} className="btn btn--ghost btn--sm">Compartir resultado</button>
           <button onClick={saveCard} className="btn btn--ghost btn--sm">Guardar tarjeta</button>
@@ -258,6 +260,7 @@ function ResultsScreen({ theme, room, myId, onPlayAgain, onBackToLobby }) {
         </div></details>
         <p className="inline-feedback" role="status">{feedback}</p>
       </div>
+      <PostGameRating gameId={room.gameId}/>
       <ClueHistory room={room} avatarStyle={avatarStyle}/>
     </div>
   );

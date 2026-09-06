@@ -65,6 +65,8 @@ el-impostor/
 
 ## Architecture Rules
 
+Growth instrumentation and private feedback live in `worker/src/Engagement.js`; setup, definitions and retention are in `docs/growth.md`. Its alarms are separate from game-room alarms. Never broadcast the private `engagement` room metadata or accept server milestone events from clients. Browser events and feedback must use the allowlisted fields in `shared/engagement.js`, not a spread of game state. The report requires the server-only `INSIGHTS_READ_TOKEN` secret.
+
 1. **Privacy:** `impostorIdx`, `secretWord`, `hint` are NEVER sent in public `STATE` broadcasts.
    They travel only in private `ROLE` WebSocket messages to individual players.
 2. **Server-authoritative:** All game state transitions happen in `GameRoom.js` by calling
