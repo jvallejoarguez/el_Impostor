@@ -4,8 +4,8 @@
 
 - Invitación por WhatsApp con texto según el número de personas que faltan; QR generado localmente, sin servicio externo. Los enlaces llevan el código y la fuente, de modo que entrar no exige transcribirlo.
 - Resultados compartidos enlazan a crear una nueva sala. Una sala terminada no acepta nuevos jugadores: enviar su código frustraba a los nuevos visitantes. «Jugar con otro grupo» conserva el nombre y abre la creación de una sala nueva.
-- Pregunta de valoración opcional bajo las acciones del resultado, como máximo una vez cada 24 horas por navegador. Las preferencias y la disponibilidad del almacenamiento pueden reducir el número de preguntas. «Otra partida» sigue siendo la acción principal.
-- Acceso a problemas, ideas y palabras desde todas las pantallas. Al salir explícitamente de la primera sala tras al menos 20 segundos sin jugar, se ofrece una pregunta opcional en el inicio; no bloquea la salida. También se limita a una al día.
+- Pregunta de valoración opcional bajo las acciones del resultado, como máximo una vez cada 24 horas por navegador si acepta la medición; sin aceptación, el límite funciona en memoria durante la carga de la página. Las preferencias y la disponibilidad del almacenamiento pueden reducir el número de preguntas. «Otra partida» sigue siendo la acción principal.
+- Acceso a problemas, ideas y palabras desde todas las pantallas. Al salir explícitamente de la primera sala tras al menos 20 segundos sin jugar, se ofrece una pregunta opcional en el inicio; no bloquea la salida. También se limita a una al día con consentimiento y a una por carga de página sin él.
 - Confirmación solo después de guardar la opinión; errores recuperables y reintentos con el mismo identificador para evitar duplicados.
 
 ## Activación en producción
@@ -41,7 +41,7 @@ También acepta `INSIGHTS_READ_TOKEN` desde el entorno y `INSIGHTS_URL` para con
 
 | Evento | Fuente | Definición |
 |---|---|---|
-| `visit` | Navegador, app y guías SEO | Una visita por sesión de pestaña y atribución. Una campaña nueva abre una nueva atribución. No es una persona única. |
+| `visit` | Navegador, app y guías SEO | Solo con consentimiento: una visita por sesión de pestaña y atribución. Una campaña nueva abre una nueva atribución. No es una persona única. |
 | `room_created` | Servidor | Sala creada y reclamada. Incluye categoría/entrada en la atribución disponible. |
 | `player_joined` | Servidor | Entrada aceptada de un jugador nuevo en la sala. Reconectar no suma otra. |
 | `group_ready` | Servidor | Primera vez que una sala reúne 3 jugadores conectados; todavía pueden faltar confirmaciones de «listo». |
@@ -53,7 +53,7 @@ También acepta `INSIGHTS_READ_TOKEN` desde el entorno y `INSIGHTS_URL` para con
 | `join_attempt`, `join_failed` | Navegador | Intentos y errores de entrada. Los errores pueden repetirse al reintentar. |
 | `lobby_left` | Navegador | Salida mediante el botón de la sala; no incluye cierres de pestaña o pérdida de red. |
 
-La procedencia de una sala y sus partidas es la del creador, capturada al crearla. La de una entrada confirmada es la del invitado. No se copian las UTM del anfitrión a los enlaces de invitación: estos usan `medium=invite` y `source=whatsapp`, `qr`, `copy` o `share`. Se conserva si alguien llegó invitado durante esa atribución para contar salas creadas después por invitados. No identifica a esa persona entre dispositivos ni días.
+La procedencia de una sala y sus partidas es la del creador, capturada al crearla solo si ha aceptado. Sin aceptación válida se usa `source=unattributed`; no confundirlo con tráfico directo. La retirada del creador elimina la atribución para los eventos futuros de esa sala, también al reconectar. No reconstruimos la atribución de salas creadas sin consentimiento si se acepta después. La de una entrada confirmada es la del invitado. No se copian las UTM del anfitrión a los enlaces de invitación: estos usan `medium=invite` y `source=whatsapp`, `qr`, `copy` o `share`. Se conserva si alguien llegó invitado durante esa atribución para contar salas creadas después por invitados. No identifica a esa persona entre dispositivos ni días.
 
 `source`, `medium`, `campaign`, `content` y página de entrada están disponibles en el informe. Los clics de Search Console siguen consultándose allí; este recolector empieza a medir al desplegarlo y no reconstruye el histórico. El script de las guías y el frontend apuntan al mismo Worker de producción; si cambia el dominio del Worker, actualizar también `frontend/public/visit.js`.
 
@@ -67,7 +67,19 @@ La ingesta pública valida origen, tamaño (8 KiB), tipos, eventos y campos perm
 
 No se almacenan IP, nombres de jugadores, códigos de sala, roles ni pistas en la medición. Las opiniones incluyen únicamente el texto voluntario y contexto validado: fase, categoría, tamaño, versión e identificador de partida si existe. Un jugador podría escribir datos personales por iniciativa propia; la interfaz pide evitarlos y los comentarios están protegidos por el informe privado. Los cuerpos de las opiniones y los tokens no se imprimen en logs.
 
-La atribución usa `sessionStorage`; las preferencias y el límite de preguntas usan `localStorage`. «Datos y privacidad» explica el tratamiento y permite desactivar eventos del navegador. Se respetan DNT y GPC. Los contadores agregados del servidor siguen operativos. No se instalan cookies publicitarias, grabaciones de sesión ni adaptadores a terceros. El anterior adaptador genérico de `analytics.js` se sustituye por el recolector propio.
+La atribución y deduplicación opcionales usan `sessionStorage` **solo después de aceptar**. `frontend/public/consent.js` y `consent.css` se cargan antes de `visit.js` en la app y las guías; no depende de React. Sin decisión, ante una decisión inválida/caducada, o si el script no carga, las llamadas de medición fallan cerradas. El rechazo y la aceptación tienen igual relevancia. «Configurar medición» permite retirar el consentimiento. DNT y GPC bloquean la medición incluso con una aceptación guardada.
+
+`el-impostor-consent` guarda versión, decisión y fecha en `localStorage`, con 180 días de validez. El consentimiento v1 no hereda el anterior opt-out: al cargar se eliminan las antiguas claves opcionales sin leer su contenido. Retirar limpia atribución, deduplicación y límites de preguntas, aborta la visita en curso y sincroniza otras pestañas. Las respuestas tardías no restauran datos retirados. El WS lee la preferencia actual en cada conexión y comunica `MEASUREMENT_PREFERENCE: {enabled:false}` a una sala abierta.
+
+El Worker exige un recibo válido de aceptación en los eventos públicos de navegador y rechaza con 403 los clientes antiguos que no lo envían. Guarda versión y fecha junto a las claves de deduplicación, con la misma retención máxima de 30 días. Es una evidencia de la decisión comunicada por el cliente, no una prueba criptográfica de identidad. La creación y JOIN ignoran campañas sin ese recibo. La comprobación de caducidad también se aplica a eventos futuros del servidor. El feedback explícito es independiente del consentimiento analítico.
+
+Los contadores agregados del servidor siguen operativos sin atribución cuando no hay consentimiento. **No dividir partidas totales entre visitas consentidas para calcular conversión:** las poblaciones difieren. Desde esta versión, menos visitas registradas puede reflejar rechazos, no una caída del tráfico. Search Console sigue siendo la referencia para los clics de Google.
+
+La política pública está en `/privacidad/`, con Javier Vallejo y el contacto autorizado. Las fuentes se alojan localmente con sus licencias; no se carga Google Fonts. No se instalan cookies publicitarias, grabaciones de sesión ni adaptadores a terceros.
+
+La caducidad de 30 días es la de `Engagement`, no la de `GameRoom`: aún no existe una política automática de borrado de salas inactivas. Se ha documentado esta limitación de forma expresa en la política pública; no afirmar que todos los datos del juego se eliminan a los 30 días. Como trabajo separado, definir e implementar la caducidad de salas con pruebas de reconexión y alarmas antes de prometerla.
+
+Referencias revisadas para las medidas de consentimiento: [guía de cookies de la AEPD](https://www.aepd.es/guias/guia-cookies.pdf), [guía sobre medición de audiencia](https://www.aepd.es/guias/guia-cookies-analiticas-externas.pdf) y [art. 22 LSSI](https://www.boe.es/buscar/act.php?id=BOE-A-2002-13758#a22). Se aplica consentimiento previo; no se presume que el recolector cumpla una exención de medición de audiencia.
 
 ## Rutina semanal
 

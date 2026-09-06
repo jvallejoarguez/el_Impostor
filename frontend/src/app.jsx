@@ -6,7 +6,7 @@ import { RoleRevealScreen, GameplayScreen } from './components/screens-game.jsx'
 import { BetweenRoundScreen, VotingScreen, ResultsScreen } from './components/screens-vote.jsx'
 import { useGameSocket, WORKER_BASE } from './ws/useGameSocket.js'
 import { initSounds } from './audio/soundManager.js'
-import { captureCampaign, getAttribution, wasInvited, track } from './analytics.js'
+import { captureCampaign, getAttribution, getMeasurementConsent, wasInvited, track } from './analytics.js'
 import { useFeedback } from './components/feedback.jsx'
 import { readSession, clearSession, entryFromUrl, updateEntryUrl } from './session.js'
 import { ServerClockContext } from './ws/useServerCountdown.js'
@@ -106,7 +106,8 @@ export default function App() {
     createRequestRef.current = controller
     const timeout = setTimeout(() => controller.abort(), 12000)
     try {
-      const query = new URLSearchParams({ category, ...getAttribution(), wasInvited: String(wasInvited()) })
+      const consent = getMeasurementConsent()
+      const query = new URLSearchParams({ category, ...(consent ? { ...getAttribution(), wasInvited: String(wasInvited()), consent: JSON.stringify(consent) } : {}) })
       const res = await fetch(`${WORKER_BASE}/rooms?${query}`, { method: 'POST', signal: controller.signal })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const { code } = await res.json()

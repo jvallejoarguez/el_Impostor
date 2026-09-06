@@ -4,6 +4,8 @@ import { runInNewContext } from 'node:vm'
 import { getInviteText, getInviteUrl, getNewGroupUrl, track, getAttribution, measurementEnabled } from '../src/analytics.js'
 import { claimPrompt, submitFeedback } from '../src/feedback.js'
 
+const consent = () => ({ version: 1, decision: 'accepted', at: Date.now() })
+const consentApi = { allowed: () => !navigator.globalPrivacyControl && navigator.doNotTrack !== '1', read: consent }
 const memory = () => {
   const values = new Map()
   return { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) }
@@ -26,6 +28,8 @@ describe('growth flows', () => {
 
   it('limits prompts across games and safely skips prompts when storage is unavailable', () => {
     vi.stubGlobal('localStorage', memory())
+    vi.stubGlobal('navigator', {})
+    vi.stubGlobal('window', { elImpostorConsent: consentApi })
     expect(claimPrompt('rating', 100000000)).toBe(true)
     expect(claimPrompt('rating', 100000001)).toBe(false)
     expect(claimPrompt('rating', 200000000)).toBe(true)
@@ -46,7 +50,7 @@ describe('growth flows', () => {
 
   it('uses the collector fallback, strips private properties and respects browser privacy signals', async () => {
     vi.stubGlobal('localStorage', memory()); vi.stubGlobal('sessionStorage', memory())
-    vi.stubGlobal('window', { location: { pathname: '/' } })
+    vi.stubGlobal('window', { location: { pathname: '/' }, elImpostorConsent: consentApi })
     vi.stubGlobal('navigator', { sendBeacon: () => false })
     const fetch = vi.fn().mockResolvedValue({ ok: true })
     vi.stubGlobal('fetch', fetch)
@@ -59,14 +63,14 @@ describe('growth flows', () => {
     expect(measurementEnabled()).toBe(false)
     track('share_invite')
     expect(fetch).toHaveBeenCalledTimes(1)
-    expect(getAttribution().source).toBe('direct')
+    expect(getAttribution().source).toBe('unattributed')
   })
 
   it('preserves a campaign from an SEO page to the game and deduplicates visits after reload', async () => {
     const source = readFileSync(new URL('../public/visit.js', import.meta.url), 'utf8')
     const sessionStorage = memory(), localStorage = memory()
     const fetch = vi.fn().mockResolvedValue({ ok: true })
-    const sandbox = { URL, URLSearchParams, crypto, sessionStorage, localStorage, navigator: {}, fetch,
+    const sandbox = { URL, URLSearchParams, crypto, AbortController, window: { elImpostorConsent: { allowed: () => true, read: consent }, addEventListener() {} }, sessionStorage, localStorage, navigator: {}, fetch,
       document: { referrer: '' }, location: new URL('https://juegoimpostor.app/palabras-para-el-impostor/animales/?utm_source=instagram&utm_medium=organic_social&utm_campaign=septiembre&utm_content=clip01') }
     runInNewContext(source, sandbox)
     await new Promise(resolve => setTimeout(resolve, 0))

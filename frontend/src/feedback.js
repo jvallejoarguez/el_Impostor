@@ -1,7 +1,15 @@
 import { WORKER_BASE } from './config.js'
 import { cleanFeedback } from '../../shared/engagement.js'
+import { measurementEnabled } from './analytics.js'
+
+const promptedInMemory = new Set()
 
 export function claimPrompt(kind, now = Date.now()) {
+  if (!measurementEnabled()) {
+    if (promptedInMemory.has(kind)) return false
+    promptedInMemory.add(kind)
+    return true
+  }
   try {
     const key = `el-impostor-prompt-${kind}`
     const last = Number(localStorage.getItem(key) || 0)

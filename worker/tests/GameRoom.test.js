@@ -33,6 +33,36 @@ async function trio() {
 }
 
 describe('room flow and private roles', () => {
+  it('only the creator can withdraw campaign attribution and it stays removed after reconnect', async () => {
+    const { room, players, send, join } = await trio()
+    const consent = {version:1,decision:'accepted',at:Date.now()}
+    Object.assign(room.state.engagement, {consent, attribution:{source:'instagram',campaign:'private'},wasInvited:true})
+    expect(room.state.engagement.attributionOwnerId).toBe('Ana')
+    await send(players[1], 'MEASUREMENT_PREFERENCE', {enabled:false,playerId:'Ana'})
+    expect(room.state.engagement.consent).toEqual(consent)
+    await send(players[0], 'MEASUREMENT_PREFERENCE', {enabled:false})
+    expect(room.state.engagement.consent).toBeNull()
+    expect(room.state.engagement.attribution.source).toBe('unattributed')
+    expect(room.state.engagement.wasInvited).toBe(false)
+    await join('Ana')
+    expect(room.state.engagement.consent).toBeNull()
+    expect(room._publicState()).not.toHaveProperty('engagement')
+  })
+
+  it('a creator reconnect without consent removes old attribution and expired receipts never attribute counts', async () => {
+    const { room, join, ctx } = await trio()
+    Object.assign(room.state.engagement, {consent:{version:1,decision:'accepted',at:Date.now()}, attribution:{source:'instagram'}})
+    await join('Ana')
+    expect(room.state.engagement.consent).toBeNull()
+    const requests = [], tasks = []
+    ctx.waitUntil = task => tasks.push(task)
+    room.env.ENGAGEMENT = {idFromName: v => v, get: () => ({fetch: async request => {requests.push(await request.json());return new Response('{}')}})}
+    Object.assign(room.state.engagement, {consent:{version:1,decision:'accepted',at:1}, attribution:{source:'instagram'}})
+    room._record('game_started',crypto.randomUUID())
+    await Promise.all(tasks)
+    expect(requests[0].data.attribution).toEqual({source:'unattributed'})
+  })
+
   it('broadcasts a chosen avatar, ignores spoofed player IDs and preserves it across reconnect and replay', async () => {
     const {room, players, send, join} = await trio()
     await send(players[1], 'UPDATE_AVATAR', {playerId:'Ana', avatarId:0})

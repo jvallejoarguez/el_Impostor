@@ -18,6 +18,7 @@ test('three real players invite, finish, give feedback and repeat; counts surviv
   const [host, guest, third] = pages
   try {
     await host.goto(`/?utm_source=instagram&utm_medium=organic_social&utm_campaign=${campaign}`)
+    await host.getByRole('button', { name: 'Aceptar medición', exact: true }).click()
     await host.getByRole('button', { name: 'Crear sala', exact: false }).click()
     await host.getByLabel('Tu nombre', { exact: true }).fill('Ana')
     await host.getByRole('button', { name: 'Crear sala →', exact: true }).click()
@@ -34,6 +35,7 @@ test('three real players invite, finish, give feedback and repeat; counts surviv
     await host.getByRole('button', { name: 'Reducir Rondas antes de votar' }).click()
     for (const [page, name] of [[guest, 'Bruno'], [third, 'Clara']]) {
       await page.goto(inviteUrl)
+      await page.getByRole('button', { name: 'Rechazar', exact: true }).click()
       await expect(page.getByLabel('Código de sala')).toHaveValue(code)
       await page.getByLabel('Tu nombre', { exact: true }).fill(name)
       await page.getByRole('button', { name: 'Entrar a la sala →' }).click()
@@ -94,6 +96,7 @@ test('three real players invite, finish, give feedback and repeat; counts surviv
 
 test('leaving the first lobby offers optional feedback with the previous room context', async ({ page, request }) => {
   await page.goto('/?category=animales')
+  await page.getByRole('button', { name: 'Rechazar', exact: true }).click()
   await page.getByLabel('Tu nombre', { exact: true }).fill('Diego')
   await page.getByRole('button', { name: 'Crear sala →', exact: true }).click()
   await expect(page.getByRole('button', { name: '＋ Invitar / QR' })).toBeVisible()
@@ -110,6 +113,7 @@ test('leaving the first lobby offers optional feedback with the previous room co
 
 test('feedback retries preserve text, dialog fits desktop and mobile, privacy opt-out works', async ({ page }, testInfo) => {
   await page.goto('/')
+  await page.getByRole('button', { name: 'Aceptar medición', exact: true }).click()
   await page.getByRole('button', { name: '¿Algo falla o tienes una idea?' }).click()
   await page.getByLabel('Cuéntanos un poco más (opcional)').fill('Mi comentario de prueba')
   await page.route('**/feedback', route => route.fulfill({ status: 503, body: '{}' }))
@@ -122,9 +126,9 @@ test('feedback retries preserve text, dialog fits desktop and mobile, privacy op
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Datos y privacidad', exact: true }).click()
-  await page.getByRole('checkbox').uncheck()
-  expect(await page.evaluate(() => localStorage.getItem('el-impostor-measurement'))).toBe('off')
-  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Cambiar mi decisión', exact: true }).click()
+  await page.getByRole('button', { name: 'Rechazar', exact: true }).click()
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('el-impostor-consent')).decision)).toBe('rejected')
   let events = 0
   await page.route('**/events', route => { events++; return route.fulfill({ status: 200, body: '{}' }) })
   await page.getByRole('button', { name: 'Crear sala', exact: false }).click()

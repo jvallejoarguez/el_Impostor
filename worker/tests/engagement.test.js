@@ -30,9 +30,17 @@ function setup() {
   }
   return { env, objects, post, report }
 }
-const event = () => ({ id: crypto.randomUUID(), event: 'visit', attribution: { source: 'instagram', campaign: 'impostor', content: 'clip01' }, context: { path: '/' } })
+const event = () => ({ consent: { version: 1, decision: 'accepted', at: Date.now() }, id: crypto.randomUUID(), event: 'visit', attribution: { source: 'instagram', campaign: 'impostor', content: 'clip01' }, context: { path: '/' } })
 
 describe('engagement ingestion and private reports', () => {
+  it('rejects missing, rejected, expired and future consent before storing events', async () => {
+    const { post, objects } = setup()
+    for (const consent of [undefined, {version:1,decision:'rejected',at:Date.now()}, {version:1,decision:'accepted',at:1}, {version:1,decision:'accepted',at:Date.now()+60000}]) {
+      expect((await post('/events', {...event(), consent})).status).toBe(403)
+    }
+    for (const object of objects.values()) expect(object.values.size).toBe(0)
+  })
+
   it('deduplicates simultaneous retries, strips private fields, and expires data', async () => {
     const { post, report, objects } = setup()
     const data = { ...event(), name: 'SECRET_NAME', context: { word: 'SECRET_WORD', roomCode: 'ABCD', hint: 'SECRET_HINT', path: '/?room=ABCD' } }
@@ -42,6 +50,7 @@ describe('engagement ingestion and private reports', () => {
     expect(result.reports[0].counters).toHaveLength(1)
     expect(result.reports[0].counters[0]).toMatchObject({ event: 'visit', count: 1, source: 'instagram' })
     const first = [...objects.values()][0]
+    expect([...first.values].find(([key]) => key.startsWith('seen:'))[1].consent).toEqual(data.consent)
     const stored = JSON.stringify([...first.values])
     for (const secret of ['SECRET_NAME', 'SECRET_WORD', 'SECRET_HINT', 'ABCD']) expect(stored).not.toContain(secret)
     const { object, storage, values } = first

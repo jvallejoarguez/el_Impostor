@@ -1,4 +1,5 @@
 // The only fields accepted by the collector. Never pass game state, names or roles.
+import { consentReceipt } from './consent.js'
 export const CLIENT_EVENTS = new Set([
   'visit', 'create_intent', 'create_failed', 'join_attempt', 'join_failed',
   'invite_link_opened', 'share_invite', 'copy_room_code', 'qr_opened',
@@ -41,7 +42,7 @@ export function cleanContext(input = {}) {
 
 export function cleanEvent(input, trusted = false) {
   if (!input || !uuid(input.id) || !(trusted ? SERVER_EVENTS : CLIENT_EVENTS).has(input.event)) return null
-  return { id: input.id, event: input.event, attribution: cleanAttribution(input.attribution), context: cleanContext(input.context) }
+  return { id: input.id, event: input.event, attribution: cleanAttribution(input.attribution), context: cleanContext(input.context), ...(trusted ? {} : { consent: consentReceipt(input.consent) }) }
 }
 
 export function cleanFeedback(input) {

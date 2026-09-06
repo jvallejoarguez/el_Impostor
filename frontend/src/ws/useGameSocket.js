@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { createServerClock } from './serverClock.js'
 import { saveSession } from '../session.js'
 import { readAvatarPreference } from '../avatarPreferences.js'
-import { getAttribution, wasInvited, track } from '../analytics.js'
+import { getAttribution, getMeasurementConsent, wasInvited, track } from '../analytics.js'
 import { WORKER_BASE } from '../config.js'
 export { WORKER_BASE } from '../config.js'
 
@@ -83,7 +83,8 @@ export function useGameSocket() {
 
     ws.onopen = () => {
       if (wsRef.current !== ws) return
-      ws.send(JSON.stringify({ type: 'JOIN', payload: { ...connection, playerId: myId } }))
+      const consent = getMeasurementConsent()
+      ws.send(JSON.stringify({ type: 'JOIN', payload: { ...connection, playerId: myId, ...(consent ? { consent, attribution: getAttribution(), wasInvited: wasInvited() } : {}) } }))
       ping()
       timersRef.current.heartbeat = setInterval(ping, 20000)
       timersRef.current.watchdog = setInterval(() => {
@@ -143,7 +144,7 @@ export function useGameSocket() {
   const connect = useCallback((code, name) => {
     stopTimers()
     closeSocket()
-    connectionRef.current = { code, name, avatarId: readAvatarPreference(), attribution: getAttribution(), wasInvited: wasInvited() }
+    connectionRef.current = { code, name, avatarId: readAvatarPreference() }
     retriesRef.current = 0
     hadStateRef.current = false
     clockRef.current.reset()
@@ -154,6 +155,8 @@ export function useGameSocket() {
   }, [closeSocket, stopTimers])
 
   useEffect(() => {
+    const onConsent = () => { if (!getMeasurementConsent()) send('MEASUREMENT_PREFERENCE', { enabled: false }) }
+    window.addEventListener('el-impostor:consent-change', onConsent)
     const onVisible = () => {
       if (document.visibilityState !== 'visible' || !connectionRef.current) return
       if (wsRef.current?.readyState === WebSocket.OPEN) send('PING', { clientSentAt: performance.now() })
@@ -161,6 +164,7 @@ export function useGameSocket() {
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => {
+      window.removeEventListener('el-impostor:consent-change', onConsent)
       document.removeEventListener('visibilitychange', onVisible)
       connectionRef.current = null
       stopTimers()

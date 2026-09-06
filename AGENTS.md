@@ -84,6 +84,7 @@ Client → Server: `{ type, payload }`
 | Type           | Payload                          | Notes                        |
 |----------------|----------------------------------|------------------------------|
 | JOIN           | `{ name, code, playerId, avatarId? }` | First message on connect; optional avatar ID 0–11 |
+| MEASUREMENT_PREFERENCE | `{ enabled: false }` | Withdraw creator campaign attribution for future room events |
 | READY          | `{}`                             | Lobby only                   |
 | UPDATE_RULES   | `{ rules: Partial<Rules> }`      | Owner only, lobby only       |
 | UPDATE_AVATAR  | `{ avatarId: number }`           | Own avatar only, lobby only; validated ID 0–11 |
@@ -118,3 +119,13 @@ Call `play(name)` from `soundManager.js`. Must call `initSounds()` once after fi
 | voteCast      | You cast a vote                |
 | win           | Impostor found (team wins)     |
 | lose          | Impostor escapes               |
+
+## Consent and measurement
+
+- `frontend/public/consent.js` is the shared consent gate for React and static SEO guides. Load it before `visit.js` together with `consent.css` on new entry pages.
+- Optional acquisition, event deduplication and persisted feedback-prompt keys must never be read or written before acceptance. Missing, invalid or expired consent fails closed; necessary game storage remains available.
+- JOIN may include `consent`, `attribution`, and `wasInvited` only after acceptance. Read the current preference on reconnect, never cache marketing metadata with connection credentials.
+- Keep room `engagement` metadata out of public STATE. No-consent counters use `source=unattributed`. `/events` requires a valid versioned receipt; voluntary `/feedback` does not depend on analytics consent.
+- Retention of 30 days applies to Engagement only. GameRoom has no inactive-room deletion yet; do not promise otherwise.
+- Public policy: `frontend/public/privacidad/index.html`. Legal contact: Javier Vallejo, jvallejoarguez@gmail.com (explicitly authorized for publication).
+- Fonts are self-hosted under `frontend/public/fonts/`, with OFL licenses. Do not reintroduce automatic third-party font requests.

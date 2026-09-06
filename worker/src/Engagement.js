@@ -25,6 +25,7 @@ export class Engagement {
     const isFeedback = url.pathname === '/feedback'
     const value = isFeedback ? cleanFeedback(data) : cleanEvent(data, trusted)
     if (!value) return Response.json({ error: 'Datos no válidos.' }, { status: 400 })
+    if (!trusted && !isFeedback && !value.consent) return Response.json({ error: 'La medición requiere consentimiento previo.' }, { status: 403 })
 
     if (!trusted) {
       const hour = Math.floor(Date.now() / 3600000)
@@ -52,7 +53,7 @@ export class Engagement {
         const counterKey = `count:${JSON.stringify(dimensions)}`
         const counter = await storage.get(counterKey) || { ...dimensions, count: 0 }
         await storage.put(counterKey, { ...counter, count: counter.count + 1 })
-        await storage.put(key, true)
+        await storage.put(key, trusted ? true : { consent: value.consent })
       }
       await storage.put(usageKey, usage + 1)
       return Response.json({ ok: true })

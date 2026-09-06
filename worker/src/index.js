@@ -2,6 +2,7 @@
 import { GameRoom } from './GameRoom.js'
 import { handleEngagement } from './Engagement.js'
 import { cleanAttribution } from '../../shared/engagement.js'
+import { consentReceipt } from '../../shared/consent.js'
 
 export { GameRoom }
 export { Engagement } from './Engagement.js'
@@ -60,8 +61,10 @@ export default {
         if (!active) {
           // Claim immediately so a concurrent POST cannot pick the same code.
           const category = encodeURIComponent(url.searchParams.get('category') || 'all')
-          const attribution = new URLSearchParams(cleanAttribution(Object.fromEntries(url.searchParams)))
-          await stub.fetch(new Request(`http://internal/claim?code=${candidate}&category=${category}&${attribution}&wasInvited=${url.searchParams.get('wasInvited') === 'true'}`))
+          let consent
+          try { consent = consentReceipt(JSON.parse(url.searchParams.get('consent'))) } catch {}
+          const attribution = new URLSearchParams(cleanAttribution(consent ? Object.fromEntries(url.searchParams) : { source: 'unattributed' }))
+          await stub.fetch(new Request(`http://internal/claim?code=${candidate}&category=${category}&${attribution}&wasInvited=${!!consent && url.searchParams.get('wasInvited') === 'true'}&consent=${encodeURIComponent(JSON.stringify(consent || null))}`))
           code = candidate
           break
         }

@@ -231,7 +231,9 @@ function jsonLd(value) {
 function head({ title, description, canonical, type = 'article', schema }) {
   return `
     <meta charset="UTF-8" />
-    <script src="/visit.js" defer></script>
+    <link rel="stylesheet" href="/consent.css" />
+    <script src="/consent.js" defer></script>
+    <script src="/visit.js?v=consent1" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${html(title)}</title>
     <meta name="description" content="${html(description)}" />
@@ -256,9 +258,7 @@ function head({ title, description, canonical, type = 'article', schema }) {
     <meta name="twitter:image:alt" content="El Impostor, juego de palabras online gratis" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="stylesheet" href="/seo.css" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;600;800&display=swap" rel="stylesheet" />
+    <link href="/fonts/fonts.css" rel="stylesheet" />
     <script type="application/ld+json">${jsonLd(schema)}</script>`
 }
 
@@ -276,7 +276,7 @@ function siteHeader() {
 function siteFooter() {
   return `<footer class="wrap footer">
       <strong>El Impostor</strong> · Juego de palabras online gratis para 3–12 personas.
-      <span class="footer-links"><a href="/?create=1">Crear sala</a> · <a href="/como-jugar/">Reglas</a> · <a href="/palabras-para-el-impostor/">Todas las palabras</a> · <a href="/?privacy=1">Datos y privacidad</a></span>
+      <span class="footer-links"><a href="/?create=1">Crear sala</a> · <a href="/como-jugar/">Reglas</a> · <a href="/palabras-para-el-impostor/">Todas las palabras</a> · <a href="/privacidad/">Datos y privacidad</a></span>
     </footer>`
 }
 

@@ -7,6 +7,7 @@ import {
 import words from './words.json'
 import { recordRoomEvent } from './Engagement.js'
 import { cleanAttribution } from '../../shared/engagement.js'
+import { consentReceipt } from '../../shared/consent.js'
 
 const ROUND_REVIEW_MS = 3500
 const VOTING_MS = 30000
@@ -80,9 +81,11 @@ export class GameRoom {
       const code = url.searchParams.get('code') || 'UNKNOWN'
       if (!this.state) {
         this.state = INITIAL_STATE(code, url.searchParams.get('category'))
+        let consent
+        try { consent = consentReceipt(JSON.parse(url.searchParams.get('consent'))) } catch {}
         this.state.engagement = {
-          id: crypto.randomUUID(), attribution: cleanAttribution(Object.fromEntries(url.searchParams)),
-          completedGames: 0, wasInvited: url.searchParams.get('wasInvited') === 'true',
+          id: crypto.randomUUID(), attribution: cleanAttribution(consent ? Object.fromEntries(url.searchParams) : { source: 'unattributed' }),
+          consent: consent || null, completedGames: 0, wasInvited: !!consent && url.searchParams.get('wasInvited') === 'true',
         }
         this._record('room_created', this.state.engagement.id)
         await this._save()
@@ -107,6 +110,9 @@ export class GameRoom {
     const playerId = this._playerIdForWs(ws)
 
     switch (msg.type) {
+      case 'MEASUREMENT_PREFERENCE':
+        if (playerId && msg.payload?.enabled === false) this._withdrawMeasurement(playerId)
+        break
       case 'PING':
         try { ws.send(JSON.stringify({ type: 'PONG', serverNow: Date.now(), clientSentAt: msg.payload?.clientSentAt })) } catch {}
         break
@@ -258,7 +264,7 @@ export class GameRoom {
 
   // ── Handlers ──────────────────────────────────────────────
 
-  async _handleJoin(ws, { name, code, playerId, avatarId, attribution, wasInvited }) {
+  async _handleJoin(ws, { name, code, playerId, avatarId, attribution, wasInvited, consent }) {
     if (typeof playerId !== 'string' || !playerId || playerId.length > 100 ||
         typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 16) {
       ws.send(JSON.stringify({ type: 'ERROR', payload: { message: 'Escribe un nombre de 2 a 16 caracteres.' } }))
@@ -275,6 +281,7 @@ export class GameRoom {
 
     const existing = this.state.players.find(p => p.id === playerId)
     if (existing) {
+      if (!consentReceipt(consent)) this._withdrawMeasurement(playerId)
       // Reconnect path
       const prev = this.sessions.get(playerId)
       if (prev && prev !== ws) {
@@ -306,7 +313,10 @@ export class GameRoom {
     this.sessions.set(playerId, ws)
     try { ws.serializeAttachment({ playerId }) } catch {}
     this.state = applyJoin(this.state, { id: playerId, name, isOwner, avatarId })
-    recordRoomEvent(this.ctx, this.env, 'player_joined', crypto.randomUUID(), cleanAttribution(attribution), { wasInvited: wasInvited === true })
+    if (isOwner && this.state.engagement && !this.state.engagement.attributionOwnerId) this.state.engagement.attributionOwnerId = playerId
+    const accepted = consentReceipt(consent)
+    if (!accepted) this._withdrawMeasurement(playerId)
+    recordRoomEvent(this.ctx, this.env, 'player_joined', crypto.randomUUID(), cleanAttribution(accepted ? attribution : { source: 'unattributed' }), { wasInvited: !!accepted && wasInvited === true })
     this._broadcast()
   }
 
@@ -517,7 +527,17 @@ export class GameRoom {
   _record(event, id) {
     const info = this.state.engagement
     if (!info) return
-    recordRoomEvent(this.ctx, this.env, event, id, info.attribution, { wasInvited: info.wasInvited })
+    const accepted = consentReceipt(info.consent)
+    recordRoomEvent(this.ctx, this.env, event, id, accepted ? info.attribution : { source: 'unattributed' }, { wasInvited: !!accepted && info.wasInvited })
+  }
+
+  _withdrawMeasurement(playerId) {
+    const info = this.state?.engagement
+    if (!info || info.attributionOwnerId !== playerId) return
+    info.consent = null
+    info.attribution = cleanAttribution({ source: 'unattributed' })
+    info.wasInvited = false
+    this._save().catch(() => {})
   }
 
   _observeMilestones() {

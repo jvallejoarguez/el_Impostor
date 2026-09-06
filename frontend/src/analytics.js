@@ -1,5 +1,6 @@
 import { cleanAttribution, cleanContext, CLIENT_EVENTS } from '../../shared/engagement.js'
 import { WORKER_BASE, APP_VERSION } from './config.js'
+import { consentReceipt } from '../../shared/consent.js'
 const PRODUCTION_ORIGIN = 'https://juegoimpostor.app'
 
 export function captureCampaign() {
@@ -8,21 +9,24 @@ export function captureCampaign() {
 }
 
 function acquisition() {
+  if (!measurementEnabled()) return {}
   try { return JSON.parse(sessionStorage.getItem('el-impostor-acquisition') || '{}') || {} } catch { return {} }
 }
 export function measurementEnabled() {
-  try { return navigator.doNotTrack !== '1' && !navigator.globalPrivacyControl && localStorage.getItem('el-impostor-measurement') !== 'off' } catch { return false }
+  try { return window.elImpostorConsent?.allowed() === true } catch { return false }
 }
+export function getMeasurementConsent() { return measurementEnabled() ? consentReceipt(window.elImpostorConsent.read()) : null }
 export function getAttribution() {
   const saved = acquisition()
-  return cleanAttribution(measurementEnabled() ? { ...saved.attribution, landing: saved.landing } : {})
+  return cleanAttribution(measurementEnabled() ? { ...saved.attribution, landing: saved.landing } : { source: 'unattributed' })
 }
 export function wasInvited() { return acquisition().invited === true }
 export function setMeasurementEnabled(enabled) {
-  try { localStorage.setItem('el-impostor-measurement', enabled ? 'on' : 'off') } catch {}
+  window.elImpostorConsent?.choose(enabled ? 'accepted' : 'rejected')
 }
 
 export function trackOnce(key, eventName, props) {
+  if (!measurementEnabled()) return
   try {
     const seen = JSON.parse(sessionStorage.getItem('el-impostor-events') || '[]')
     if (seen.includes(key)) return
@@ -69,7 +73,7 @@ export function clearInviteCodeFromUrl() {
 
 export function track(eventName, props = {}) {
   if (typeof window === 'undefined' || !CLIENT_EVENTS.has(eventName) || !measurementEnabled()) return
-  const event = { id: crypto.randomUUID(), event: eventName, attribution: getAttribution(), context: cleanContext({
+  const event = { id: crypto.randomUUID(), event: eventName, consent: getMeasurementConsent(), attribution: getAttribution(), context: cleanContext({
     path: acquisition().landing || window.location.pathname, version: APP_VERSION, wasInvited: wasInvited(), ...props,
   }) }
   const body = JSON.stringify(event)

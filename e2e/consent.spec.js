@@ -1,0 +1,66 @@
+import { test, expect } from '@playwright/test'
+
+const optionalKeys = page => page.evaluate(() => [...Object.keys(sessionStorage), ...Object.keys(localStorage)].filter(key => /acquisition|events|campaign|prompt-|measurement/.test(key)))
+const reject = page => page.getByRole('button', { name: 'Rechazar', exact: true }).click()
+const accept = page => page.getByRole('button', { name: 'Aceptar medición', exact: true }).click()
+
+test('static guide and app block measurement until consent, then withdraw across tabs', async ({ page, context }, info) => {
+  const events = []
+  await context.route('**/events', route => { events.push(route.request().postDataJSON()); return route.fulfill({status:200,body:'{}'}) })
+  await page.setViewportSize({width:390,height:844})
+  await page.goto('/palabras-para-el-impostor/animales/index.html?utm_source=instagram&utm_campaign=consent_browser')
+  await expect(page.getByRole('button', {name:'Aceptar medición',exact:true})).toBeVisible()
+  await page.screenshot({path:info.outputPath('consent-mobile.png'),fullPage:true})
+  expect(await optionalKeys(page)).toEqual([])
+  expect(events).toHaveLength(0)
+  await reject(page)
+  await page.goto('/?create=1&utm_source=instagram&utm_campaign=consent_browser')
+  await expect(page.getByLabel('Tu nombre', {exact:true})).toBeVisible()
+  expect(await optionalKeys(page)).toEqual([])
+  expect(events).toHaveLength(0)
+  await page.getByRole('button', {name:'Configurar medición',exact:true}).click()
+  await accept(page)
+  await expect.poll(() => events.filter(e => e.event === 'visit').length).toBe(1)
+  expect(events[0].consent.decision).toBe('accepted')
+  expect(events[0].attribution.campaign).toBe('consent_browser')
+  await page.reload()
+  await expect(page.getByLabel('Tu nombre', {exact:true})).toBeVisible()
+  expect(events.filter(e => e.event === 'visit')).toHaveLength(1)
+  const second = await context.newPage()
+  await second.goto('/privacidad/index.html')
+  await expect(second.getByRole('heading', {name:'Privacidad y cookies',exact:true})).toBeVisible()
+  await second.getByRole('button', {name:'Configurar medición',exact:true}).click()
+  await reject(second)
+  await expect.poll(() => optionalKeys(page)).toEqual([])
+  const before = events.length
+  await page.getByLabel('Tu nombre', {exact:true}).fill('Consent test')
+  const roomRequest = page.waitForRequest(request => request.method() === 'POST' && new URL(request.url()).pathname === '/rooms')
+  await page.getByRole('button', {name:'Crear sala →',exact:true}).click()
+  const roomUrl = new URL((await roomRequest).url())
+  expect(roomUrl.searchParams.has('consent')).toBe(false)
+  expect(roomUrl.searchParams.has('campaign')).toBe(false)
+  await expect(page.getByRole('button',{name:'＋ Invitar / QR'})).toBeVisible()
+  expect(events).toHaveLength(before)
+  expect(await optionalKeys(page)).toEqual([])
+  await second.close()
+})
+
+test('missing consent script and browser privacy signals fail closed', async ({ browser }) => {
+  for (const mode of ['missing','dnt','gpc']) {
+    const context = await browser.newContext()
+    const page = await context.newPage()
+    const events = []
+    await context.route('**/events', route => { events.push(route.request()); return route.fulfill({status:200,body:'{}'}) })
+    if (mode === 'missing') await context.route('http://localhost:3000/consent.js', route => route.abort())
+    else await context.addInitScript(signal => {
+      Object.defineProperty(navigator, signal === 'dnt' ? 'doNotTrack' : 'globalPrivacyControl', {value:signal === 'dnt' ? '1' : true})
+      localStorage.setItem('el-impostor-consent',JSON.stringify({version:1,decision:'accepted',at:Date.now()}))
+      sessionStorage.setItem('el-impostor-acquisition','{"attribution":{"campaign":"old"}}')
+    }, mode)
+    await page.goto('/?create=1&utm_campaign=blocked')
+    await expect(page.getByLabel('Tu nombre', {exact:true})).toBeVisible()
+    expect(events).toHaveLength(0)
+    expect(await optionalKeys(page)).toEqual([])
+    await context.close()
+  }
+})
