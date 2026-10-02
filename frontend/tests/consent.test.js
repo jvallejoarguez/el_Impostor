@@ -39,20 +39,55 @@ describe('prior consent shared by static pages and React', () => {
 
   it('withdraws and cancels pending visits; a late response cannot restore acquisition', async () => {
     const { api, values, sandbox } = setup()
-    let resolve
-    sandbox.fetch.mockImplementation(() => new Promise(r => { resolve = r }))
+    const pending = []
+    sandbox.fetch.mockImplementation(() => new Promise(r => { pending.push(r) }))
     runInNewContext(visitSource, sandbox)
     api.choose('accepted')
-    expect(sandbox.fetch).toHaveBeenCalledTimes(1)
+    expect(sandbox.fetch).toHaveBeenCalledTimes(2)
     const request = sandbox.fetch.mock.calls[0][1]
     expect(validMeasurementConsent(JSON.parse(request.body).consent)).toBe(true)
     expect(values.has('el-impostor-acquisition')).toBe(true)
     api.choose('rejected')
     expect(request.signal.aborted).toBe(true)
-    resolve({ ok: true })
+    for (const resolve of pending) resolve({ ok: true })
     await new Promise(r => setTimeout(r, 0))
     expect(values.has('el-impostor-acquisition')).toBe(false)
     expect(api.allowed()).toBe(false)
+  })
+
+  it('measures page views and coarse errors only after consent, excluding the admin panel', () => {
+    const { api, window, sandbox } = setup()
+    runInNewContext(visitSource, sandbox)
+    window.dispatchEvent({ type: 'error', message: 'SECRET_NAME', filename: 'https://private/?token=SECRET' })
+    expect(sandbox.fetch).not.toHaveBeenCalled()
+    api.choose('accepted')
+    for (let i = 0; i < 8; i++) window.dispatchEvent({ type: 'error', message: 'SECRET_NAME', error: { name: 'TypeError', stack: 'SECRET_STACK' }, filename: 'https://juegoimpostor.app/assets/index-ABC123.js?room=SECRET_ROOM', lineno: 42, colno: 123 })
+    const bodies = sandbox.fetch.mock.calls.map(([, options]) => JSON.parse(options.body))
+    expect(bodies.filter(e => e.event === 'page_view')).toHaveLength(1)
+    expect(bodies.filter(e => e.event === 'client_error')).toHaveLength(5)
+    expect(bodies.find(e => e.event === 'client_error').context).toMatchObject({ errorName: 'TypeError', script: 'app', line: 42, column: 123, version: 'connection-2026-10-03' })
+    expect(JSON.stringify(bodies)).not.toContain('SECRET')
+    api.choose('rejected')
+    window.dispatchEvent({ type: 'unhandledrejection' })
+    expect(sandbox.fetch).toHaveBeenCalledTimes(7)
+    const admin = setup()
+    admin.sandbox.location = new URL('https://juegoimpostor.app/admin-panel/')
+    admin.api.choose('accepted')
+    runInNewContext(visitSource, admin.sandbox)
+    expect(admin.sandbox.fetch).not.toHaveBeenCalled()
+  })
+
+  it('only reports allowlisted exception names and never sends rejection content or external URLs', () => {
+    const { api, window, sandbox } = setup()
+    runInNewContext(visitSource, sandbox)
+    api.choose('accepted')
+    window.dispatchEvent({ type: 'unhandledrejection', reason: { name: 'SECRET_WORD', message: 'SECRET_MESSAGE', stack: 'SECRET_STACK' } })
+    window.dispatchEvent({ type: 'error', filename: 'https://extension.example/SECRET.js', lineno: 12, colno: 50 })
+    const bodies = sandbox.fetch.mock.calls.map(([, options]) => JSON.parse(options.body)).filter(e => e.event === 'client_error')
+    expect(bodies[0].context.errorName).toBe('Unknown')
+    expect(bodies[1].context.script).toBe('external')
+    expect(bodies[1].context).not.toHaveProperty('line')
+    expect(JSON.stringify(bodies)).not.toContain('SECRET')
   })
 
   it('rejects expired, future and malformed saved choices and respects DNT and GPC', () => {

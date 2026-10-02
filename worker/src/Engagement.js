@@ -49,7 +49,10 @@ export class Engagement {
       if (isFeedback) {
         await storage.put(key, { ...value, receivedAt: new Date().toISOString() })
       } else {
-        const dimensions = { event: value.event, ...value.attribution, method: value.context.method || '', wasInvited: value.context.wasInvited === true }
+        const dimensions = { event: value.event, ...value.attribution, method: value.context.method || '', wasInvited: value.context.wasInvited === true,
+          ...(value.event === 'page_view' || value.event === 'client_error' ? { path: value.context.path || '/', phase: value.context.phase || '' } : {}),
+          ...(value.event === 'client_error' ? Object.fromEntries(['version', 'errorName', 'script', 'line', 'column'].filter(key => value.context[key] != null).map(key => [key, value.context[key]])) : {}),
+        }
         const counterKey = `count:${JSON.stringify(dimensions)}`
         const counter = await storage.get(counterKey) || { ...dimensions, count: 0 }
         await storage.put(counterKey, { ...counter, count: counter.count + 1 })
@@ -101,16 +104,7 @@ export async function handleEngagement(request, env, cors) {
     if (request.headers.get('Authorization') !== `Bearer ${token}`) return reply({ error: 'No autorizado.' }, 401)
     const days = Number(url.searchParams.get('days') || 7)
     if (!Number.isInteger(days) || days < 1 || days > RETENTION_DAYS) return reply({ error: 'days debe estar entre 1 y 30.' }, 400)
-    const reports = []
-    // Small batches stay below the Workers simultaneous outbound connection limit.
-    for (let offset = 0; offset < days; offset += 5) {
-      reports.push(...await Promise.all(Array.from({ length: Math.min(5, days - offset) }, async (_, i) => {
-        const day = dayKey(Date.now() - (offset + i) * DAY)
-        const response = await engagementStub(env, day).fetch('https://internal/report')
-        return { day, ...await response.json() }
-      })))
-    }
-    return reply({ retentionDays: RETENTION_DAYS, reports }, 200)
+    return reply(await readEngagementReport(env, days), 200)
   }
   if (!['/events', '/feedback'].includes(url.pathname) || request.method !== 'POST') return reply({ error: 'Not found' }, 404)
   const origins = (env.FRONTEND_ORIGINS || env.FRONTEND_ORIGIN || '').split(',').map(v => v.trim())
@@ -121,4 +115,20 @@ export async function handleEngagement(request, env, cors) {
     method: 'POST', body: JSON.stringify({ data, ip: request.headers.get('CF-Connecting-IP') || 'unknown' }),
   }))
   return new Response(response.body, { status: response.status, headers })
+}
+
+export async function readEngagementReport(env, days) {
+  if (!Number.isInteger(days) || days < 1 || days > RETENTION_DAYS) throw new Error('Invalid report period')
+  const reports = []
+  const now = Date.now()
+  // Pin the date once, including when the request crosses midnight.
+  for (let offset = 0; offset < days; offset += 5) {
+    reports.push(...await Promise.all(Array.from({ length: Math.min(5, days - offset) }, async (_, i) => {
+      const day = dayKey(now - (offset + i) * DAY)
+      const response = await engagementStub(env, day).fetch('https://internal/report')
+      if (!response.ok) throw new Error('Incomplete report')
+      return { day, ...await response.json() }
+    })))
+  }
+  return { retentionDays: RETENTION_DAYS, generatedAt: new Date(now).toISOString(), measurementVersion: 'admin-v1', reports }
 }

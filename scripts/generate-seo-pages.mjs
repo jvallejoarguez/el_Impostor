@@ -233,7 +233,7 @@ function head({ title, description, canonical, type = 'article', schema }) {
     <meta charset="UTF-8" />
     <link rel="stylesheet" href="/consent.css" />
     <script src="/consent.js" defer></script>
-    <script src="/visit.js?v=consent1" defer></script>
+    <script src="/visit.js?v=admin1" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${html(title)}</title>
     <meta name="description" content="${html(description)}" />

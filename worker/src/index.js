@@ -1,11 +1,13 @@
 // worker/src/index.js
 import { GameRoom } from './GameRoom.js'
-import { handleEngagement } from './Engagement.js'
+import { handleEngagement, recordRoomEvent } from './Engagement.js'
 import { cleanAttribution } from '../../shared/engagement.js'
 import { consentReceipt } from '../../shared/consent.js'
+import { handleAdmin } from './Admin.js'
 
 export { GameRoom }
 export { Engagement } from './Engagement.js'
+export { AdminAuth } from './Admin.js'
 
 const CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
 
@@ -37,8 +39,10 @@ function corsHeaders(request, env) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url)
+    // Private routes never inherit the public game's CORS policy.
+    if (url.pathname.startsWith('/admin-panel/api/')) return handleAdmin(request, env)
     const cors = corsHeaders(request, env)
 
     if (request.method === 'OPTIONS') {
@@ -52,31 +56,37 @@ export default {
 
     // POST /rooms — create a new room, return its code
     if (request.method === 'POST' && url.pathname === '/rooms') {
-      let code = null
-      for (let attempt = 0; attempt < 5; attempt++) {
-        const candidate = generateCode()
-        const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(candidate))
-        const res = await stub.fetch(new Request('http://internal/exists'))
-        const { active } = await res.json()
-        if (!active) {
-          // Claim immediately so a concurrent POST cannot pick the same code.
-          const category = encodeURIComponent(url.searchParams.get('category') || 'all')
-          let consent
-          try { consent = consentReceipt(JSON.parse(url.searchParams.get('consent'))) } catch {}
-          const attribution = new URLSearchParams(cleanAttribution(consent ? Object.fromEntries(url.searchParams) : { source: 'unattributed' }))
-          await stub.fetch(new Request(`http://internal/claim?code=${candidate}&category=${category}&${attribution}&wasInvited=${!!consent && url.searchParams.get('wasInvited') === 'true'}&consent=${encodeURIComponent(JSON.stringify(consent || null))}`))
-          code = candidate
-          break
+      try {
+        let code = null
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const candidate = generateCode()
+          const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(candidate))
+          const res = await stub.fetch(new Request('http://internal/exists'))
+          const { active } = await res.json()
+          if (!active) {
+            // Claim immediately so a concurrent POST cannot pick the same code.
+            const category = encodeURIComponent(url.searchParams.get('category') || 'all')
+            let consent
+            try { consent = consentReceipt(JSON.parse(url.searchParams.get('consent'))) } catch {}
+            const attribution = new URLSearchParams(cleanAttribution(consent ? Object.fromEntries(url.searchParams) : { source: 'unattributed' }))
+            await stub.fetch(new Request(`http://internal/claim?code=${candidate}&category=${category}&${attribution}&wasInvited=${!!consent && url.searchParams.get('wasInvited') === 'true'}&consent=${encodeURIComponent(JSON.stringify(consent || null))}`))
+            code = candidate
+            break
+          }
         }
-      }
-      if (!code) {
-        return new Response(JSON.stringify({ error: 'Could not generate room' }), {
-          status: 503, headers: { ...cors, 'Content-Type': 'application/json' },
+        if (!code) {
+          recordRoomEvent(ctx, env, 'server_error', crypto.randomUUID(), { source: 'unattributed' }, { method: 'room_capacity' })
+          return new Response(JSON.stringify({ error: 'Could not generate room' }), {
+            status: 503, headers: { ...cors, 'Content-Type': 'application/json' },
+          })
+        }
+        return new Response(JSON.stringify({ code }), {
+          status: 201, headers: { ...cors, 'Content-Type': 'application/json' },
         })
+      } catch {
+        recordRoomEvent(ctx, env, 'server_error', crypto.randomUUID(), { source: 'unattributed' }, { method: 'room_create_failed' })
+        return Response.json({ error: 'No se ha podido crear la sala. Inténtalo de nuevo.' }, { status: 503, headers: cors })
       }
-      return new Response(JSON.stringify({ code }), {
-        status: 201, headers: { ...cors, 'Content-Type': 'application/json' },
-      })
     }
 
     // GET /rooms/:code/ws — WebSocket upgrade, proxied to GameRoom DO
@@ -87,7 +97,11 @@ export default {
       }
       const code = wsMatch[1]
       const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(code))
-      return stub.fetch(request)
+      try { return await stub.fetch(request) }
+      catch {
+        recordRoomEvent(ctx, env, 'server_error', crypto.randomUUID(), { source: 'unattributed' }, { method: 'websocket_open_failed' })
+        return Response.json({ error: 'No se ha podido conectar.' }, { status: 503, headers: cors })
+      }
     }
 
     return new Response('Not Found', { status: 404, headers: cors })

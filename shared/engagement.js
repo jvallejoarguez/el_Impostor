@@ -4,10 +4,11 @@ export const CLIENT_EVENTS = new Set([
   'visit', 'create_intent', 'create_failed', 'join_attempt', 'join_failed',
   'invite_link_opened', 'share_invite', 'copy_room_code', 'qr_opened',
   'demo_guess', 'play_again_requested', 'new_group_intent', 'lobby_left',
-  'download_result_card', 'feedback_opened', 'rating_prompt_shown',
+  'download_result_card', 'feedback_opened', 'rating_prompt_shown', 'page_view', 'client_error',
 ])
 export const SERVER_EVENTS = new Set([
   'room_created', 'player_joined', 'group_ready', 'room_activated', 'game_started', 'game_finished', 'game_repeated',
+  'game_interrupted', 'server_error', 'join_rejected',
 ])
 export const FEEDBACK_KINDS = ['rating', 'problem', 'idea', 'words', 'exit']
 export const FEEDBACK_TOPICS = ['connection', 'rules', 'words', 'pace', 'missing_players', 'just_looking', 'other']
@@ -37,6 +38,11 @@ export function cleanContext(input = {}) {
   if (typeof input.wasInvited === 'boolean') result.wasInvited = input.wasInvited
   if (typeof input.correct === 'boolean') result.correct = input.correct
   if (typeof input.path === 'string' && /^\/[a-z0-9/-]{0,100}$/.test(input.path)) result.path = input.path
+  if (['Error', 'TypeError', 'ReferenceError', 'SyntaxError', 'RangeError', 'SecurityError', 'NotAllowedError', 'AbortError', 'NetworkError', 'InvalidStateError', 'QuotaExceededError', 'Unknown'].includes(input.errorName)) result.errorName = input.errorName
+  if (['app', 'visit', 'consent', 'external', 'unknown'].includes(input.script)) result.script = input.script
+  if (['app', 'visit', 'consent'].includes(result.script)) {
+    for (const key of ['line', 'column']) if (Number.isInteger(input[key]) && input[key] > 0 && input[key] <= 10000000) result[key] = input[key]
+  }
   return result
 }
 

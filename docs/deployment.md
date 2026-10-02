@@ -36,6 +36,28 @@ The Pages site is a static SPA. The browser opens a WebSocket directly to the wo
 
 ## Redeploy procedure
 
+### Panel de administración
+
+Correcciones del 3 de octubre de 2026: Worker `82741e9d-eb45-47fd-9ae8-d6ae10c5a04b`; Pages `https://0a8edff4.el-impostor-djf.pages.dev`, verificados en `juegoimpostor.app`. Versión de cliente `connection-2026-10-03`. Se evita el bucle de reconexión entre pestañas duplicadas, se da margen al heartbeat al volver de segundo plano y se reanuda al recuperar red. Los rechazos de entrada explican cómo actuar y envían un motivo explícito. El panel distingue las categorías de incidencias y muestra diagnósticos limitados para futuros errores JavaScript; los errores históricos no permiten reconstruir su causa.
+
+Validación: 95 pruebas unitarias y 10 escenarios de navegador, incluida partida de tres jugadores y regresiones de pestaña duplicada, suspensión y recuperación de red. Los dos primeros fallaban con el código anterior. Build y 22 páginas SEO verificados. En producción se comprobó acceso privado, lectura del informe, panel en escritorio y móvil, ausencia de errores JS y de medición en administración, assets sin secretos y revocación al cerrar sesión. No se crearon partidas, opiniones ni eventos de prueba en producción. Evidencia en `.local/admin-error-production-verification.json`; assets de esta versión para localizar posiciones de errores en `.local/admin-error-release-connection-2026-10-03/`.
+
+Publicado y verificado el 24 de septiembre de 2026 (reloj local): Worker `1a3c57ee-11fa-499d-8328-8f67fd684b47`; Pages `https://7e69a938.el-impostor-djf.pages.dev`. Dominio principal comprobado: login, informe de 30 días y feedback, rechazo 401 sin sesión en Pages y Worker, rechazo 403 de origen ajeno, cookie protegida, revocación al cerrar sesión, assets sin secretos y continuidad del informe de consola. Validación local: 91 pruebas unitarias y 7 escenarios de navegador (incluido el juego de tres jugadores). La comprobación de producción solo leyó métricas; no añadió partidas, opiniones ni eventos de prueba.
+
+La cabecera y el reloj de producción devolvían el 25 de septiembre durante esta comprobación; el panel muestra esa fecha UTC y advierte del desfase con el dispositivo. Evidencia local sin claves: `.local/admin-production-verification.json`.
+
+La migración `v3` añade `AdminAuth` sin modificar las salas. `functions/admin-panel/api/[[path]].js` se despliega con Pages desde la raíz del repositorio; no mover la ejecución de `wrangler pages deploy` a `frontend/`. El build de Vite genera una entrada independiente `admin-panel/index.html` sin scripts de consentimiento ni medición (el panel no mide navegación). La API privada tiene autenticación del lado del servidor y no comparte el CORS del juego.
+
+Configurar `ADMIN_PASSWORD` antes de publicar el panel. Usar la clave existente de `.local/admin-password`; no regenerarla en cada despliegue. El secreto no es `INSIGHTS_READ_TOKEN`. Ejemplo para guardar una clave ya creada y verificada:
+
+```bash
+npx wrangler secret put ADMIN_PASSWORD --config worker/wrangler.toml --env production < .local/admin-password
+npm run deploy:worker
+npm run deploy:frontend
+```
+
+La clave debe tener al menos 32 caracteres aleatorios, estar fuera de Git y tener permisos 0600. Rotarla invalida sesiones anteriores. Comprobar el login y logout en el dominio principal, el rechazo 401 del informe sin cookie y la ausencia de credenciales en assets. La configuración local de Playwright usa exclusivamente una clave de prueba. Para desarrollo manual, usar `.dev.vars` o `--var ADMIN_PASSWORD:...` con una clave local, nunca la de producción.
+
 Latest verified activation (2026-09-06): source `38a843b`; Worker version `a34bdb09-eda0-4df3-9cb9-136184bf12d0`; Pages deployment `https://22503182.el-impostor-djf.pages.dev`, served by the production custom domain. Migration `v2` and the private report secret are active. A real three-player game, feedback submission and authenticated report retrieval passed on the public deployment. Details and the technical test campaign are recorded in `docs/growth.md`.
 
 Always deploy the worker before the frontend. The frontend build inlines the worker URL, so the worker must exist (or its URL must be known) before the Pages build runs.

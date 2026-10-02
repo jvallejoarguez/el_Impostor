@@ -23,9 +23,12 @@ test('static guide and app block measurement until consent, then withdraw across
   await expect.poll(() => events.filter(e => e.event === 'visit').length).toBe(1)
   expect(events[0].consent.decision).toBe('accepted')
   expect(events[0].attribution.campaign).toBe('consent_browser')
+  // Wait for acknowledgement; reloading an in-flight visit legitimately retries its same ID.
+  await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem('el-impostor-acquisition') || '{}').sent)).toBe(true)
   await page.reload()
   await expect(page.getByLabel('Tu nombre', {exact:true})).toBeVisible()
   expect(events.filter(e => e.event === 'visit')).toHaveLength(1)
+  await expect.poll(() => events.filter(e => e.event === 'page_view').length).toBe(2)
   const second = await context.newPage()
   await second.goto('/privacidad/index.html')
   await expect(second.getByRole('heading', {name:'Privacidad y cookies',exact:true})).toBeVisible()

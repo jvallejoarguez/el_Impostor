@@ -15,7 +15,9 @@ function acquisition() {
 export function measurementEnabled() {
   try { return window.elImpostorConsent?.allowed() === true } catch { return false }
 }
-export function getMeasurementConsent() { return measurementEnabled() ? consentReceipt(window.elImpostorConsent.read()) : null }
+export function getMeasurementConsent() {
+  try { return measurementEnabled() ? consentReceipt(window.elImpostorConsent.read()) : null } catch { return null }
+}
 export function getAttribution() {
   const saved = acquisition()
   return cleanAttribution(measurementEnabled() ? { ...saved.attribution, landing: saved.landing } : { source: 'unattributed' })
@@ -73,14 +75,18 @@ export function clearInviteCodeFromUrl() {
 
 export function track(eventName, props = {}) {
   if (typeof window === 'undefined' || !CLIENT_EVENTS.has(eventName) || !measurementEnabled()) return
-  const event = { id: crypto.randomUUID(), event: eventName, consent: getMeasurementConsent(), attribution: getAttribution(), context: cleanContext({
-    path: acquisition().landing || window.location.pathname, version: APP_VERSION, wasInvited: wasInvited(), ...props,
-  }) }
-  const body = JSON.stringify(event)
   try {
-    if (navigator.sendBeacon?.(`${WORKER_BASE}/events`, new Blob([body], { type: 'text/plain' }))) return
-  } catch {}
-  fetch(`${WORKER_BASE}/events`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true, credentials: 'omit' }).catch(() => {})
+    const consent = getMeasurementConsent()
+    if (!consent) return
+    const event = { id: crypto.randomUUID(), event: eventName, consent, attribution: getAttribution(), context: cleanContext({
+      path: window.location.pathname, version: APP_VERSION, wasInvited: wasInvited(), ...props,
+    }) }
+    const body = JSON.stringify(event)
+    try {
+      if (navigator.sendBeacon?.(`${WORKER_BASE}/events`, new Blob([body], { type: 'text/plain' }))) return
+    } catch {}
+    fetch(`${WORKER_BASE}/events`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true, credentials: 'omit' }).catch(() => {})
+  } catch { /* Optional measurement must never break an action or reconnection. */ }
 }
 
 export async function sharePayload({ title, text, url }, props = {}) {

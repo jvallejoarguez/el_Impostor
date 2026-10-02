@@ -1,5 +1,31 @@
 # Medición, invitaciones y feedback
 
+## Panel privado de estadísticas
+
+Ruta: `https://juegoimpostor.app/admin-panel/`. Incluye resumen y actividad diaria, páginas visitadas y páginas de entrada (medidas distintas), partidas, interrupciones, errores desglosados y opiniones con búsqueda y filtro por tipo. Períodos de 7, 14 y 30 días, en UTC; el día actual es parcial. «Excluir pruebas identificadas» omite `source=verification`, `medium=qa` y campañas `activation_*` / `consent_check_*`. No identifica pruebas sin etiqueta ni filtra opiniones, que no tienen atribución.
+
+El acceso requiere la clave exclusiva `ADMIN_PASSWORD` (mínimo 32 caracteres aleatorios), independiente de `INSIGHTS_READ_TOKEN`. La copia local está en `.local/admin-password`, ignorada por Git y con permisos 0600. No poner ninguna de estas claves en variables `VITE_`, URLs, código del navegador o capturas. El login se comprueba en el Worker; Pages Functions solo hace de proxy del mismo origen. `AdminAuth` guarda resúmenes de sesiones aleatorias de 8 horas; cerrar sesión las revoca y cambiar la clave invalida todas. Cookie `Secure`, `HttpOnly`, `SameSite=Strict`; cinco intentos fallidos por origen de red y ventana de 15 minutos. Las sesiones y los límites tienen alarmas independientes de las del juego y Engagement. No se crea una cuenta de jugador.
+
+La ruta puede mostrar el formulario público de entrada, pero tanto `/admin-panel/api/report` como su URL directa en el Worker requieren sesión válida. El informe de consola sigue requiriendo su clave anterior. Las respuestas privadas llevan `no-store`; el panel tiene `noindex` y no recoge visitas ni errores de navegación.
+
+Medidas añadidas con el panel (sin reconstrucción histórica):
+
+| Evento | Fuente | Definición |
+|---|---|---|
+| `page_view` | Navegador, con consentimiento | Una carga de página mientras se acepta la medición, incluidas recargas. `path` es la página vista y `landing` conserva la entrada original. Sin parámetros ni rutas del panel. |
+| `client_error` | Navegador, con consentimiento | Tipos generales de error JavaScript, promesa rechazada o desconexión inesperada. No se envían mensajes, trazas ni contenido. Los errores globales se limitan a cinco por carga. |
+| `join_rejected` | Servidor | Entrada rechazada: datos inválidos, sala inexistente, partida en curso o sala llena. Sin atribución. |
+| `server_error` | Servidor | Fallo al crear sala o abrir conexión. Sin atribución. No es un registro exhaustivo de todas las excepciones. |
+| `game_interrupted` | Servidor | Primera vez que una partida ya iniciada queda sin ningún jugador conectado antes de resultados. Puede recuperarse y terminar después. No modifica fases ni temporizadores. |
+
+**No interpretar iniciadas menos terminadas como partidas fallidas.** Los totales no son una cohorte y una partida puede cruzar días. No sumar errores de navegador y rechazos del servidor como fallos únicos: pueden describir el mismo intento. Las partidas que alcanzan resultados por alarma también cuentan como terminadas; esto no demuestra presencia o interacción humana al finalizar.
+
+El panel usa la fecha UTC enviada por el servidor y avisa si difiere del dispositivo en más de diez minutos. Si una lectura diaria falla, devuelve un error completo en vez de mostrar datos parciales como totales.
+
+Desde `connection-2026-10-03`, los errores de JavaScript incluyen únicamente el nombre de excepción de una lista cerrada, la versión, una categoría fija de script (aplicación, medición, consentimiento, externo o desconocido) y posición numérica para scripts propios. No se guardan mensajes, trazas ni URLs. Estos detalles pasan por `shared/engagement.js`, tienen el mismo consentimiento, máximo de cinco errores por carga y retención de 30 días. El panel conserva los registros anteriores como «Sin detalle histórico» y separa errores de JavaScript, desconexiones, entradas fallidas y rechazos normales; no reconstruye causas que no se recogieron.
+
+Los nuevos rechazos de JOIN incluyen `payload.reason` (`invalid_join`, `room_not_found`, `game_in_progress` o `room_full`) además del mensaje. El navegador conserva ese motivo en `join_failed`. Una pestaña sustituida por otra del mismo jugador deja de reconectar automáticamente; la recuperación queda a una acción explícita del jugador. El watchdog espera al volver de segundo plano, y la reconexión espera a recuperar red o visibilidad.
+
 ## Qué incorpora
 
 - Invitación por WhatsApp con texto según el número de personas que faltan; QR generado localmente, sin servicio externo. Los enlaces llevan el código y la fuente, de modo que entrar no exige transcribirlo.

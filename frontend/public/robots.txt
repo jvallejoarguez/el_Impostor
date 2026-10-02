@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /admin-panel/
 
 Sitemap: https://juegoimpostor.app/sitemap.xml

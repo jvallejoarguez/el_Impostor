@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
-import { getInviteText, getInviteUrl, getNewGroupUrl, track, getAttribution, measurementEnabled } from '../src/analytics.js'
+import { getInviteText, getInviteUrl, getNewGroupUrl, track, getAttribution, measurementEnabled, getMeasurementConsent } from '../src/analytics.js'
 import { claimPrompt, submitFeedback } from '../src/feedback.js'
 
 const consent = () => ({ version: 1, decision: 'accepted', at: Date.now() })
@@ -13,6 +13,16 @@ const memory = () => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('growth flows', () => {
+  it('never throws into gameplay when consent access or the network API throws', () => {
+    vi.stubGlobal('window', { location: { pathname: '/' }, elImpostorConsent: { allowed: () => true, read: () => { throw Error('unavailable') } } })
+    expect(getMeasurementConsent()).toBeNull()
+    expect(() => track('join_failed', { method: 'timeout' })).not.toThrow()
+    vi.stubGlobal('window', { location: { pathname: '/' }, elImpostorConsent: consentApi })
+    vi.stubGlobal('navigator', { sendBeacon: () => { throw Error('blocked') } })
+    vi.stubGlobal('sessionStorage', memory())
+    vi.stubGlobal('fetch', () => { throw Error('blocked') })
+    expect(() => track('join_failed', { method: 'timeout' })).not.toThrow()
+  })
   it('creates usable room links, distinct QR attribution and result links without stale rooms', () => {
     vi.stubGlobal('window', { location: { origin: 'http://localhost:3000', hostname: 'localhost' } })
     const url = new URL(getInviteUrl('ab-cd', 'qr'))
@@ -77,13 +87,16 @@ describe('growth flows', () => {
     sandbox.location = new URL('https://juegoimpostor.app/?category=animales')
     sandbox.document.referrer = 'https://juegoimpostor.app/palabras-para-el-impostor/animales/'
     runInNewContext(source, sandbox)
-    expect(fetch).toHaveBeenCalledTimes(1)
+    const bodies = () => fetch.mock.calls.map(([, options]) => JSON.parse(options.body))
+    expect(bodies().filter(e => e.event === 'visit')).toHaveLength(1)
+    expect(bodies().filter(e => e.event === 'page_view').map(e => e.context.path)).toEqual(['/palabras-para-el-impostor/animales/', '/'])
     const saved = JSON.parse(sessionStorage.getItem('el-impostor-acquisition'))
     expect(saved.attribution).toMatchObject({ source: 'instagram', content: 'clip01' })
     expect(saved.landing).toBe('/palabras-para-el-impostor/animales/')
     sandbox.location = new URL('https://juegoimpostor.app/?room=ABCD&utm_source=qr&utm_medium=invite&utm_campaign=room')
     runInNewContext(source, sandbox)
     expect(JSON.parse(sessionStorage.getItem('el-impostor-acquisition')).invited).toBe(true)
-    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(bodies().filter(e => e.event === 'visit')).toHaveLength(2)
+    expect(bodies().filter(e => e.event === 'page_view')).toHaveLength(3)
   })
 })

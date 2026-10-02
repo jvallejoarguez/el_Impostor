@@ -33,6 +33,18 @@ async function trio() {
 }
 
 describe('room flow and private roles', () => {
+  it('records a single interruption when a started game empties, without changing game timers or exposing metadata', async () => {
+    const { room, players, send, ctx } = await trio()
+    const record = vi.spyOn(room, '_record')
+    await send(players[0], 'START_GAME')
+    await room.alarm(); await room.alarm()
+    const alarms = ctx.storage.setAlarm.mock.calls.length
+    for (const ws of players) await room.webSocketClose(ws)
+    room._broadcast()
+    expect(record.mock.calls.filter(([event]) => event === 'game_interrupted')).toHaveLength(1)
+    expect(ctx.storage.setAlarm).toHaveBeenCalledTimes(alarms)
+    expect(room._publicState()).not.toHaveProperty('engagement')
+  })
   it('only the creator can withdraw campaign attribution and it stays removed after reconnect', async () => {
     const { room, players, send, join } = await trio()
     const consent = {version:1,decision:'accepted',at:Date.now()}
@@ -187,7 +199,8 @@ describe('room flow and private roles', () => {
     expect(messages(invalid, 'ERROR').at(-1).payload.message).toContain('2 a 16')
     await send(players[0], 'START_GAME')
     const late = await join('late', 'Diego')
-    expect(messages(late, 'ERROR').at(-1).payload.message).toContain('Partida en curso')
+    expect(messages(late, 'ERROR').at(-1).payload).toMatchObject({ reason: 'game_in_progress' })
+    expect(messages(late, 'ERROR').at(-1).payload.message).toContain('sala de espera')
     room._broadcast()
     expect(messages(invalid, 'STATE')).toHaveLength(0)
     expect(messages(late, 'STATE')).toHaveLength(0)

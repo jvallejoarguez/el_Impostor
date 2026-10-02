@@ -267,14 +267,16 @@ export class GameRoom {
   async _handleJoin(ws, { name, code, playerId, avatarId, attribution, wasInvited, consent }) {
     if (typeof playerId !== 'string' || !playerId || playerId.length > 100 ||
         typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 16) {
-      ws.send(JSON.stringify({ type: 'ERROR', payload: { message: 'Escribe un nombre de 2 a 16 caracteres.' } }))
+      this._recordJoinRejected('invalid_join')
+      ws.send(JSON.stringify({ type: 'ERROR', payload: { reason: 'invalid_join', message: 'Escribe un nombre de 2 a 16 caracteres.' } }))
       ws.close(1008, 'invalid_join')
       return
     }
     name = name.trim()
     // Reject join for unclaimed rooms — only POST /rooms creates a room.
     if (!this.state) {
-      ws.send(JSON.stringify({ type: 'ERROR', payload: { message: 'Sala no encontrada' } }))
+      this._recordJoinRejected('room_not_found')
+      ws.send(JSON.stringify({ type: 'ERROR', payload: { reason: 'room_not_found', message: 'Sala no encontrada. Comprueba el código o pide una nueva invitación al anfitrión.' } }))
       ws.close()
       return
     }
@@ -299,12 +301,14 @@ export class GameRoom {
 
     // New player
     if (this.state.phase !== 'lobby') {
-      ws.send(JSON.stringify({ type: 'ERROR', payload: { message: 'Partida en curso, no puedes unirte' } }))
+      this._recordJoinRejected('game_in_progress')
+      ws.send(JSON.stringify({ type: 'ERROR', payload: { reason: 'game_in_progress', message: 'La partida ya ha empezado. Si ya estabas jugando, vuelve a la pestaña original. Si eres nuevo, pide al anfitrión que vuelva a la sala de espera al terminar.' } }))
       ws.close()
       return
     }
     if (this.state.players.filter(p => p.connected).length >= this.state.rules.maxPlayers) {
-      ws.send(JSON.stringify({ type: 'ERROR', payload: { message: 'Sala llena' } }))
+      this._recordJoinRejected('room_full')
+      ws.send(JSON.stringify({ type: 'ERROR', payload: { reason: 'room_full', message: 'Sala llena. Pide al anfitrión que amplíe las plazas en la sala de espera.' } }))
       ws.close()
       return
     }
@@ -531,6 +535,10 @@ export class GameRoom {
     recordRoomEvent(this.ctx, this.env, event, id, accepted ? info.attribution : { source: 'unattributed' }, { wasInvited: !!accepted && info.wasInvited })
   }
 
+  _recordJoinRejected(reason) {
+    recordRoomEvent(this.ctx, this.env, 'join_rejected', crypto.randomUUID(), { source: 'unattributed' }, { method: reason })
+  }
+
   _withdrawMeasurement(playerId) {
     const info = this.state?.engagement
     if (!info || info.attributionOwnerId !== playerId) return
@@ -543,6 +551,14 @@ export class GameRoom {
   _observeMilestones() {
     const info = this.state.engagement
     if (!info) return // Existing rooms remain playable after deploying this version.
+    // An interruption is an observed empty room, not an inferred failed game.
+    // It can later recover; keep it separate from finished-game counts.
+    if (this.state.gameId && info.startedGame === this.state.gameId &&
+        !['lobby', 'results'].includes(this.state.phase) &&
+        !this.state.players.some(p => p.connected) && info.interruptedGame !== this.state.gameId) {
+      info.interruptedGame = this.state.gameId
+      this._record('game_interrupted', this.state.gameId)
+    }
     if (!info.groupReady && this.state.players.filter(p => p.connected).length >= 3) {
       info.groupReady = true
       this._record('group_ready', info.id)

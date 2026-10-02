@@ -28,6 +28,7 @@ export function useGameSocket() {
   const retriesRef = useRef(0)
   const hadStateRef = useRef(false)
   const openRef = useRef(null)
+  const resumeRef = useRef(null)
 
   const stopTimers = useCallback(() => {
     Object.values(timersRef.current).forEach(clearTimeout)
@@ -42,8 +43,13 @@ export function useGameSocket() {
 
   const send = useCallback((type, payload = {}) => {
     if (wsRef.current?.readyState !== WebSocket.OPEN) return false
-    wsRef.current.send(JSON.stringify({ type, payload }))
-    return true
+    try {
+      wsRef.current.send(JSON.stringify({ type, payload }))
+      return true
+    } catch {
+      try { wsRef.current?.close() } catch {}
+      return false
+    }
   }, [])
 
   const disconnect = useCallback(() => {
@@ -70,7 +76,13 @@ export function useGameSocket() {
     setConnectionState(hadStateRef.current ? 'reconnecting' : 'connecting')
 
     const ping = () => {
-      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'PING', payload: { clientSentAt: performance.now() } }))
+      if (wsRef.current === ws) send('PING', { clientSentAt: performance.now() })
+    }
+    resumeRef.current = () => {
+      // Mobile browsers can suspend timers and messages while backgrounded.
+      // Start a fresh grace period before judging a resumed socket stale.
+      lastMessageAt = performance.now()
+      ping()
     }
 
     // Includes opening the socket and waiting for JOIN to be accepted.
@@ -84,10 +96,11 @@ export function useGameSocket() {
     ws.onopen = () => {
       if (wsRef.current !== ws) return
       const consent = getMeasurementConsent()
-      ws.send(JSON.stringify({ type: 'JOIN', payload: { ...connection, playerId: myId, ...(consent ? { consent, attribution: getAttribution(), wasInvited: wasInvited() } : {}) } }))
+      if (!send('JOIN', { ...connection, playerId: myId, ...(consent ? { consent, attribution: getAttribution(), wasInvited: wasInvited() } : {}) })) return
       ping()
       timersRef.current.heartbeat = setInterval(ping, 20000)
       timersRef.current.watchdog = setInterval(() => {
+        if (document.visibilityState !== 'visible') return
         if (performance.now() - lastMessageAt > 35000) ws.close()
       }, 5000)
     }
@@ -117,7 +130,8 @@ export function useGameSocket() {
       } else if (msg.type === 'ERROR') {
         setLastError(msg.payload?.message || 'No se ha podido entrar en la sala.')
         if (!joined) {
-          track('join_failed', { method: 'rejected' })
+          const reason = msg.payload?.reason
+          track('join_failed', { method: ['room_not_found', 'game_in_progress', 'room_full', 'invalid_join'].includes(reason) ? reason : 'rejected' })
           connectionRef.current = null
           stopTimers()
           closeSocket()
@@ -128,14 +142,27 @@ export function useGameSocket() {
       }
     }
 
-    ws.onclose = () => {
+    ws.onclose = event => {
       if (wsRef.current !== ws) return
       stopTimers()
       wsRef.current = null
       if (!connectionRef.current) return
+      if (event.code === 1000 && event.reason === 'replaced') {
+        // Duplicating a tab copies sessionStorage, including the player ID.
+        // Only an explicit retry should take control back from that tab.
+        connectionRef.current = null
+        setGameState(null)
+        setMyRole(null)
+        setLastError('Tu jugador está conectado en otra pestaña. Continúa allí o pulsa Reintentar conexión para volver aquí.')
+        setConnectionState('failed')
+        return
+      }
+      if (joined) track('client_error', { method: 'socket_disconnected' })
       setConnectionState('reconnecting')
       const delay = Math.min(300 * (2 ** retriesRef.current++), 8000)
-      timersRef.current.retry = setTimeout(() => openRef.current(), delay)
+      if (navigator.onLine !== false && document.visibilityState === 'visible') {
+        timersRef.current.retry = setTimeout(() => openRef.current(), delay)
+      }
     }
     ws.onerror = () => { try { ws.close() } catch {} }
   }
@@ -159,13 +186,16 @@ export function useGameSocket() {
     window.addEventListener('el-impostor:consent-change', onConsent)
     const onVisible = () => {
       if (document.visibilityState !== 'visible' || !connectionRef.current) return
-      if (wsRef.current?.readyState === WebSocket.OPEN) send('PING', { clientSentAt: performance.now() })
-      else openRef.current()
+      if (navigator.onLine === false) return
+      if (wsRef.current?.readyState === WebSocket.OPEN) resumeRef.current?.()
+      else if (wsRef.current?.readyState !== WebSocket.CONNECTING) openRef.current()
     }
     document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('online', onVisible)
     return () => {
       window.removeEventListener('el-impostor:consent-change', onConsent)
       document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('online', onVisible)
       connectionRef.current = null
       stopTimers()
       closeSocket()

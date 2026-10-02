@@ -1,0 +1,57 @@
+import { test, expect } from '@playwright/test'
+
+const password = 'local-browser-admin-test-only-key-32-characters'
+
+test('admin requires a private session, handles filters safely and revokes access on logout', async ({ page, request }, testInfo) => {
+  const unauthenticated = await request.get('/admin-panel/api/report?days=1')
+  expect(unauthenticated.status()).toBe(401)
+  const requests = []
+  page.on('request', req => { if (req.url().includes('/events')) requests.push(req.url()) })
+  const errors = []
+  page.on('pageerror', error => errors.push(error.message))
+  await page.goto('/admin-panel/')
+  await expect(page.getByLabel('Clave privada')).toBeVisible()
+  expect(await page.locator('.metric').count()).toBe(0)
+  await page.getByLabel('Clave privada').fill('incorrecta')
+  await page.getByRole('button', { name: 'Entrar al panel' }).click()
+  await expect(page.getByRole('alert')).toContainText('Clave incorrecta')
+  await page.getByLabel('Clave privada').fill(password)
+  await page.getByRole('button', { name: 'Entrar al panel' }).click()
+  await expect(page.getByRole('heading', { name: 'Resumen', exact: true })).toBeVisible()
+  await expect(page.locator('.metric')).toHaveCount(6)
+  const cookie = (await page.context().cookies()).find(c => c.name === 'impostor-admin-local')
+  expect(cookie.httpOnly).toBe(true)
+  expect(cookie.sameSite).toBe('Strict')
+  expect(await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }))).not.toContain(password)
+  await page.getByRole('combobox', { name: 'Período', exact: true }).selectOption('7')
+  await expect(page.getByRole('button', { name: '↻ Actualizar' })).toBeEnabled()
+  await page.getByLabel('Excluir pruebas identificadas').uncheck()
+  await page.screenshot({ path: testInfo.outputPath('admin-desktop.png'), fullPage: true })
+  await page.getByRole('button', { name: /Páginas/ }).click()
+  await expect(page.getByRole('heading', { name: 'Páginas visitadas' })).toBeVisible()
+  await page.getByRole('button', { name: /Partidas y errores/ }).click()
+  await expect(page.getByRole('heading', { name: 'Errores y entradas fallidas' })).toBeVisible()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.screenshot({ path: testInfo.outputPath('admin-mobile.png'), fullPage: true })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.getByRole('button', { name: /Opiniones/ }).click()
+  await expect(page.getByRole('heading', { name: 'Feedback de los jugadores' })).toBeVisible()
+  await page.getByRole('button', { name: 'Cerrar sesión' }).click()
+  await expect(page.getByLabel('Clave privada')).toBeVisible()
+  expect((await page.request.get('/admin-panel/api/report')).status()).toBe(401)
+  expect(requests).toEqual([])
+  expect(errors).toEqual([])
+})
+
+test('feedback is rendered as text and an expired session clears the report', async ({ page }) => {
+  const comment = '<img src=x onerror=alert(1)> opinión literal'
+  await page.route('**/admin-panel/api/session', route => route.fulfill({ json: { authenticated: true } }))
+  await page.route('**/admin-panel/api/report?**', route => route.fulfill({ json: { retentionDays: 30, generatedAt: new Date().toISOString(), reports: [{ day: '2026-09-24', counters: [], feedback: [{ id: 'safe', kind: 'problem', topic: 'connection', comment, context: { phase: 'playing' }, receivedAt: '2026-09-24T10:00:00Z' }] }] } }))
+  await page.goto('/admin-panel/')
+  await expect(page.getByText(comment, { exact: true })).toBeVisible()
+  expect(await page.locator('.feedback-item img').count()).toBe(0)
+  await page.route('**/admin-panel/api/report?**', route => route.fulfill({ status: 401, json: { error: 'Caducada' } }))
+  await page.getByRole('button', { name: '↻ Actualizar' }).click()
+  await expect(page.getByLabel('Clave privada')).toBeVisible()
+  await expect(page.getByText(comment, { exact: true })).toHaveCount(0)
+})

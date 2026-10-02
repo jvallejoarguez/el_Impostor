@@ -33,6 +33,20 @@ function setup() {
 const event = () => ({ consent: { version: 1, decision: 'accepted', at: Date.now() }, id: crypto.randomUUID(), event: 'visit', attribution: { source: 'instagram', campaign: 'impostor', content: 'clip01' }, context: { path: '/' } })
 
 describe('engagement ingestion and private reports', () => {
+  it('stores bounded diagnostics without messages, stacks or arbitrary error names', async () => {
+    const { post, report } = setup()
+    for (const context of [
+      { method: 'script_error', version: 'connection-2026-10-03', errorName: 'TypeError', script: 'app', line: 42, column: 123, message: 'SECRET_MESSAGE', stack: 'SECRET_STACK', filename: 'SECRET_URL' },
+      { method: 'unhandled_rejection', errorName: 'SECRET_WORD', script: 'SECRET_SCRIPT', line: 12, column: 50 },
+      { method: 'script_error', errorName: 'SecurityError', script: 'app', line: -1, column: 10000001 },
+    ]) expect((await post('/events', { ...event(), event: 'client_error', context })).status).toBe(200)
+    const data = await report()
+    const rows = data.reports[0].counters
+    expect(rows.find(row => row.errorName === 'TypeError')).toMatchObject({ script: 'app', line: 42, column: 123, version: 'connection-2026-10-03' })
+    expect(rows.find(row => row.errorName === 'SecurityError')).not.toHaveProperty('line')
+    expect(rows.find(row => row.method === 'unhandled_rejection')).not.toHaveProperty('column')
+    expect(JSON.stringify(data)).not.toContain('SECRET')
+  })
   it('rejects missing, rejected, expired and future consent before storing events', async () => {
     const { post, objects } = setup()
     for (const consent of [undefined, {version:1,decision:'rejected',at:Date.now()}, {version:1,decision:'accepted',at:1}, {version:1,decision:'accepted',at:Date.now()+60000}]) {
@@ -87,6 +101,14 @@ describe('engagement ingestion and private reports', () => {
     expect((await worker.fetch(new Request('https://worker/insights/report?days=31', { headers: { Authorization: `Bearer ${env.INSIGHTS_READ_TOKEN}` } }), env)).status).toBe(400)
     delete env.INSIGHTS_READ_TOKEN
     expect((await worker.fetch(new Request('https://worker/insights/report'), env)).status).toBe(503)
+  })
+
+  it('retains the current page separately from acquisition and rejects forged operational events', async () => {
+    const { post, report } = setup()
+    const data = { ...event(), event: 'page_view', attribution: { landing: '/como-jugar/' }, context: { path: '/palabras-para-el-impostor/' } }
+    expect((await post('/events', data)).status).toBe(200)
+    expect((await report()).reports[0].counters[0]).toMatchObject({ landing: '/como-jugar/', path: '/palabras-para-el-impostor/', event: 'page_view' })
+    for (const name of ['game_interrupted', 'server_error', 'join_rejected']) expect((await post('/events', { ...event(), event: name })).status).toBe(400)
   })
 
   it('limits public feedback spam without consuming the trusted game event allowance', async () => {

@@ -67,6 +67,8 @@ el-impostor/
 
 Growth instrumentation and private feedback live in `worker/src/Engagement.js`; setup, definitions and retention are in `docs/growth.md`. Its alarms are separate from game-room alarms. Never broadcast the private `engagement` room metadata or accept server milestone events from clients. Browser events and feedback must use the allowlisted fields in `shared/engagement.js`, not a spread of game state. The report requires the server-only `INSIGHTS_READ_TOKEN` secret.
 
+Private statistics live at `/admin-panel/` (separate Vite entry). `worker/src/Admin.js` enforces owner sessions using server-only `ADMIN_PASSWORD` and the `AdminAuth` Durable Object; Pages Functions proxy only the fixed admin API paths. Never expose either secret in frontend code or URLs. No admin telemetry. Page views require consent and preserve `path` separately from `landing`. `game_interrupted` is recoverable and is not an inferred failed game; never subtract activity totals to label failures. See `docs/growth.md` and `docs/deployment.md`.
+
 1. **Privacy:** `impostorIdx`, `secretWord`, `hint` are NEVER sent in public `STATE` broadcasts.
    They travel only in private `ROLE` WebSocket messages to individual players.
 2. **Server-authoritative:** All game state transitions happen in `GameRoom.js` by calling
