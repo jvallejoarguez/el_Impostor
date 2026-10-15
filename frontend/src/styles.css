@@ -230,6 +230,7 @@ summary { cursor: pointer; font-weight: 800; padding: 10px 0; }
 /* Role reveal: the one big moment */
 .reveal { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; overflow: hidden; text-align: center; color: var(--ink); }
 .reveal.is-impostor { background: var(--red); color: var(--paper); }
+body:has(.reveal) .consent-footer { display: none; }
 .reveal.is-crew { background: var(--teal); }
 .reveal-rays { position: absolute; width: 220vmax; height: 220vmax; left: 50%; top: 50%; margin: -110vmax 0 0 -110vmax; background: repeating-conic-gradient(#FFFFFF2E 0 9deg, #FFFFFF00 9deg 18deg); animation: rays 24s linear infinite; pointer-events: none; }
 .reveal > :not(.reveal-rays) { position: relative; }

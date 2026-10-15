@@ -34,6 +34,7 @@ describe('entry and session recovery', () => {
     expect(entryFromUrl('?room=ABCD', saved)).toMatchObject({screen:'lobby', resume:true})
     expect(entryFromUrl('?room=EFGH', saved)).toMatchObject({screen:'join', code:'EFGH', resume:false})
     expect(entryFromUrl('?category=animales', saved)).toMatchObject({screen:'create', category:'animales', resume:false})
+    expect(entryFromUrl('?modo=un-movil', saved)).toMatchObject({screen:'local', resume:false})
     expect(entryFromUrl('?category=unknown', saved)).toMatchObject({screen:'create', category:'all'})
     expect(entryFromUrl('?create=1', saved)).toMatchObject({screen:'create', resume:false})
     expect(entryFromUrl('?sala=abcd', null)).toMatchObject({screen:'join', code:'ABCD'})

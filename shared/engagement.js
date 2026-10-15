@@ -4,7 +4,7 @@ export const CLIENT_EVENTS = new Set([
   'visit', 'create_intent', 'create_failed', 'join_attempt', 'join_failed',
   'invite_link_opened', 'share_invite', 'copy_room_code', 'qr_opened',
   'play_again_requested', 'new_group_intent', 'lobby_left',
-  'feedback_opened', 'rating_prompt_shown', 'page_view', 'client_error',
+  'feedback_opened', 'rating_prompt_shown', 'page_view', 'client_error', 'one_phone_started',
 ])
 export const SERVER_EVENTS = new Set([
   'room_created', 'player_joined', 'group_ready', 'room_activated', 'game_started', 'game_finished', 'game_repeated',
@@ -12,7 +12,7 @@ export const SERVER_EVENTS = new Set([
 ])
 export const FEEDBACK_KINDS = ['rating', 'problem', 'idea', 'words', 'exit']
 export const FEEDBACK_TOPICS = ['connection', 'rules', 'words', 'pace', 'missing_players', 'just_looking', 'other']
-export const PHASES = ['home', 'create', 'join', 'connecting', 'lobby', 'countdown', 'roleReveal', 'playing', 'roundReview', 'betweenRound', 'voting', 'results']
+export const PHASES = ['home', 'create', 'join', 'local', 'connecting', 'lobby', 'countdown', 'roleReveal', 'playing', 'roundReview', 'betweenRound', 'voting', 'results']
 const label = value => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(value) ? value : ''
 const uuid = value => typeof value === 'string' && /^[a-f0-9-]{36}$/i.test(value) ? value : ''
 

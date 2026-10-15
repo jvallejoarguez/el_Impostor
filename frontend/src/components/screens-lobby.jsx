@@ -121,4 +121,4 @@ function CountdownScreen({ timerEnd }) {
   );
 }
 
-export { LobbyScreen, CountdownScreen }
+export { LobbyScreen, CountdownScreen, CategoryPicker, RuleStepper }
