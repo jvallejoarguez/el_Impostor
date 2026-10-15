@@ -5,6 +5,8 @@ import path from 'node:path'
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const PUBLIC_DIR = path.join(ROOT, 'frontend', 'public')
 const WORDS_PATH = path.join(ROOT, 'worker', 'src', 'words.json')
+// Hand-edited clue ideas per secret word: { related: [10–12], hint: why the hint fits, bluffs: [3] }.
+const RELATED_PATH = path.join(ROOT, 'scripts', 'related-words.json')
 const BASE_URL = 'https://juegoimpostor.app'
 const LAST_MODIFIED = '2026-10-15'
 // Home and the two guides gained crawlable copy and head fixes on this date.
@@ -216,6 +218,16 @@ const categories = [
 
 const difficultyFor = (index) => index < 7 ? 'Fácil' : index < 14 ? 'Media' : 'Difícil'
 const difficultyClass = (difficulty) => difficulty === 'Fácil' ? 'easy' : difficulty === 'Media' ? 'medium' : 'hard'
+const slugify = (value) => value.normalize('NFD').replace(/[\u0300-\u036f'’]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+const wordPath = (category, word) => `/palabras-para-el-impostor/${category.slug}/${slugify(word.word)}/`
+
+// Common nouns read lowercase mid-sentence ("palabras relacionadas con glaciar"); names keep their capitals.
+const COMMON_NOUN_CATEGORIES = new Set(['animales', 'comida', 'lugares', 'objetos', 'naturaleza', 'cultura', 'profesiones', 'deportes', 'ficcion', 'ciencia', 'emociones'])
+const PROPER_NOUNS = new Set(['Navidad', 'Carnaval', 'Día de Muertos', 'ADN', 'Saturno'])
+const COMMON_NOUNS = new Set(['Reguetón', 'Salsa', 'Bachata', 'Bossa nova', 'Penalti', 'Panenka', 'Falso nueve', 'Gol olímpico', 'Chilena', 'Tiki-taka'])
+const inSentence = (word) => (COMMON_NOUN_CATEGORIES.has(word.category) && !PROPER_NOUNS.has(word.word)) || COMMON_NOUNS.has(word.word)
+  ? word.word.toLocaleLowerCase('es')
+  : word.word
 
 function html(value) {
   return String(value)
@@ -323,7 +335,7 @@ function categoryPage(category, words) {
   const rows = enriched.map((word, index) => `
               <tr>
                 <td class="row-number">${index + 1}</td>
-                <th scope="row">${html(word.word)}</th>
+                <th scope="row"><a href="${wordPath(category, word)}">${html(word.word)}</a></th>
                 <td><span class="hint-chip">${html(word.hint)}</span></td>
                 <td><span class="difficulty ${difficultyClass(word.difficulty)}">${word.difficulty}</span></td>
               </tr>`).join('')
@@ -369,7 +381,7 @@ function categoryPage(category, words) {
 
       <section class="section prose">
         <h2>Lista de palabras y pistas sutiles</h2>
-        <p>La dificultad aumenta de forma gradual. La pista es la ayuda opcional que puede ver el impostor si el anfitrión activa esa regla; también sirve como ejemplo del nivel de sutileza que buscamos.</p>
+        <p>La dificultad aumenta de forma gradual. La pista es la ayuda opcional que puede ver el impostor si el anfitrión activa esa regla; también sirve como ejemplo del nivel de sutileza que buscamos. Pulsa una palabra para ver más pistas relacionadas con ella.</p>
         <div class="table-wrap">
           <table class="words-table">
             <caption>Palabras ${html(category.phrase)} ordenadas por dificultad</caption>
@@ -603,7 +615,7 @@ function levelPage(slug, wordsByCategory) {
   }
   const rows = picked.map((word) => `
               <tr>
-                <th scope="row">${html(word.word)}</th>
+                <th scope="row"><a href="${wordPath(word.category, word)}">${html(word.word)}</a></th>
                 <td><span class="hint-chip">${html(word.hint)}</span></td>
                 <td><a href="/palabras-para-el-impostor/${word.category.slug}/">${html(word.category.label)}</a></td>
               </tr>`).join('')
@@ -863,6 +875,111 @@ function streamPage() {
 `
 }
 
+// One page per secret word: "palabras relacionadas con glaciar para jugar al impostor".
+function wordPage(category, words, index, clues) {
+  const word = words[index]
+  const name = inSentence(word)
+  const categoryPath = `/palabras-para-el-impostor/${category.slug}/`
+  const canonical = `${BASE_URL}${wordPath(category, word)}`
+  const title = `Palabras relacionadas con ${name} para jugar al impostor`
+  const quoted = (items) => items.map((item) => `«${item}»`)
+  const description = `${clues.related.length} pistas para ${name} en el juego del impostor, como ${quoted(clues.related.slice(0, 3)).join(', ')}. Con la pista del impostor explicada y tres faroles si no sabes la palabra.`
+  const siblings = [1, 2, 3, 4].map((step) => words[(index + step) % words.length])
+  const schema = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'El Impostor', item: `${BASE_URL}/` },
+          { '@type': 'ListItem', position: 2, name: 'Palabras para El Impostor', item: `${BASE_URL}/palabras-para-el-impostor/` },
+          { '@type': 'ListItem', position: 3, name: category.label, item: `${BASE_URL}${categoryPath}` },
+          { '@type': 'ListItem', position: 4, name: word.word, item: canonical },
+        ],
+      },
+      {
+        '@type': 'Article',
+        headline: title,
+        description,
+        url: canonical,
+        inLanguage: 'es',
+        dateModified: LAST_MODIFIED,
+        isPartOf: { '@type': 'WebSite', name: 'El Impostor', url: `${BASE_URL}/` },
+        author: { '@type': 'Organization', name: 'El Impostor' },
+      },
+    ],
+  }
+  const related = clues.related.map((item) => `
+          <li>${html(item)}</li>`).join('')
+  const siblingLinks = siblings.map((item) => `<a class="topic-link" href="${wordPath(category, item)}">${html(item.word)}</a>`).join('')
+  const play = category.label.toLocaleLowerCase('es')
+
+  return `<!DOCTYPE html>
+<html lang="es">
+  <head>${head({ title, description, canonical, schema })}
+  </head>
+  <body>
+    ${siteHeader()}
+    <main class="wrap">
+      <nav class="breadcrumbs" aria-label="Migas de pan">
+        <a href="/">Inicio</a><span aria-hidden="true">/</span>
+        <a href="/palabras-para-el-impostor/">Palabras</a><span aria-hidden="true">/</span>
+        <a href="${categoryPath}">${html(category.label)}</a><span aria-hidden="true">/</span>
+        <span aria-current="page">${html(word.word)}</span>
+      </nav>
+
+      <section class="hero compact-hero">
+        <span class="eyebrow">${html(category.label)} · ${difficultyFor(index)}</span>
+        <h1>${html(title)}</h1>
+        <p class="lead">Te ha tocado ${html(name)} y no sabes qué decir. Estas pistas demuestran que conoces la palabra sin ponérselo fácil al impostor.</p>
+        <div class="cta-row">
+          <a class="btn primary" href="/?category=${encodeURIComponent(category.id)}">Jugar con ${html(play)}</a>
+          <a class="btn" href="${categoryPath}">Ver las 20 palabras</a>
+        </div>
+      </section>
+
+      <section class="section prose">
+        <h2>${clues.related.length} palabras relacionadas con ${html(name)}</h2>
+        <p>Van de la más evidente a la más sutil. Elige una que nadie haya dicho todavía: en la primera ronda, cuanto más sutil, mejor; si te acusan, guarda una más clara para defenderte.</p>
+        <ul class="word-list">${related}
+        </ul>
+      </section>
+
+      <section class="editorial-grid">
+        <article class="card">
+          <span class="card-kicker">Pista del impostor</span>
+          <h2>«${html(word.hint)}»</h2>
+          <p>${html(clues.hint)}</p>
+          <p>Si el anfitrión activa la pista, el impostor ve «${html(word.hint)}» en lugar de la palabra. No la repitas: le confirmarías que va bien encaminado.</p>
+        </article>
+        <article class="card">
+          <span class="card-kicker">Si eres el impostor</span>
+          <h2>Tres faroles seguros</h2>
+          <p>Si sospechas que la palabra es ${html(name)} pero no estás seguro, di algo amplio que encaje también con otras palabras ${html(category.phrase)}: ${html(quoted(clues.bluffs).join(', ').replace(/, (?=[^,]*$)/, ' o '))}.</p>
+          <p><a href="/que-decir-si-eres-el-impostor/">Más trucos para el impostor</a></p>
+        </article>
+      </section>
+
+      <section class="section callout">
+        <div>
+          <span class="card-kicker">Sin papel ni tarjetas</span>
+          <h2>Juega con ${html(play)} online</h2>
+          <p>Crea una sala gratis, comparte el enlace y cada persona ve su papel en su móvil. El juego reparte la palabra y elige al impostor por ti.</p>
+        </div>
+        <a class="btn primary" href="/?category=${encodeURIComponent(category.id)}">Crear sala con ${html(play)}</a>
+      </section>
+
+      <section class="section">
+        <h2>Más palabras ${html(category.phrase)}</h2>
+        <div class="topic-links">${siblingLinks}<a class="topic-link" href="${categoryPath}">Las 20 palabras ${html(category.phrase)}</a></div>
+      </section>
+    </main>
+    ${siteFooter()}
+  </body>
+</html>
+`
+}
+
 async function emit(relativePath, content) {
   const target = path.join(PUBLIC_DIR, relativePath)
   if (CHECK_ONLY) {
@@ -892,12 +1009,26 @@ async function main() {
   const unknown = [...new Set(words.map((word) => word.category).filter((id) => !known.has(id)))]
   if (unknown.length) throw new Error(`Missing SEO metadata for: ${unknown.join(', ')}`)
 
+  const clues = JSON.parse(await readFile(RELATED_PATH, 'utf8'))
+  for (const { word } of words) {
+    const entry = clues[word]
+    if (!entry) throw new Error(`Missing related words for: ${word}`)
+    if (entry.related.length < 10 || entry.related.length > 12) throw new Error(`${word} needs 10–12 related words`)
+    if (entry.bluffs.length !== 3 || !entry.hint) throw new Error(`${word} needs a hint explanation and 3 bluffs`)
+  }
+  const stale = Object.keys(clues).filter((word) => !words.some((item) => item.word === word))
+  if (stale.length) throw new Error(`Related words for words no longer in the game: ${stale.join(', ')}`)
+
   await emit('palabras-para-el-impostor/index.html', hubPage(wordsByCategory))
   for (const category of categories) {
     await emit(
       path.join('palabras-para-el-impostor', category.slug, 'index.html'),
       categoryPage(category, wordsByCategory.get(category.id)),
     )
+    const categoryWords = wordsByCategory.get(category.id)
+    for (const [index, word] of categoryWords.entries()) {
+      await emit(path.join(wordPath(category, word), 'index.html'), wordPage(category, categoryWords, index, clues[word.word]))
+    }
   }
 
   for (const slug of Object.keys(LEVELS)) {
@@ -919,6 +1050,10 @@ async function main() {
       loc: `/palabras-para-el-impostor/${category.slug}/`,
       modified: GUIDES_MODIFIED,
     })),
+    ...categories.flatMap((category) => wordsByCategory.get(category.id).map((word) => ({
+      loc: wordPath(category, word),
+      modified: LAST_MODIFIED,
+    }))),
   ]
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -926,7 +1061,7 @@ ${staticUrls.map(({ loc, modified }) => `  <url>\n    <loc>${BASE_URL}${loc}</lo
 </urlset>
 `
   await emit('sitemap.xml', sitemap)
-  console.log(`${CHECK_ONLY ? 'Verified' : 'Generated'} ${categories.length + Object.keys(LEVELS).length + 4} SEO files from ${words.length} words.`)
+  console.log(`${CHECK_ONLY ? 'Verified' : 'Generated'} ${categories.length + Object.keys(LEVELS).length + words.length + 4} SEO files from ${words.length} words.`)
 }
 
 await main()
