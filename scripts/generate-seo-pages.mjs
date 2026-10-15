@@ -6,7 +6,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const PUBLIC_DIR = path.join(ROOT, 'frontend', 'public')
 const WORDS_PATH = path.join(ROOT, 'worker', 'src', 'words.json')
 const BASE_URL = 'https://juegoimpostor.app'
-const LAST_MODIFIED = '2026-09-03'
+const LAST_MODIFIED = '2026-10-15'
 // Home and the two guides gained crawlable copy and head fixes on this date.
 const GUIDES_MODIFIED = '2026-10-15'
 const CHECK_ONLY = process.argv.includes('--check')
@@ -17,7 +17,7 @@ const categories = [
     label: 'Animales',
     phrase: 'de animales',
     slug: 'animales',
-    summary: 'Desde perro y pingüino hasta ajolote y narval: una categoría visual que funciona con cualquier grupo.',
+    summary: 'Desde perro y pingüino hasta ajolote y camaleón: una categoría visual que funciona con cualquier grupo.',
     intro: 'Los animales son una de las mejores categorías para aprender a jugar: todo el mundo reconoce los ejemplos fáciles, pero cada palabra admite pistas sobre hábitat, movimiento, carácter, sonido o cultura popular.',
     clue: 'Alterna hábitat, comportamiento y una asociación cultural. Para “león”, “trono” deja claro que sabes la respuesta sin regalar “melena” al impostor.',
     avoid: 'Evita decir la especie, su sonido exacto o una parte anatómica exclusiva en el primer turno. Esas pistas cierran demasiado pronto el abanico.',
@@ -58,8 +58,8 @@ const categories = [
     phrase: 'de naturaleza',
     slug: 'naturaleza',
     summary: 'Fenómenos, paisajes y ecosistemas para pasar de partidas accesibles a rondas realmente exigentes.',
-    intro: 'Naturaleza ofrece imágenes potentes y varios niveles de dificultad. Los conceptos conocidos sirven para empezar; fenómenos como permafrost o bioluminiscencia exigen un grupo con más vocabulario.',
-    clue: 'Usa efectos, escalas o metáforas. “Memoria” para glaciar apunta a las capas de tiempo y “ciudad” para coral evita la asociación marina más obvia.',
+    intro: 'Naturaleza ofrece imágenes potentes y varios niveles de dificultad. Los conceptos conocidos sirven para empezar; fenómenos como monzón o bioluminiscencia exigen un grupo con más vocabulario.',
+    clue: 'Usa efectos, escalas o metáforas. “Lento” para glaciar apunta a su ritmo y “ciudad” para coral evita la asociación marina más obvia.',
     avoid: 'No elijas tecnicismos que solo conozca una persona. La dificultad debe venir de comunicar con sutileza, no de un examen de ciencias.',
   },
   {
@@ -89,7 +89,7 @@ const categories = [
     slug: 'deportes',
     summary: 'Deportes universales y disciplinas olímpicas menos obvias con pistas sobre reglas, ritmo y estrategia.',
     intro: 'Deportes funciona especialmente bien con grupos competitivos. La lista evita limitarse al material deportivo y propone asociaciones con estrategia, tiempos muertos, gestos y tradiciones.',
-    clue: 'Piensa en una regla o un momento: “silencio” para tenis, “esquina” para boxeo o “tercer tiempo” para rugby separan a quien conoce el deporte de quien improvisa.',
+    clue: 'Piensa en una regla o un momento: “silencio” para tenis, “campana” para boxeo o “tercer tiempo” para rugby separan a quien conoce el deporte de quien improvisa.',
     avoid: 'No menciones pelota, red o pista si es la asociación inmediata. Asegúrate de que las disciplinas difíciles sean conocidas por todo el grupo.',
   },
   {
@@ -99,7 +99,7 @@ const categories = [
     slug: 'ficcion',
     summary: 'Criaturas, arquetipos y conceptos fantásticos para construir pistas con reglas narrativas.',
     intro: 'La ficción libera al grupo de los datos exactos: cada palabra tiene mitos, reglas, debilidades y versiones distintas. Esa ambigüedad genera debates memorables y buenas coartadas.',
-    clue: 'Usa una regla narrativa. “Invitación” para vampiro y “calendario” para licántropo son precisas sin describir colmillos ni luna llena.',
+    clue: 'Usa una regla narrativa. “Invitación” para vampiro y “calendario” para hombre lobo son precisas sin describir colmillos ni luna llena.',
     avoid: 'Evita citar la película o saga más famosa de manera directa. Si existen versiones contradictorias del mito, acepta una explicación razonable.',
   },
   {
@@ -119,7 +119,7 @@ const categories = [
     slug: 'streamers',
     summary: 'Ibai, AuronPlay, Rubius y protagonistas del streaming español con referencias para fans.',
     intro: 'El formato de Adivina el Impostor ha encontrado una audiencia enorme entre streamers. Esta lista reúne nombres muy reconocibles y participantes o figuras cercanas a las ediciones virales.',
-    clue: 'Una serie, evento o muletilla suele funcionar mejor que el país o la plataforma. “Velada” para Ibai y “Excel” para ElXokas dejan margen al farol.',
+    clue: 'Una serie, evento o muletilla suele funcionar mejor que el país o la plataforma. “Velada” para Ibai y “Troncos” para Perxitaa dejan margen al farol.',
     avoid: 'No uses el nombre real, la primera letra o una pareja pública. Esta categoría solo es justa si el grupo sigue a creadores parecidos.',
   },
   {
@@ -149,7 +149,7 @@ const categories = [
     slug: 'videojuegos',
     summary: 'Éxitos multijugador, clásicos modernos y juegos de culto descritos con mecánicas y recuerdos.',
     intro: 'Videojuegos es ideal para Discord y grupos gamers. La selección mezcla títulos masivos con experiencias de culto, de modo que la dificultad depende del conocimiento compartido y de la sutileza.',
-    clue: 'Usa una mecánica lateral: “hipoteca” para Animal Crossing, “economía” para Valorant o “veintidós” para Outer Wilds prueban conocimiento sin nombrar un personaje.',
+    clue: 'Usa una mecánica lateral: “hipoteca” para Animal Crossing, “economía” para Valorant o “sobres” para EA Sports FC prueban conocimiento sin nombrar un personaje.',
     avoid: 'No menciones al protagonista, la consola o una palabra incluida en el título. Quita los juegos de culto si alguien del grupo no los conoce.',
   },
   {
@@ -157,9 +157,9 @@ const categories = [
     label: 'Libros',
     phrase: 'de libros',
     slug: 'libros',
-    summary: 'Fantasía, thriller y literatura hispanoamericana con pistas que premian haber leído la obra.',
+    summary: 'Fantasía, clásicos universales y literatura hispanoamericana con pistas que premian haber leído la obra.',
     intro: 'Libros genera rondas magníficas entre lectores porque una pista puede referirse a estructura, atmósfera, personaje o símbolo. Incluimos éxitos recientes y clásicos en español.',
-    clue: 'Elige un motivo secundario: “orden” para Rayuela, “sótano” para El Aleph o “cuaderno” para La casa de los espíritus son sutiles pero justificables.',
+    clue: 'Elige un motivo secundario: “capítulos” para Rayuela, “sótano” para El Aleph o “cuaderno” para La casa de los espíritus son sutiles pero justificables.',
     avoid: 'No cites un personaje del título ni la adaptación más conocida. Confirma que las obras difíciles forman parte de las lecturas compartidas.',
   },
   {
@@ -169,7 +169,7 @@ const categories = [
     slug: 'cine-y-series',
     summary: 'Películas y series populares, de culto y en español con pistas basadas en escenas y símbolos.',
     intro: 'Cine y series ofrece referencias visuales inmediatas y conversaciones muy rápidas. La mezcla va de títulos familiares a obras que exigen atención a detalles concretos.',
-    clue: 'Busca una escena, objeto o regla interna: “escalera” para Parásitos, “ascensor” para Severance o “treinta y tres” para Dark recompensan a quien conoce la obra.',
+    clue: 'Busca una escena, objeto o regla interna: “escalera” para Parásitos, “chasquido” para Avengers o “treinta y tres” para Dark recompensan a quien conoce la obra.',
     avoid: 'No digas un actor, personaje principal o parte del título. Separa cine de culto si el grupo prefiere referencias masivas.',
   },
   {
@@ -179,7 +179,7 @@ const categories = [
     slug: 'musica',
     summary: 'Artistas hispanos, estrellas globales y géneros para convertir referencias musicales en pistas de una palabra.',
     intro: 'Música combina artistas muy conocidos con géneros que suben la dificultad. Las asociaciones pueden venir de una canción, una estética, un directo o una característica sonora.',
-    clue: 'Usa una etapa o un detalle: “Eras” para Taylor Swift, “sobremesa” para C. Tangana o “pedales” para shoegaze son reconocibles sin tararear la respuesta.',
+    clue: 'Usa una etapa o un detalle: “Eras” para Taylor Swift, “Bernabéu” para Duki o “Cali” para salsa son reconocibles sin tararear la respuesta.',
     avoid: 'No cantes una melodía ni digas parte de una letra. En artistas, evita el país o una colaboración que revele demasiado.',
   },
   {
@@ -197,9 +197,9 @@ const categories = [
     label: 'Creadores LATAM',
     phrase: 'de creadores latinoamericanos',
     slug: 'creadores-latinoamericanos',
-    summary: 'Referentes de México, Argentina, Colombia, Chile, El Salvador y la comunidad latina de streaming.',
+    summary: 'Referentes de México, Argentina, Colombia, Chile, Venezuela, Ecuador, El Salvador y la comunidad latina de streaming.',
     intro: 'El juego se comparte a ambos lados del Atlántico. Esta categoría da espacio propio a creadores latinoamericanos, en lugar de tratarlos como una nota al pie de una lista española.',
-    clue: 'Usa equipos, comunidades o formatos: “Pío” para Rivers, “Army” para Coscu y “Arroyito” para JuanSGuarnizo son pistas para fans, no descripciones genéricas.',
+    clue: 'Usa equipos, comunidades o formatos: “Pío” para Rivers, “Army” para Coscu y “Aniquiladores” para JuanSGuarnizo son pistas para fans, no descripciones genéricas.',
     avoid: 'No uses la nacionalidad como única pista y no mezcles nombres que el grupo nunca haya visto. Lo divertido es reconocer referencias, no adivinar por descarte geográfico.',
   },
   {
@@ -516,7 +516,7 @@ function hubPage(wordsByCategory) {
           <span class="card-kicker">Del streaming a tu grupo</span>
           <h2>Ibai, AuronPlay y el boom de Adivina el Impostor</h2>
           <p>El formato ha saltado a audiencias masivas con partidas de Ibai. En la edición con AuronPlay también participaron Perxitaa, Polispol y Saara Ismael; varias de sus palabras —Minecraft, México, Harry Potter o TheGrefg— muestran por qué las referencias compartidas crean rondas tan rápidas.</p>
-          <p>También ampliamos el catálogo con una categoría propia para creadores de América Latina: JuanSGuarnizo, Rivers, Spreen, Ari Gameplays, Quackity, WestCOL, Fernanfloo, Germán Garmendia, La Cobra, laPoblet y más.</p>
+          <p>También ampliamos el catálogo con una categoría propia para creadores de América Latina: Luisito Comunica, Alejo Igoa, Germán Garmendia, Fernanfloo, Rivers, JuanSGuarnizo, Ari Gameplays, Coscu, Davoo Xeneize, La Cobra y más.</p>
           <div class="topic-links">
             <a class="topic-link" href="/palabras-para-el-impostor/streamers/">Streamers</a>
             <a class="topic-link" href="/palabras-para-el-impostor/creadores-latinoamericanos/">Creadores LATAM</a>
@@ -527,7 +527,7 @@ function hubPage(wordsByCategory) {
           <span>PALABRA</span><strong>IBAI</strong>
           <span>PISTA SUTIL</span><strong>VELADA</strong>
           <span>PALABRA</span><strong>AURONPLAY</strong>
-          <span>PISTA SUTIL</span><strong>JERINGUILLA</strong>
+          <span>PISTA SUTIL</span><strong>TORTILLALAND</strong>
         </aside>
       </section>
 
