@@ -645,3 +645,8 @@ h2 {
   html { scroll-behavior: auto; }
   .btn { transition: none; }
 }
+
+/* Wildcard words on the impostor tips page */
+.wildcards { list-style: none; padding: 0; display: grid; gap: 10px; }
+.wildcards li { padding: 12px 14px; border: 3px solid var(--ink, #1c0b40); border-radius: 14px; background: #fff; color: #1c0b40; }
+.wildcards strong { display: inline-block; margin-right: 8px; padding: 2px 10px; border-radius: 999px; background: #ffcf26; border: 2px solid #1c0b40; }

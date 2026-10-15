@@ -284,8 +284,9 @@ function siteFooter() {
 
 function categoryPage(category, words) {
   const canonical = `${BASE_URL}/palabras-para-el-impostor/${category.slug}/`
-  const title = `20 palabras ${category.phrase} para El Impostor`
-  const description = `20 palabras ${category.phrase} para jugar a El Impostor, con pistas sutiles, dificultad gradual y consejos para una ronda equilibrada.`
+  const title = `Palabras ${category.phrase} para jugar al impostor: 20 ideas con pistas`
+  const heading = `Palabras ${category.phrase} para jugar al impostor`
+  const description = `20 palabras ${category.phrase} para jugar al impostor, de fáciles a difíciles y con una pista para el impostor. Úsalas en papel o en una sala online gratis, cada uno en su móvil.`
   const enriched = words.map((word, index) => ({ ...word, difficulty: difficultyFor(index) }))
   const schema = {
     '@context': 'https://schema.org',
@@ -351,7 +352,7 @@ function categoryPage(category, words) {
 
       <section class="hero compact-hero">
         <span class="eyebrow">Categoría · 20 ideas</span>
-        <h1>${html(title)}</h1>
+        <h1>${html(heading)}</h1>
         <p class="lead">${html(category.intro)}</p>
         <div class="cta-row">
           <a class="btn primary" href="/?category=${encodeURIComponent(category.id)}">Jugar con ${html(category.label.toLocaleLowerCase('es'))}</a>
@@ -414,8 +415,8 @@ function categoryPage(category, words) {
 
 function hubPage(wordsByCategory) {
   const canonical = `${BASE_URL}/palabras-para-el-impostor/`
-  const title = '400 palabras para El Impostor: categorías y pistas'
-  const description = '400 palabras para jugar a El Impostor en 20 categorías, con pistas sutiles y dificultad: animales, fútbol, streamers, comida, cine y más.'
+  const title = 'Palabras para jugar al impostor: 400 ideas fáciles y difíciles'
+  const description = '400 palabras para jugar al impostor en 20 temas (animales, comida, fútbol, streamers, cine…), de fáciles a difíciles y con pista para el impostor. Gratis y sin registro.'
   const schema = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -470,12 +471,17 @@ function hubPage(wordsByCategory) {
 
       <section class="hero">
         <span class="eyebrow">Actualizado · 20 categorías</span>
-        <h1>400 palabras para El Impostor</h1>
+        <h1>Palabras para jugar al impostor</h1>
         <p class="lead">Palabras conocidas, pistas menos obvias y dificultad gradual. Hemos ordenado el catálogo que usa el juego para que puedas elegir una temática, preparar una partida o inspirarte antes de crear una sala.</p>
         <div class="cta-row">
           <a class="btn primary" href="/?create=1">Jugar ahora</a>
           <a class="btn" href="#categorias">Explorar categorías</a>
         </div>
+        <nav class="topic-links" aria-label="Listas rápidas">
+          <a class="topic-link" href="/palabras-para-el-impostor/faciles/">Palabras fáciles</a>
+          <a class="topic-link" href="/palabras-para-el-impostor/dificiles/">Palabras difíciles</a>
+          <a class="topic-link" href="/que-decir-si-eres-el-impostor/">Qué decir si eres el impostor</a>
+        </nav>
       </section>
 
       <section class="stats" aria-label="Resumen del catálogo">
@@ -558,6 +564,213 @@ function hubPage(wordsByCategory) {
 `
 }
 
+// One list per difficulty, across every category: "palabras difíciles para jugar al impostor".
+const LEVELS = {
+  faciles: { label: 'Fácil', name: 'fáciles', lead: 'Palabras que todo el mundo conoce, ideales para la primera partida, para jugar con peques o para explicar las reglas. Hay muchas formas de dar una pista, así que nadie se queda en blanco.' },
+  dificiles: { label: 'Difícil', name: 'difíciles', lead: 'Palabras con menos asociaciones evidentes: obligan a dar pistas más finas y le ponen las cosas difíciles al impostor. Funcionan mejor con un grupo que ya ha jugado varias rondas.' },
+}
+
+function levelPage(slug, wordsByCategory) {
+  const level = LEVELS[slug]
+  const canonical = `${BASE_URL}/palabras-para-el-impostor/${slug}/`
+  const picked = categories.flatMap((category) => wordsByCategory.get(category.id)
+    .map((word, index) => ({ ...word, category, difficulty: difficultyFor(index) }))
+    .filter((word) => word.difficulty === level.label))
+  const title = `Palabras ${level.name} para jugar al impostor: ${picked.length} ideas con pistas`
+  const heading = `Palabras ${level.name} para jugar al impostor`
+  const description = `${picked.length} palabras ${level.name} para jugar al impostor, de 20 temas distintos y con una pista para el impostor. Gratis, en papel o en una sala online.`
+  const schema = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'El Impostor', item: `${BASE_URL}/` },
+          { '@type': 'ListItem', position: 2, name: 'Palabras para El Impostor', item: `${BASE_URL}/palabras-para-el-impostor/` },
+          { '@type': 'ListItem', position: 3, name: heading, item: canonical },
+        ],
+      },
+      {
+        '@type': 'CollectionPage',
+        name: title,
+        description,
+        url: canonical,
+        inLanguage: 'es',
+        dateModified: GUIDES_MODIFIED,
+        mainEntity: { '@type': 'ItemList', numberOfItems: picked.length, itemListElement: picked.map((word, index) => ({ '@type': 'ListItem', position: index + 1, name: word.word })) },
+      },
+    ],
+  }
+  const rows = picked.map((word) => `
+              <tr>
+                <th scope="row">${html(word.word)}</th>
+                <td><span class="hint-chip">${html(word.hint)}</span></td>
+                <td><a href="/palabras-para-el-impostor/${word.category.slug}/">${html(word.category.label)}</a></td>
+              </tr>`).join('')
+  const other = slug === 'faciles' ? 'dificiles' : 'faciles'
+  return `<!DOCTYPE html>
+<html lang="es">
+  <head>${head({ title, description, canonical, schema })}
+  </head>
+  <body>
+    ${siteHeader()}
+    <main class="wrap">
+      <nav class="breadcrumbs" aria-label="Migas de pan">
+        <a href="/">Inicio</a><span aria-hidden="true">/</span>
+        <a href="/palabras-para-el-impostor/">Palabras</a><span aria-hidden="true">/</span>
+        <span aria-current="page">${html(level.name[0].toUpperCase() + level.name.slice(1))}</span>
+      </nav>
+
+      <section class="hero compact-hero">
+        <span class="eyebrow">${picked.length} ideas · 20 temas</span>
+        <h1>${html(heading)}</h1>
+        <p class="lead">${html(level.lead)}</p>
+        <div class="cta-row">
+          <a class="btn primary" href="/?create=1">Jugar gratis online</a>
+          <a class="btn" href="/palabras-para-el-impostor/${other}/">Ver palabras ${LEVELS[other].name}</a>
+        </div>
+      </section>
+
+      <section class="section prose">
+        <h2>Lista de palabras ${html(level.name)} con pista</h2>
+        <p>La pista es la ayuda opcional que puede ver el impostor si el anfitrión la activa. También te sirve de ejemplo: relacionada con la palabra, pero sin regalarla.</p>
+        <div class="table-wrap">
+          <table class="words-table">
+            <caption>Palabras ${html(level.name)} para jugar al impostor, por tema</caption>
+            <thead><tr><th scope="col">Palabra secreta</th><th scope="col">Pista para el impostor</th><th scope="col">Tema</th></tr></thead>
+            <tbody>${rows}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section callout">
+        <div>
+          <span class="card-kicker">Sin papel ni tarjetas</span>
+          <h2>Juega con estas palabras online</h2>
+          <p>Crea una sala gratis, comparte el enlace por WhatsApp y cada persona ve su papel en su móvil. El juego reparte la palabra y elige al impostor por ti.</p>
+        </div>
+        <a class="btn primary" href="/?create=1">Crear sala gratis</a>
+      </section>
+
+      <section class="section">
+        <h2>Más ideas para tu partida</h2>
+        <div class="topic-links">
+          <a class="topic-link" href="/que-decir-si-eres-el-impostor/">Qué decir si eres el impostor</a>
+          <a class="topic-link" href="/palabras-para-el-impostor/">Todas las categorías</a>
+          <a class="topic-link" href="/como-jugar/">Reglas del juego</a>
+        </div>
+      </section>
+    </main>
+    ${siteFooter()}
+  </body>
+</html>
+`
+}
+
+// "Qué decir si eres el impostor" / "palabras comodín": advice for both roles.
+const WILDCARDS = [
+  ['Grande', 'Casi todo puede ser grande o pequeño, y nadie te lo discutirá.'],
+  ['Clásico', 'Encaja con comidas, lugares, películas, canciones y personas.'],
+  ['Recuerdo', 'Suena personal y obliga a los demás a imaginarse algo.'],
+  ['Color', 'Todo tiene uno; parece que estás pensando en el aspecto.'],
+  ['Caro', 'Sirve para objetos, viajes, comida, fichajes y marcas.'],
+  ['Ruido', 'Animales, lugares, deportes, música: casi todo suena.'],
+  ['Verano', 'Una estación conecta con playa, comida, deporte y viajes.'],
+  ['Familia', 'Funciona con casas, comidas, películas y profesiones.'],
+  ['Rápido', 'Animales, coches, deportes, juegos y hasta emociones.'],
+  ['Peligro', 'Animales, lugares, ciencia y aventuras: da credibilidad.'],
+]
+function tipsPage() {
+  const canonical = `${BASE_URL}/que-decir-si-eres-el-impostor/`
+  const title = 'Qué decir si eres el impostor: 10 palabras comodín y trucos'
+  const heading = 'Qué decir si eres el impostor'
+  const description = 'Te ha tocado ser el impostor y no sabes la palabra: 10 palabras comodín, cómo usar las pistas de los demás y qué errores te delatan. También, cómo pillar al impostor.'
+  const schema = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'El Impostor', item: `${BASE_URL}/` },
+          { '@type': 'ListItem', position: 2, name: heading, item: canonical },
+        ],
+      },
+      { '@type': 'Article', headline: title, description, url: canonical, inLanguage: 'es', dateModified: GUIDES_MODIFIED, author: { '@type': 'Organization', name: 'El Impostor' } },
+    ],
+  }
+  const wildcards = WILDCARDS.map(([word, why]) => `
+            <li><strong>${html(word)}</strong> ${html(why)}</li>`).join('')
+  return `<!DOCTYPE html>
+<html lang="es">
+  <head>${head({ title, description, canonical, schema })}
+  </head>
+  <body>
+    ${siteHeader()}
+    <main class="wrap">
+      <nav class="breadcrumbs" aria-label="Migas de pan"><a href="/">Inicio</a><span aria-hidden="true">/</span><span aria-current="page">Qué decir si eres el impostor</span></nav>
+
+      <section class="hero compact-hero">
+        <span class="eyebrow">Guía rápida</span>
+        <h1>${html(heading)}</h1>
+        <p class="lead">Todos tienen la palabra menos tú. Tu objetivo es dar una pista creíble, sin comprometerte, y aguantar hasta la votación. Estas ideas funcionan igual en papel que en una sala online.</p>
+        <div class="cta-row">
+          <a class="btn primary" href="/?create=1">Practicar en una sala gratis</a>
+          <a class="btn" href="/palabras-para-el-impostor/">Ver palabras para jugar</a>
+        </div>
+      </section>
+
+      <section class="section prose">
+        <h2>1. Antes de tu turno, escucha</h2>
+        <p>Si no te toca empezar, las pistas de los demás son tu mejor información. Busca lo que tienen en común: si alguien dice «arena» y otro «sol», el tema probablemente es playa, verano o vacaciones. Tu pista debe sonar al mismo tema sin repetir ninguna de las anteriores.</p>
+
+        <h2>2. Palabras comodín que encajan con casi todo</h2>
+        <p>Cuando no tienes ni idea, usa una palabra amplia que se pueda relacionar con muchas cosas. Úsalas con calma y solo una vez por partida: si las encadenas, el grupo se dará cuenta.</p>
+        <ul class="wildcards">${wildcards}
+        </ul>
+
+        <h2>3. Si te toca empezar</h2>
+        <p>Empezar sin saber la palabra da miedo, pero también es una ventaja: nadie puede comparar tu pista con otras. Elige una sensación o un momento en vez de un objeto concreto, por ejemplo «nervios», «domingo» o «infancia». Una pista vaga en la primera ronda es normal.</p>
+
+        <h2>4. Cómo usar la pista del impostor</h2>
+        <p>Si el anfitrión activa la pista, recibes una palabra relacionada con la secreta. No la digas tal cual: muchos jugadores la reconocerán. Da un paso hacia un lado. Si tu pista es «correa», no digas «perro» ni «correa»; prueba con «paseo» o «parque».</p>
+
+        <h2>5. Errores que delatan al impostor</h2>
+        <ul>
+          <li>Repetir con otra palabra lo que ya dijo alguien.</li>
+          <li>Tardar mucho más que el resto en contestar.</li>
+          <li>Ser siempre demasiado general, ronda tras ronda.</li>
+          <li>Cambiar de tema en el debate o acusar demasiado pronto.</li>
+        </ul>
+
+        <h2>6. Si tienes la palabra: cómo pillar al impostor</h2>
+        <p>Da pistas que solo entiende quien conoce la palabra, sin ser tan obvio que el impostor la adivine. Fíjate en quién copia el estilo de las pistas anteriores, quién responde tarde y quién se queda en lo genérico. En el debate, pide a cada sospechoso que explique su pista: el impostor suele dudar.</p>
+      </section>
+
+      <section class="section callout">
+        <div>
+          <span class="card-kicker">Ponlo a prueba</span>
+          <h2>Juega al impostor online con tus amigos</h2>
+          <p>Gratis y sin registro. Crea una sala, comparte el enlace y cada persona juega desde su móvil.</p>
+        </div>
+        <a class="btn primary" href="/?create=1">Crear sala gratis</a>
+      </section>
+
+      <section class="section">
+        <h2>Más ideas para tu partida</h2>
+        <div class="topic-links">
+          <a class="topic-link" href="/palabras-para-el-impostor/faciles/">Palabras fáciles</a>
+          <a class="topic-link" href="/palabras-para-el-impostor/dificiles/">Palabras difíciles</a>
+          <a class="topic-link" href="/como-jugar/">Reglas del juego</a>
+        </div>
+      </section>
+    </main>
+    ${siteFooter()}
+  </body>
+</html>
+`
+}
+
 async function emit(relativePath, content) {
   const target = path.join(PUBLIC_DIR, relativePath)
   if (CHECK_ONLY) {
@@ -595,14 +808,22 @@ async function main() {
     )
   }
 
+  for (const slug of Object.keys(LEVELS)) {
+    await emit(path.join('palabras-para-el-impostor', slug, 'index.html'), levelPage(slug, wordsByCategory))
+  }
+  await emit(path.join('que-decir-si-eres-el-impostor', 'index.html'), tipsPage())
+
   const staticUrls = [
     { loc: '/', modified: GUIDES_MODIFIED },
     { loc: '/juego-impostor-online/', modified: GUIDES_MODIFIED },
     { loc: '/como-jugar/', modified: GUIDES_MODIFIED },
-    { loc: '/palabras-para-el-impostor/', modified: LAST_MODIFIED },
+    { loc: '/palabras-para-el-impostor/', modified: GUIDES_MODIFIED },
+    { loc: '/palabras-para-el-impostor/faciles/', modified: GUIDES_MODIFIED },
+    { loc: '/palabras-para-el-impostor/dificiles/', modified: GUIDES_MODIFIED },
+    { loc: '/que-decir-si-eres-el-impostor/', modified: GUIDES_MODIFIED },
     ...categories.map((category) => ({
       loc: `/palabras-para-el-impostor/${category.slug}/`,
-      modified: LAST_MODIFIED,
+      modified: GUIDES_MODIFIED,
     })),
   ]
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
@@ -611,7 +832,7 @@ ${staticUrls.map(({ loc, modified }) => `  <url>\n    <loc>${BASE_URL}${loc}</lo
 </urlset>
 `
   await emit('sitemap.xml', sitemap)
-  console.log(`${CHECK_ONLY ? 'Verified' : 'Generated'} ${categories.length + 2} SEO files from ${words.length} words.`)
+  console.log(`${CHECK_ONLY ? 'Verified' : 'Generated'} ${categories.length + Object.keys(LEVELS).length + 3} SEO files from ${words.length} words.`)
 }
 
 await main()

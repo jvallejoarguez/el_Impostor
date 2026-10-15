@@ -30,7 +30,7 @@ function HomeScreen({ mode, error, creating, category, initialName, onCreateRoom
       <p>El Impostor es un juego de palabras y deducción social para jugar con amigos desde el navegador. Crea una sala privada, comparte el enlace y descubre quién no conoce la palabra secreta antes de que consiga engañar al grupo.</p>
       <p>El anfitrión puede combinar 20 categorías y 400 palabras con pistas, como {HOME_CATEGORY_LINKS.map(([slug, label], i) => <React.Fragment key={slug}>{i ? (i === HOME_CATEGORY_LINKS.length - 1 ? ' y ' : ', ') : ''}<a href={`/palabras-para-el-impostor/${slug}/`}>{label}</a></React.Fragment>)}.</p>
     </section>
-    <nav className="home-seo-links" aria-label="Guías de El Impostor"><a href="/como-jugar/">Cómo jugar</a><a href="/palabras-para-el-impostor/">Palabras y categorías</a><a href="/juego-impostor-online/">Jugar online con amigos</a></nav>
+    <nav className="home-seo-links" aria-label="Guías de El Impostor"><a href="/como-jugar/">Cómo jugar</a><a href="/palabras-para-el-impostor/">Palabras y categorías</a><a href="/juego-impostor-online/">Jugar online con amigos</a><a href="/que-decir-si-eres-el-impostor/">Qué decir si eres el impostor</a></nav>
   </main>
 }
 
