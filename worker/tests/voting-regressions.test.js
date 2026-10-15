@@ -42,3 +42,12 @@ describe('stalled rounds', () => {
     expect(settleBetweenRound(dropped).phase).toBe('voting')
   })
 })
+
+describe('custom word cleaning', () => {
+  it('trims, deduplicates and limits length and count', async () => {
+    const { cleanCustomWords } = await import('../src/gameLogic.js')
+    expect(cleanCustomWords(['  Hola  mundo ', 'hola mundo', 'a', 'x'.repeat(31), 42, 'Ñandú'])).toEqual(['Hola mundo', 'Ñandú'])
+    expect(cleanCustomWords(Array.from({ length: 150 }, (_, i) => `palabra ${i}`))).toHaveLength(100)
+    expect(cleanCustomWords('no es lista')).toEqual([])
+  })
+})

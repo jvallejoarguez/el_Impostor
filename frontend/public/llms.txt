@@ -1,0 +1,25 @@
+# El Impostor
+
+> El Impostor (juegoimpostor.app) es un juego de palabras y deducción social, gratis y en español, para jugar con amigos desde el navegador. Todos los jugadores reciben la misma palabra secreta menos uno, el impostor, que no la conoce y tiene que disimular. Por turnos, cada persona da una pista de una palabra; después el grupo debate y vota quién cree que es el impostor.
+
+Datos clave:
+
+- Gratis, sin descargas y sin registro. Funciona en el navegador del móvil y del ordenador.
+- Salas privadas online de 3 a 16 jugadores; cada persona ve su papel en su propio dispositivo.
+- 400 palabras en 20 categorías (animales, comida, lugares, fútbol, streamers, youtubers, videojuegos, cine y series, música…), revisadas para España y Latinoamérica, de fáciles a difíciles.
+- El anfitrión puede escribir palabras propias (hasta 100) y elegir si el impostor recibe una pista.
+- Modo streamer para Twitch y Discord: oculta el código de la sala y el rol del jugador en pantalla.
+
+## Jugar
+
+- [Crear una sala](https://juegoimpostor.app/?create=1): el anfitrión elige categorías y comparte el enlace.
+- [Jugar en Discord y Twitch](https://juegoimpostor.app/jugar-en-discord-y-twitch/): cómo jugar en una llamada, modo streamer y palabras propias.
+- [Cómo jugar](https://juegoimpostor.app/como-jugar/): reglas completas.
+- [Juego del impostor online](https://juegoimpostor.app/juego-impostor-online/)
+
+## Palabras para jugar al impostor
+
+- [Las 400 palabras por categoría](https://juegoimpostor.app/palabras-para-el-impostor/)
+- [Palabras fáciles](https://juegoimpostor.app/palabras-para-el-impostor/faciles/)
+- [Palabras difíciles](https://juegoimpostor.app/palabras-para-el-impostor/dificiles/)
+- [Qué decir si eres el impostor](https://juegoimpostor.app/que-decir-si-eres-el-impostor/): palabras comodín y trucos.

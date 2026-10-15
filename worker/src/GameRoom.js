@@ -2,7 +2,7 @@
 import {
   applyJoin, applyReady, applyUpdateRules, applyUpdateAvatar, applyStartGame,
   applySubmitWord, applyBetweenVote, applyCastVote,
-  applyConfirmVote, computeResult, firstConnectedPlayerIdx, normalizeCategories, settleBetweenRound,
+  applyConfirmVote, computeResult, firstConnectedPlayerIdx, normalizeCategories, settleBetweenRound, cleanCustomWords,
 } from './gameLogic.js'
 import words from './words.json'
 import { recordRoomEvent } from './Engagement.js'
@@ -149,6 +149,9 @@ export class GameRoom {
           const next = applyUpdateAvatar(this.state, { playerId, avatarId: msg.payload?.avatarId })
           if (next !== this.state) { this.state = next; this._broadcast() }
         }
+        break
+      case 'SET_CUSTOM_WORDS':
+        if (playerId) this._handleCustomWords(playerId, msg.payload || {})
         break
       case 'START_GAME':
         if (playerId) await this._handleStartGame(playerId)
@@ -408,6 +411,18 @@ export class GameRoom {
     else if (!this.state.players.some(p => p.connected && p.isOwner)) await this._scheduleHousekeeping()
   }
 
+  _handleCustomWords(playerId, { words, only }) {
+    const player = this.state?.players.find(p => p.id === playerId)
+    if (!player?.isOwner || this.state.phase !== 'lobby') return
+    const customWords = cleanCustomWords(words)
+    this.state = {
+      ...this.state,
+      customWords,
+      rules: { ...this.state.rules, customWordCount: customWords.length, customWordsOnly: !!only && customWords.length > 0 },
+    }
+    this._broadcast()
+  }
+
   async _handleStartGame(playerId) {
     const player = this.state?.players.find(p => p.id === playerId)
     if (!player?.isOwner || this.state.phase !== 'lobby') return
@@ -485,6 +500,7 @@ export class GameRoom {
       ...INITIAL_STATE(this.state.code),
       players: this._lobbyPlayers(),
       rules: this.state.rules,
+      customWords: this.state.customWords,
       engagement: this.state.engagement,
     }
     this._broadcast()
@@ -497,6 +513,7 @@ export class GameRoom {
       ...INITIAL_STATE(this.state.code),
       players: this._lobbyPlayers(),
       rules: this.state.rules, // keep current rules
+      customWords: this.state.customWords,
       engagement: this.state.engagement,
     }
     this._broadcast()
@@ -561,7 +578,9 @@ export class GameRoom {
     const pool = categories.includes('all')
       ? words
       : words.filter(item => categories.includes(item.category))
-    const candidates = pool.length > 0 ? pool : words
+    // Custom words have no hint; the impostor plays them blind.
+    const custom = (this.state?.customWords || []).map(word => ({ word, hint: null }))
+    const candidates = custom.length && this.state.rules.customWordsOnly ? custom : [...(pool.length > 0 ? pool : words), ...custom]
     return candidates[Math.floor(Math.random() * candidates.length)]
   }
 
@@ -615,7 +634,7 @@ export class GameRoom {
   }
 
   _publicState() {
-    const { impostorIdx, secretWord, hint, engagement, updatedAt, ...pub } = this.state
+    const { impostorIdx, secretWord, hint, engagement, updatedAt, customWords, ...pub } = this.state
     return pub
   }
 

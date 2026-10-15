@@ -4,6 +4,7 @@ import { play } from '../audio/soundManager.js'
 import { ClueHistory } from './clue-history.jsx'
 import { useServerCountdown } from '../ws/useServerCountdown.js'
 import { wordCategoriesLabel } from '../wordCategories.js'
+import { useStreamerMode } from '../streamerMode.js'
 
 // components/screens-game.jsx — role reveal and the turn-by-turn clue round
 
@@ -13,11 +14,32 @@ const ROUND_REVIEW_SECONDS = 4;
 // Server drives the phase transition via alarm.
 function RoleRevealScreen({ myRole, timerEnd }) {
   const remaining = useServerCountdown(timerEnd, 6);
+  const streamer = useStreamerMode();
+  const [peek, setPeek] = React.useState(false);
   React.useEffect(() => {
-    if (myRole) play(myRole.isImpostor ? 'roleImpostor' : 'roleCrewmate');
+    // On stream the role sounds would give the impostor away, so both roles hear the same pop.
+    if (myRole) play(streamer ? 'join' : myRole.isImpostor ? 'roleImpostor' : 'roleCrewmate');
   }, [myRole]);
 
   if (!myRole) return <main className="connection-screen"><p role="status">Recuperando tu rol…</p></main>;
+
+  if (streamer) {
+    const hold = value => () => setPeek(value);
+    return (
+      <div className="reveal reveal--private">
+        <div className="reveal-rays" aria-hidden="true"/>
+        <div className="reveal-kicker">Modo streamer</div>
+        <button type="button" className="peek-card" aria-pressed={peek}
+          onPointerDown={hold(true)} onPointerUp={hold(false)} onPointerLeave={hold(false)} onPointerCancel={hold(false)}
+          onKeyDown={e => (e.key === ' ' || e.key === 'Enter') && setPeek(true)} onKeyUp={hold(false)} onContextMenu={e => e.preventDefault()}>
+          {peek
+            ? <><span>{myRole.isImpostor ? 'Eres el impostor' : 'Tu palabra es'}</span><strong>{myRole.isImpostor ? (myRole.hint ? `Pista: ${myRole.hint}` : 'Sin pista') : myRole.word}</strong></>
+            : <><strong>Mantén pulsado</strong><span>para ver tu rol sin que salga en el directo</span></>}
+        </button>
+        <p className="reveal-countdown">La ronda empieza en {remaining} s</p>
+      </div>
+    );
+  }
 
   const isImposter = myRole.isImpostor;
   const revealText = isImposter ? "IMPOSTOR" : (myRole.word ?? "").toUpperCase();
@@ -63,7 +85,8 @@ function GameplayScreen({ room, myId, myRole, onSubmitWord }) {
   const amImposter = myRole?.isImpostor ?? false;
   const currentWord = amImposter ? (myRole?.hint || "Sin pista") : (myRole?.word ?? "—");
 
-  const [secretVisible, setSecretVisible] = React.useState(true);
+  const streamer = useStreamerMode();
+  const [secretVisible, setSecretVisible] = React.useState(!streamer);
   const [wordInput, setWordInput] = React.useState("");
   React.useEffect(() => { setWordInput(""); }, [activePlayerIdx]);
 
@@ -97,7 +120,7 @@ function GameplayScreen({ room, myId, myRole, onSubmitWord }) {
           <Sticker color="mustard" rotate={1}>{categoryLabel}</Sticker>
         </div>
         <button className="secret-toggle" aria-label={secretVisible ? "Ocultar mi palabra o pista" : "Mostrar mi palabra o pista"} aria-pressed={secretVisible}
-          onClick={() => setSecretVisible(v => !v)} style={{ background: amImposter ? "var(--red)" : "var(--teal)", color: amImposter ? "var(--paper)" : "var(--ink)" }}>
+          onClick={() => setSecretVisible(v => !v)} style={secretVisible ? { background: amImposter ? "var(--red)" : "var(--teal)", color: amImposter ? "var(--paper)" : "var(--ink)" } : { background: "var(--paper)" }}>
           {secretVisible ? currentWord : "Ver mi palabra"}
         </button>
       </div>

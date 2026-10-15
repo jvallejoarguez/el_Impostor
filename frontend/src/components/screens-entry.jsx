@@ -16,7 +16,7 @@ function HomeScreen({ mode, error, creating, category, initialName, onCreateRoom
       <div className="home-intro">
       <h1 id="home-title" className="home-brand"><span className="sr-only">El Impostor online: juego de palabras con amigos</span><span aria-hidden="true"><Logo size={isMobile ? 0.62 : 1}/></span></h1>
       <p className="home-tagline">Todos reciben la misma palabra menos el impostor. Dad pistas por turnos y votad quién es.</p>
-      <ul className="home-benefits"><li>3–12 jugadores</li><li>Gratis</li><li>Sin registro</li></ul>
+      <ul className="home-benefits"><li>3–16 jugadores</li><li>Gratis</li><li>Sin registro</li></ul>
       <div className="home-actions">
         <button className="btn btn--primary btn--lg" onClick={onCreateRoom}>＋ Crear sala</button>
         <button className="btn btn--ghost btn--lg" onClick={onJoinRoom}>Unirse con código →</button>
@@ -30,7 +30,7 @@ function HomeScreen({ mode, error, creating, category, initialName, onCreateRoom
       <p>El Impostor es un juego de palabras y deducción social para jugar con amigos desde el navegador. Crea una sala privada, comparte el enlace y descubre quién no conoce la palabra secreta antes de que consiga engañar al grupo.</p>
       <p>El anfitrión puede combinar 20 categorías y 400 palabras con pistas, como {HOME_CATEGORY_LINKS.map(([slug, label], i) => <React.Fragment key={slug}>{i ? (i === HOME_CATEGORY_LINKS.length - 1 ? ' y ' : ', ') : ''}<a href={`/palabras-para-el-impostor/${slug}/`}>{label}</a></React.Fragment>)}.</p>
     </section>
-    <nav className="home-seo-links" aria-label="Guías de El Impostor"><a href="/como-jugar/">Cómo jugar</a><a href="/palabras-para-el-impostor/">Palabras y categorías</a><a href="/juego-impostor-online/">Jugar online con amigos</a><a href="/que-decir-si-eres-el-impostor/">Qué decir si eres el impostor</a></nav>
+    <nav className="home-seo-links" aria-label="Guías de El Impostor"><a href="/como-jugar/">Cómo jugar</a><a href="/palabras-para-el-impostor/">Palabras y categorías</a><a href="/juego-impostor-online/">Jugar online con amigos</a><a href="/que-decir-si-eres-el-impostor/">Qué decir si eres el impostor</a><a href="/jugar-en-discord-y-twitch/">Discord y Twitch</a></nav>
   </main>
 }
 

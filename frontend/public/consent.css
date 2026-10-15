@@ -12,6 +12,6 @@
 .consent-panel a { color: #1c0b40; text-decoration: underline; text-underline-offset: 3px; font: 700 13px/1.5 "Nunito", system-ui, sans-serif; }
 .consent-footer a, .consent-footer button { color: inherit; text-decoration: underline; text-underline-offset: 3px; font: 700 13px/1.5 "Nunito", system-ui, sans-serif; }
 .consent-panel :focus-visible, .consent-footer :focus-visible { outline: 4px solid #ffcf26; outline-offset: 4px; }
-.consent-footer { position: relative; z-index: 1; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px 24px; padding: 12px 20px 24px; opacity: .85; }
+.consent-footer { position: relative; z-index: 0; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px 24px; padding: 12px 20px 24px; opacity: .85; }
 .consent-footer button { appearance: none; cursor: pointer; background: transparent; border: 0; padding: 8px 0; }
 @media (max-width: 420px) { .consent-panel { padding: 16px; bottom: 10px; left: 10px; width: calc(100% - 20px); } }

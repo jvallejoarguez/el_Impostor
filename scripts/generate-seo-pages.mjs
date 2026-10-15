@@ -233,7 +233,7 @@ function jsonLd(value) {
 function head({ title, description, canonical, type = 'article', schema }) {
   return `
     <meta charset="UTF-8" />
-    <link rel="stylesheet" href="/consent.css?v=party1" />
+    <link rel="stylesheet" href="/consent.css?v=party2" />
     <script src="/consent.js" defer></script>
     <script src="/visit.js?v=admin1" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -259,8 +259,8 @@ function head({ title, description, canonical, type = 'article', schema }) {
     <meta name="twitter:image" content="${BASE_URL}/og-image-v3.png" />
     <meta name="twitter:image:alt" content="El Impostor, juego de palabras online gratis" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="stylesheet" href="/seo.css?v=party1" />
-    <link href="/fonts/fonts.css?v=party1" rel="stylesheet" />
+    <link rel="stylesheet" href="/seo.css?v=party2" />
+    <link href="/fonts/fonts.css?v=party2" rel="stylesheet" />
     <script type="application/ld+json">${jsonLd(schema)}</script>`
 }
 
@@ -277,8 +277,8 @@ function siteHeader() {
 
 function siteFooter() {
   return `<footer class="wrap footer">
-      <strong>El Impostor</strong> · Juego de palabras online gratis para 3–12 personas.
-      <span class="footer-links"><a href="/?create=1">Crear sala</a> · <a href="/como-jugar/">Reglas</a> · <a href="/palabras-para-el-impostor/">Todas las palabras</a> · <a href="/privacidad/">Datos y privacidad</a></span>
+      <strong>El Impostor</strong> · Juego de palabras online gratis para 3–16 personas.
+      <span class="footer-links"><a href="/?create=1">Crear sala</a> · <a href="/como-jugar/">Reglas</a> · <a href="/palabras-para-el-impostor/">Todas las palabras</a> · <a href="/jugar-en-discord-y-twitch/">Discord y Twitch</a> · <a href="/privacidad/">Datos y privacidad</a></span>
     </footer>`
 }
 
@@ -554,7 +554,7 @@ function hubPage(wordsByCategory) {
       </section>
 
       <section class="section callout">
-        <div><span class="card-kicker">Todo preparado</span><h2>Elige categorías y empieza</h2><p>El servidor reparte la palabra y el rol en privado. Solo necesitas compartir el enlace con 3–12 personas.</p></div>
+        <div><span class="card-kicker">Todo preparado</span><h2>Elige categorías y empieza</h2><p>El servidor reparte la palabra y el rol en privado. Solo necesitas compartir el enlace con 3–16 personas.</p></div>
         <a class="btn primary" href="/?create=1">Crear sala gratis</a>
       </section>
     </main>
@@ -771,6 +771,98 @@ function tipsPage() {
 `
 }
 
+// Discord calls and Twitch streams: how to play, streamer mode, custom words.
+const STREAM_FAQ = [
+  ['¿Se puede jugar a El Impostor en Discord?', 'Sí. Crea una sala en juegoimpostor.app, pega el enlace en tu servidor o en el chat de voz y cada persona entra desde su navegador, en el ordenador o en el móvil. Habláis por la llamada de Discord y el juego reparte las palabras en privado.'],
+  ['¿Hay que descargar algo o crear una cuenta?', 'No. Funciona en el navegador, es gratis y no pide registro: solo un nombre para la partida.'],
+  ['¿Cuántas personas pueden jugar?', 'De 3 a 16 jugadores por sala. Con grupos grandes, la pantalla de juego cambia a una cuadrícula para que se lean bien todos los nombres y pistas.'],
+  ['¿Cómo evito que el chat de Twitch vea mi palabra o el código de la sala?', 'Activa el modo streamer en la sala de espera. Oculta el código, el QR y el enlace en pantalla, quita el código de la barra de direcciones y deja tu rol tapado: lo ves manteniendo pulsado. El sonido del reparto es el mismo para todos, así que tampoco te delata.'],
+  ['¿Puedo usar palabras propias de mi comunidad?', 'Sí. El anfitrión puede escribir hasta 100 palabras (bromas internas, nombres del servidor, un tema) y jugar solo con ellas o mezcladas con las 400 del juego. El resto del grupo solo ve cuántas hay.'],
+  ['¿Es un buen juego para jugar con viewers?', 'Funciona mejor con un grupo que habla en voz: tú y tus amigos o mods en la llamada, y el chat intentando adivinar quién es el impostor mientras dais pistas. Cada ronda dura unos minutos y las votaciones dan muchos momentos para el directo.'],
+]
+function streamPage() {
+  const canonical = `${BASE_URL}/jugar-en-discord-y-twitch/`
+  const title = 'El Impostor en Discord y Twitch: juego para jugar con amigos en llamada'
+  const heading = 'Juega a El Impostor en Discord y en directo'
+  const description = 'Juego de palabras gratis para jugar con amigos en una llamada de Discord o en directo en Twitch: de 3 a 16 jugadores, sin descargas, con modo streamer y palabras propias.'
+  const schema = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'El Impostor', item: `${BASE_URL}/` },
+          { '@type': 'ListItem', position: 2, name: heading, item: canonical },
+        ],
+      },
+      {
+        '@type': 'FAQPage',
+        mainEntity: STREAM_FAQ.map(([question, answer]) => ({ '@type': 'Question', name: question, acceptedAnswer: { '@type': 'Answer', text: answer } })),
+      },
+    ],
+  }
+  const faq = STREAM_FAQ.map(([question, answer]) => `
+        <details class="faq"><summary>${html(question)}</summary><p>${html(answer)}</p></details>`).join('')
+  return `<!DOCTYPE html>
+<html lang="es">
+  <head>${head({ title, description, canonical, schema })}
+  </head>
+  <body>
+    ${siteHeader()}
+    <main class="wrap">
+      <nav class="breadcrumbs" aria-label="Migas de pan"><a href="/">Inicio</a><span aria-hidden="true">/</span><span aria-current="page">Discord y Twitch</span></nav>
+
+      <section class="hero compact-hero">
+        <span class="eyebrow">Gratis · 3 a 16 jugadores · Sin descargas</span>
+        <h1>${html(heading)}</h1>
+        <p class="lead">El Impostor es un juego de palabras para jugar con amigos en una llamada: todos reciben la misma palabra menos uno, el impostor, que tiene que disimular. Funciona en el navegador del ordenador o del móvil, así que encaja en cualquier noche de Discord o directo de Twitch.</p>
+        <div class="cta-row">
+          <a class="btn primary" href="/?create=1">Crear sala gratis</a>
+          <a class="btn" href="/como-jugar/">Ver las reglas</a>
+        </div>
+      </section>
+
+      <section class="section prose">
+        <h2>Cómo jugar en una llamada de Discord</h2>
+        <ol>
+          <li>Una persona crea la sala en juegoimpostor.app y elige categorías o escribe palabras propias.</li>
+          <li>Pega el enlace de invitación en el canal de texto de tu servidor.</li>
+          <li>Cada jugador lo abre en su navegador y escribe su nombre. Seguís hablando por el canal de voz.</li>
+          <li>El juego reparte la palabra en privado, marca los turnos de pistas y lleva la votación.</li>
+        </ol>
+        <p>No hace falta compartir pantalla: cada persona ve su papel en su propio dispositivo.</p>
+
+        <h2>Para streamers: modo streamer</h2>
+        <p>Actívalo en la sala de espera antes de empezar. Oculta el código de la sala, el QR y el enlace, quita el código de la barra de direcciones y tapa tu rol: lo ves manteniendo pulsada la tarjeta. Así puedes enseñar la partida entera en directo sin que el chat se cuele en la sala ni vea tu palabra.</p>
+        <p>Idea para el chat: deja que los viewers voten en el chat de Twitch quién creen que es el impostor antes de la votación de la sala.</p>
+
+        <h2>Palabras propias para tu comunidad</h2>
+        <p>Como anfitrión puedes escribir hasta 100 palabras: memes del servidor, nombres de la comunidad, juegos que jugáis juntos. Elige jugar solo con ellas o mezclarlas con las 400 palabras del juego en 20 categorías, entre ellas <a href="/palabras-para-el-impostor/streamers/">streamers</a>, <a href="/palabras-para-el-impostor/videojuegos/">videojuegos</a> y <a href="/palabras-para-el-impostor/youtubers/">youtubers</a>.</p>
+
+        <h2>Mensaje para tu servidor</h2>
+        <p>Cópialo, añade tu enlace de sala y publícalo en tu canal de anuncios:</p>
+        <blockquote class="copy-message">🕵️ Noche de El Impostor en el canal de voz. Todos tienen la palabra menos uno: dad pistas, debatid y votad quién finge. Entrad desde el navegador, sin descargas: [pega aquí el enlace de la sala]</blockquote>
+      </section>
+
+      <section class="section prose">
+        <h2>Preguntas frecuentes</h2>${faq}
+      </section>
+
+      <section class="section callout">
+        <div>
+          <span class="card-kicker">Listo en un minuto</span>
+          <h2>Crea la sala y pega el enlace en Discord</h2>
+          <p>Gratis, sin registro y para 3 a 16 personas.</p>
+        </div>
+        <a class="btn primary" href="/?create=1">Crear sala gratis</a>
+      </section>
+    </main>
+    ${siteFooter()}
+  </body>
+</html>
+`
+}
+
 async function emit(relativePath, content) {
   const target = path.join(PUBLIC_DIR, relativePath)
   if (CHECK_ONLY) {
@@ -812,6 +904,7 @@ async function main() {
     await emit(path.join('palabras-para-el-impostor', slug, 'index.html'), levelPage(slug, wordsByCategory))
   }
   await emit(path.join('que-decir-si-eres-el-impostor', 'index.html'), tipsPage())
+  await emit(path.join('jugar-en-discord-y-twitch', 'index.html'), streamPage())
 
   const staticUrls = [
     { loc: '/', modified: GUIDES_MODIFIED },
@@ -821,6 +914,7 @@ async function main() {
     { loc: '/palabras-para-el-impostor/faciles/', modified: GUIDES_MODIFIED },
     { loc: '/palabras-para-el-impostor/dificiles/', modified: GUIDES_MODIFIED },
     { loc: '/que-decir-si-eres-el-impostor/', modified: GUIDES_MODIFIED },
+    { loc: '/jugar-en-discord-y-twitch/', modified: GUIDES_MODIFIED },
     ...categories.map((category) => ({
       loc: `/palabras-para-el-impostor/${category.slug}/`,
       modified: GUIDES_MODIFIED,
@@ -832,7 +926,7 @@ ${staticUrls.map(({ loc, modified }) => `  <url>\n    <loc>${BASE_URL}${loc}</lo
 </urlset>
 `
   await emit('sitemap.xml', sitemap)
-  console.log(`${CHECK_ONLY ? 'Verified' : 'Generated'} ${categories.length + Object.keys(LEVELS).length + 3} SEO files from ${words.length} words.`)
+  console.log(`${CHECK_ONLY ? 'Verified' : 'Generated'} ${categories.length + Object.keys(LEVELS).length + 4} SEO files from ${words.length} words.`)
 }
 
 await main()

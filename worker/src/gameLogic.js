@@ -47,6 +47,24 @@ export function normalizeCategories(value) {
   return [...new Set(filtered)]
 }
 
+// Host-written words: trimmed, deduplicated, 2–30 characters, at most 100.
+// They stay on the server; players only see how many there are.
+export function cleanCustomWords(input) {
+  if (!Array.isArray(input)) return []
+  const seen = new Set()
+  const words = []
+  for (const raw of input) {
+    if (typeof raw !== 'string') continue
+    const word = raw.trim().replace(/\s+/g, ' ')
+    const key = word.toLocaleLowerCase('es')
+    if (word.length < 2 || word.length > 30 || seen.has(key)) continue
+    seen.add(key)
+    words.push(word)
+    if (words.length === 100) break
+  }
+  return words
+}
+
 export function firstConnectedPlayerIdx(state) {
   return connectedPlayerIndices(state)[0] ?? 0
 }
@@ -66,7 +84,7 @@ function sanitizeRules(state, patch = {}) {
   }
 
   if ('maxPlayers' in patch) {
-    const maxPlayers = clampInt(patch.maxPlayers, Math.max(3, connectedCount), 12)
+    const maxPlayers = clampInt(patch.maxPlayers, Math.max(3, connectedCount), 16)
     if (maxPlayers !== null) next.maxPlayers = maxPlayers
   }
 

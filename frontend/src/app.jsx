@@ -6,6 +6,7 @@ import { RoleRevealScreen, GameplayScreen } from './components/screens-game.jsx'
 import { BetweenRoundScreen, VotingScreen, ResultsScreen } from './components/screens-vote.jsx'
 import { useGameSocket, WORKER_BASE } from './ws/useGameSocket.js'
 import { setMusic } from './audio/soundManager.js'
+import { useStreamerMode } from './streamerMode.js'
 import { captureCampaign, getAttribution, getMeasurementConsent, wasInvited, track } from './analytics.js'
 import { useFeedback } from './components/feedback.jsx'
 import { readSession, clearSession, entryFromUrl, updateEntryUrl } from './session.js'
@@ -46,11 +47,13 @@ export default function App() {
     return () => createRequestRef.current?.abort()
   }, [entry, connect])
 
+  // Streamer mode keeps the room code out of the address bar (it shows on stream).
+  const streamer = useStreamerMode()
   useEffect(() => {
     if (!gameState) return
-    updateEntryUrl(gameState.code)
+    updateEntryUrl(streamer ? '' : gameState.code)
     setPlayerName(myPlayer?.name || playerName)
-  }, [gameState, phase, myPlayer?.name, playerName])
+  }, [gameState, phase, myPlayer?.name, playerName, streamer])
 
   const playerCount = gameState?.players.filter(p => p.connected !== false).length || 0
   const feedbackCategory = gameState?.rules?.wordCategories?.join('_') || category
@@ -143,6 +146,7 @@ export default function App() {
 
   const handleReady = useCallback(() => send('READY'), [send])
   const handleUpdateRules = useCallback((rules) => send('UPDATE_RULES', { rules }), [send])
+  const handleCustomWords = useCallback((words, only) => send('SET_CUSTOM_WORDS', { words, only }), [send])
   const handleSelectAvatar = useCallback((avatarId) => {
     if (!send('UPDATE_AVATAR', { avatarId })) return false
     saveAvatarPreference(avatarId)
@@ -222,6 +226,7 @@ export default function App() {
           amOwner={amOwner}
           onReady={handleReady}
           onUpdateRules={handleUpdateRules}
+          onCustomWords={handleCustomWords}
           onSelectAvatar={handleSelectAvatar}
           onStartGame={handleStartGame}
           onLeave={handleLeaveRoom}

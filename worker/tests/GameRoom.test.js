@@ -328,3 +328,26 @@ describe('reliability', () => {
     expect(recorded).toHaveBeenCalledWith('alarm_failed', expect.any(Error))
   })
 })
+
+describe('custom words and big rooms', () => {
+  it('lets only the host set private custom words and plays from them', async () => {
+    const { room, players, send } = await trio()
+    await send(players[1], 'SET_CUSTOM_WORDS', { words: ['Hackeo'], only: true })
+    expect(room.state.rules.customWordCount).toBeUndefined()
+    await send(players[0], 'SET_CUSTOM_WORDS', { words: [' Pizza con piña ', 'pizza con piña', 'x', 'El profe'], only: true })
+    expect(room.state.customWords).toEqual(['Pizza con piña', 'El profe'])
+    expect(room.state.rules).toMatchObject({ customWordCount: 2, customWordsOnly: true })
+    const broadcast = messages(players[1], 'STATE').at(-1).payload
+    expect(broadcast).not.toHaveProperty('customWords')
+    expect(JSON.stringify(broadcast)).not.toContain('El profe')
+    await send(players[0], 'START_GAME')
+    expect(['Pizza con piña', 'El profe']).toContain(room.state.secretWord)
+    expect(room.state.hint).toBeNull()
+  })
+
+  it('caps rooms at 16 players', async () => {
+    const { room, players, send } = await trio()
+    await send(players[0], 'UPDATE_RULES', { rules: { maxPlayers: 40 } })
+    expect(room.state.rules.maxPlayers).toBe(16)
+  })
+})

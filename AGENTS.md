@@ -1,6 +1,6 @@
 # El Impostor
 
-Spanish-language social deduction word game (Among Us-style) for 3-12 players.
+Spanish-language social deduction word game (Among Us-style) for 3-16 players.
 Real-time multiplayer over WebSockets. Anonymous play — no accounts.
 
 ## Stack

@@ -31,7 +31,7 @@ export function cleanContext(input = {}) {
   input = input && typeof input === 'object' ? input : {}
   const result = {}
   if (PHASES.includes(input.phase)) result.phase = input.phase
-  if (Number.isInteger(input.playerCount) && input.playerCount >= 0 && input.playerCount <= 12) result.playerCount = input.playerCount
+  if (Number.isInteger(input.playerCount) && input.playerCount >= 0 && input.playerCount <= 16) result.playerCount = input.playerCount
   for (const key of ['method', 'version']) if (label(input[key])) result[key] = input[key]
   if (typeof input.category === 'string' && /^[a-z0-9_-]{1,512}$/.test(input.category)) result.category = input.category
   if (uuid(input.gameId)) result.gameId = input.gameId

@@ -110,3 +110,12 @@
   .avatar-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (prefers-reduced-motion: reduce) { .room-person { animation: none; } }
+.room-streamer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--cream-deep); }
+.room-streamer strong { display: block; font-size: 14px; font-weight: 900; }
+.room-streamer small { display: block; font-size: 12px; font-weight: 800; color: var(--soft); }
+.room-custom-words { margin-top: 10px; }
+.room-custom-words:disabled { cursor: default; box-shadow: none; }
+.custom-words-input { width: 100%; padding: 12px; border: 3px solid var(--ink); border-radius: var(--radius-sm); background: var(--cream); color: var(--ink); font: 700 16px/1.5 var(--font-ui); resize: vertical; }
+.custom-words-only { display: flex; align-items: center; gap: 10px; margin: 12px 0 4px; font-weight: 900; }
+.custom-words-only input { width: 22px; height: 22px; accent-color: var(--teal); }
+.invite-streamer { padding: 14px; border-radius: var(--radius-sm); background: var(--cream-deep); font-weight: 800; line-height: 1.5; }

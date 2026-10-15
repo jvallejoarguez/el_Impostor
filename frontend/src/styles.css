@@ -334,3 +334,10 @@ summary { cursor: pointer; font-weight: 800; padding: 10px 0; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* Streamer mode: a private role card you hold to read */
+.reveal--private { background: var(--stage); color: var(--paper); }
+.peek-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: min(360px, 90vw); min-height: 220px; padding: 24px; border: 4px solid var(--ink); border-radius: var(--radius-lg); background: var(--paper); color: var(--ink); box-shadow: var(--shadow-hard-xl); user-select: none; -webkit-user-select: none; touch-action: none; }
+.peek-card strong { font: 38px/1.05 var(--font-display); overflow-wrap: anywhere; }
+.peek-card span { font-size: 15px; font-weight: 800; color: var(--ink-soft); }
+.peek-card[aria-pressed="true"] { background: var(--mustard); transform: scale(.98); }

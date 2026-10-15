@@ -650,3 +650,9 @@ h2 {
 .wildcards { list-style: none; padding: 0; display: grid; gap: 10px; }
 .wildcards li { padding: 12px 14px; border: 3px solid var(--ink, #1c0b40); border-radius: 14px; background: #fff; color: #1c0b40; }
 .wildcards strong { display: inline-block; margin-right: 8px; padding: 2px 10px; border-radius: 999px; background: #ffcf26; border: 2px solid #1c0b40; }
+
+/* Discord & Twitch page */
+.faq { margin: 10px 0; padding: 4px 16px; border: 3px solid var(--ink); border-radius: 14px; background: #fff; color: var(--ink); }
+.faq summary { font-weight: 900; padding: 12px 0; cursor: pointer; }
+.faq p, .prose .faq p { margin: 0 0 14px; color: #1c0b40; }
+.copy-message { margin: 12px 0 0; padding: 16px 18px; border: 3px dashed var(--ink); border-radius: 14px; background: #fff; color: var(--ink); font-weight: 700; line-height: 1.5; }
