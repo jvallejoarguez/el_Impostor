@@ -335,7 +335,7 @@ function categoryPage(category, words) {
   const rows = enriched.map((word, index) => `
               <tr>
                 <td class="row-number">${index + 1}</td>
-                <th scope="row"><a href="${wordPath(category, word)}">${html(word.word)}</a></th>
+                <th scope="row">${word.person ? html(word.word) : `<a href="${wordPath(category, word)}">${html(word.word)}</a>`}</th>
                 <td><span class="hint-chip">${html(word.hint)}</span></td>
                 <td><span class="difficulty ${difficultyClass(word.difficulty)}">${word.difficulty}</span></td>
               </tr>`).join('')
@@ -615,7 +615,7 @@ function levelPage(slug, wordsByCategory) {
   }
   const rows = picked.map((word) => `
               <tr>
-                <th scope="row"><a href="${wordPath(word.category, word)}">${html(word.word)}</a></th>
+                <th scope="row">${word.person ? html(word.word) : `<a href="${wordPath(word.category, word)}">${html(word.word)}</a>`}</th>
                 <td><span class="hint-chip">${html(word.hint)}</span></td>
                 <td><a href="/palabras-para-el-impostor/${word.category.slug}/">${html(word.category.label)}</a></td>
               </tr>`).join('')
@@ -884,7 +884,9 @@ function wordPage(category, words, index, clues) {
   const title = `Palabras relacionadas con ${name} para jugar al impostor`
   const quoted = (items) => items.map((item) => `«${item}»`)
   const description = `${clues.related.length} pistas para ${name} en el juego del impostor, como ${quoted(clues.related.slice(0, 3)).join(', ')}. Con la pista del impostor explicada y tres faroles si no sabes la palabra.`
-  const siblings = [1, 2, 3, 4].map((step) => words[(index + step) % words.length])
+  const pool = words.filter((item) => !item.person)
+  const at = pool.indexOf(word)
+  const siblings = [1, 2, 3, 4].map((step) => pool[(at + step) % pool.length])
   const schema = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -1010,14 +1012,17 @@ async function main() {
   if (unknown.length) throw new Error(`Missing SEO metadata for: ${unknown.join(', ')}`)
 
   const clues = JSON.parse(await readFile(RELATED_PATH, 'utf8'))
-  for (const { word } of words) {
+  // Real people (marked "person" in words.json) stay in the game but get no clue page:
+  // a dozen published associations per person can't be kept accurate.
+  const cluedWords = words.filter((item) => !item.person)
+  for (const { word } of cluedWords) {
     const entry = clues[word]
     if (!entry) throw new Error(`Missing related words for: ${word}`)
     if (entry.related.length < 10 || entry.related.length > 12) throw new Error(`${word} needs 10–12 related words`)
     if (entry.bluffs.length !== 3 || !entry.hint) throw new Error(`${word} needs a hint explanation and 3 bluffs`)
   }
-  const stale = Object.keys(clues).filter((word) => !words.some((item) => item.word === word))
-  if (stale.length) throw new Error(`Related words for words no longer in the game: ${stale.join(', ')}`)
+  const stale = Object.keys(clues).filter((word) => !cluedWords.some((item) => item.word === word))
+  if (stale.length) throw new Error(`Related words for words without a clue page: ${stale.join(', ')}`)
 
   await emit('palabras-para-el-impostor/index.html', hubPage(wordsByCategory))
   for (const category of categories) {
@@ -1027,6 +1032,7 @@ async function main() {
     )
     const categoryWords = wordsByCategory.get(category.id)
     for (const [index, word] of categoryWords.entries()) {
+      if (word.person) continue
       await emit(path.join(wordPath(category, word), 'index.html'), wordPage(category, categoryWords, index, clues[word.word]))
     }
   }
@@ -1050,7 +1056,7 @@ async function main() {
       loc: `/palabras-para-el-impostor/${category.slug}/`,
       modified: GUIDES_MODIFIED,
     })),
-    ...categories.flatMap((category) => wordsByCategory.get(category.id).map((word) => ({
+    ...categories.flatMap((category) => wordsByCategory.get(category.id).filter((word) => !word.person).map((word) => ({
       loc: wordPath(category, word),
       modified: LAST_MODIFIED,
     }))),
@@ -1061,7 +1067,7 @@ ${staticUrls.map(({ loc, modified }) => `  <url>\n    <loc>${BASE_URL}${loc}</lo
 </urlset>
 `
   await emit('sitemap.xml', sitemap)
-  console.log(`${CHECK_ONLY ? 'Verified' : 'Generated'} ${categories.length + Object.keys(LEVELS).length + words.length + 4} SEO files from ${words.length} words.`)
+  console.log(`${CHECK_ONLY ? 'Verified' : 'Generated'} ${categories.length + Object.keys(LEVELS).length + cluedWords.length + 4} SEO files from ${words.length} words.`)
 }
 
 await main()

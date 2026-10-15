@@ -159,3 +159,9 @@ La tarjeta de ejemplo de la portada pasa de AuronPlay/Jeringuilla a AuronPlay/To
 - **Manga**: en otros contextos también es la parte de una prenda; se mantiene porque la categoría Cultura deja claro el sentido.
 - **Baloncesto, Penalti, Metro, Camping, Capibara, Termo**: tienen variantes regionales (básquet, penal, subte, campamento, carpincho), pero se entienden en todos los países.
 - **Portada**: el bloque «Ibai, AuronPlay y el boom de Adivina el Impostor» describe un vídeo real de Ibai y no forma parte del catálogo. Se deja como está porque es texto SEO de otra sesión.
+
+## Personas reales (15 de octubre de 2026)
+
+- Las 100 palabras que son personas reales llevan `"person": true` en `words.json`. Siguen en el juego y en las tablas de categoría, pero ya no tienen página de pistas propia: publicar una docena de asociaciones por persona no se puede mantener exacto. Sus entradas se borraron de `scripts/related-words.json`.
+- **Las Ratitas → Javier Santaolalla (Bata)**: canal infantil cuyas protagonistas son menores (14 y 15 años).
+- **TadeVlogs → Julioprofe (Ecuación)**, **Ceciarmy → Julia Menú García (Sobremesa)** e **Inmagic → Mario Ruiz (Fogones)**: no se encontró una fecha de nacimiento fiable que confirme que son mayores de edad, así que se sustituyen por creadores adultos verificados.
