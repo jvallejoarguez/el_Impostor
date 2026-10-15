@@ -5,6 +5,7 @@ import { LobbyScreen, CountdownScreen } from './components/screens-lobby.jsx'
 import { RoleRevealScreen, GameplayScreen } from './components/screens-game.jsx'
 import { BetweenRoundScreen, VotingScreen, ResultsScreen } from './components/screens-vote.jsx'
 import { useGameSocket, WORKER_BASE } from './ws/useGameSocket.js'
+import { setMusic } from './audio/soundManager.js'
 import { captureCampaign, getAttribution, getMeasurementConsent, wasInvited, track } from './analytics.js'
 import { useFeedback } from './components/feedback.jsx'
 import { readSession, clearSession, entryFromUrl, updateEntryUrl } from './session.js'
@@ -30,6 +31,11 @@ export default function App() {
 
   // Derived values
   const phase = gameState?.phase ?? null
+  // Home track before and between games, the sneaky track while clues and votes
+  // happen; countdown, role reveal and results leave room for their own sounds.
+  useEffect(() => {
+    setMusic(!phase || phase === 'lobby' ? 'home' : ['playing', 'roundReview', 'betweenRound', 'voting'].includes(phase) ? 'game' : null)
+  }, [phase])
   const myPlayer = gameState?.players?.find(p => p.id === myId) ?? null
   const amOwner = myPlayer?.isOwner ?? false
 

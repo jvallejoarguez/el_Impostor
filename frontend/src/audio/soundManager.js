@@ -1,7 +1,8 @@
 // frontend/src/audio/soundManager.js
-// Party-game sound effects synthesised with Web Audio: no files to download,
-// no licences to track. Browsers only allow audio after a user gesture, so the
-// context is created on the first tap or key press.
+// Party-game sound effects synthesised with Web Audio, plus two looping music
+// tracks. Browsers only allow audio after a user gesture, so the context is
+// created on the first tap or key press; everything goes through one master
+// gain, so the mute button silences music and effects alike.
 
 const MUTE_KEY = 'el-impostor-sound'
 let ctx = null
@@ -20,6 +21,7 @@ export function initSounds() {
     glue.connect(ctx.destination)
   }
   if (ctx.state === 'suspended') ctx.resume().catch(() => {})
+  syncMusic()
 }
 if (typeof window !== 'undefined') {
   for (const type of ['pointerdown', 'keydown']) window.addEventListener(type, initSounds, { once: true, passive: true })
@@ -30,6 +32,40 @@ export function setMuted(value) {
   muted = value
   try { localStorage.setItem(MUTE_KEY, value ? 'off' : 'on') } catch {}
   if (master) master.gain.setTargetAtTime(value ? 0 : 0.5, ctx.currentTime, 0.02)
+  syncMusic()
+}
+
+// === Music: home and lobby get one track, the clue and vote rounds another ===
+const TRACKS = { home: '/music/home.m4a', game: '/music/game.m4a' }
+const MUSIC_VOLUME = 0.35
+const music = {}
+let wantedMusic = null
+
+export function setMusic(name) {
+  wantedMusic = name
+  syncMusic()
+}
+
+function syncMusic() {
+  if (!ctx) return
+  for (const name of Object.keys(TRACKS)) {
+    const on = name === wantedMusic && !muted
+    if (!on && !music[name]) continue
+    if (!music[name]) {
+      const audio = new Audio(TRACKS[name])
+      audio.loop = true
+      const gain = ctx.createGain()
+      gain.gain.value = 0
+      ctx.createMediaElementSource(audio).connect(gain)
+      gain.connect(master)
+      music[name] = { audio, gain }
+    }
+    const { audio, gain } = music[name]
+    // Cross-fade; a silent track pauses once its fade has finished.
+    gain.gain.setTargetAtTime(on ? MUSIC_VOLUME : 0, ctx.currentTime, on ? 0.6 : 0.3)
+    if (on) audio.play().catch(() => {})
+    else setTimeout(() => { if (name !== wantedMusic || muted) audio.pause() }, 1500)
+  }
 }
 
 const NOTE = { E3: 164.8, F3: 174.6, Fs3: 185, G3: 196, Ab3: 207.7, D4: 293.7, G4: 392, C5: 523.3, E5: 659.3, G5: 784, D6: 1174.7, C6: 1046.5, E6: 1318.5, G6: 1568 }

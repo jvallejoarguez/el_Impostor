@@ -13,6 +13,9 @@
 /fonts/*
   Cache-Control: public, max-age=2592000
 
+/music/*
+  Cache-Control: public, max-age=2592000
+
 # Only the apex domain should be indexed; the canonical tags already point there.
 https://www.juegoimpostor.app/*
   X-Robots-Tag: noindex
