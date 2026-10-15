@@ -179,7 +179,8 @@ function CircleLayout({ players, activeIdx, words, timeFrac, timerRemaining }) {
             }}>
               <Avatar name={p.name} avatarId={p.avatarId} size={avatarSize} speaking={isActive}/>
               <div style={{ fontFamily: "var(--font-display)", fontSize: 15, marginTop: 4, textShadow: "0 2px 0 var(--ink)" }}>{p.name}</div>
-              {words[p.id] && <div className="word-bubble pop" style={{ top: -30, padding: "3px 10px", fontSize: 15 }}>{words[p.id]}</div>}
+              {/* Lower-half players speak downwards so bubbles never cover the seat above. */}
+              {words[p.id] && <span className={`word-bubble-anchor ${Math.sin(angle) > 0.3 ? "is-below" : ""}`}><span className="word-bubble pop" key={words[p.id]}>{words[p.id]}</span></span>}
             </div>
           );
         })}

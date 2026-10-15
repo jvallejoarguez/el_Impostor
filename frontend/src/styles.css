@@ -190,8 +190,8 @@ summary { cursor: pointer; font-weight: 800; padding: 10px 0; }
 .game-topbar { padding-right: 60px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
 .game-chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .secret-toggle { padding: 8px 16px; border: 3px solid var(--ink); border-radius: var(--radius-sm); box-shadow: 0 4px 0 var(--ink); font: 18px var(--font-display); max-width: 260px; overflow-wrap: anywhere; color: var(--ink); }
-.gameplay-circle { width: 100%; height: clamp(340px, 53vh, 520px); position: relative; display: flex; align-items: center; justify-content: center; }
-.gameplay-circle.is-large-group { height: auto; }
+.gameplay-circle { width: 100%; height: clamp(380px, 56vh, 560px); padding-bottom: 44px; position: relative; display: flex; align-items: center; justify-content: center; }
+.gameplay-circle.is-large-group { height: auto; padding-bottom: 0; }
 .gameplay-bottom { padding: 18px; margin-top: 12px; background: var(--paper); border: 3px solid var(--ink); border-radius: var(--radius-lg); box-shadow: var(--shadow-hard-lg); }
 .gameplay-bottom input { flex: 2; min-width: 180px; padding: 14px 18px; font: 800 18px var(--font-ui); border: 3px solid var(--ink); border-radius: var(--radius-sm); background: var(--cream); color: var(--ink); outline: none; }
 .turn-row { display: flex; align-items: center; gap: 14px; }
@@ -218,8 +218,14 @@ summary { cursor: pointer; font-weight: 800; padding: 10px 0; }
 .large-group-player.is-active { background: var(--mustard); }
 .large-group-player strong { font: 16px var(--font-display); }
 .large-group-player > span { font-size: 13px; font-weight: 800; }
-.word-bubble { position: absolute; left: 50%; transform: translateX(-50%) rotate(-3deg); background: var(--paper); color: var(--ink); border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 3px 0 var(--ink); font-family: var(--font-display); white-space: nowrap; z-index: 10; }
-.word-bubble::after { content: ""; position: absolute; left: 50%; bottom: -9px; width: 12px; height: 12px; background: inherit; border: solid var(--ink); border-width: 0 3px 3px 0; transform: translateX(-50%) rotate(45deg); }
+/* The anchor places the clue above the portrait; the bubble inside only pops,
+   so the animation never fights the centring transform. */
+.word-bubble-anchor { position: absolute; left: 50%; bottom: calc(100% + 12px); transform: translateX(-50%); z-index: 10; pointer-events: none; }
+.word-bubble { display: block; position: relative; padding: 3px 12px 4px; background: var(--paper); color: var(--ink); border: 3px solid var(--ink); border-radius: 14px; font: 16px/1.2 var(--font-display); white-space: nowrap; transform-origin: 50% 100%; }
+.word-bubble::after { content: ""; position: absolute; left: 50%; bottom: -8px; width: 11px; height: 11px; background: var(--paper); border: solid var(--ink); border-width: 0 3px 3px 0; transform: translateX(-50%) rotate(45deg); }
+.word-bubble-anchor.is-below { bottom: auto; top: calc(100% + 10px); }
+.is-below .word-bubble { transform-origin: 50% 0; }
+.is-below .word-bubble::after { bottom: auto; top: -8px; border-width: 3px 0 0 3px; }
 
 /* Role reveal: the one big moment */
 .reveal { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; overflow: hidden; text-align: center; color: var(--ink); }
@@ -306,7 +312,7 @@ summary { cursor: pointer; font-weight: 800; padding: 10px 0; }
   .entry-page { padding-top: 84px; }
   .entry-card, .connection-card { padding: 24px 20px; }
   .entry-card h1 { font-size: 32px; }
-  .gameplay-circle { height: 340px; }
+  .gameplay-circle { height: 384px; }
   .gameplay-bottom { padding: 12px; }
   .gameplay-bottom .input-row { flex-direction: column; align-items: stretch; gap: 8px; }
   .gameplay-bottom .input-row .turn-info { width: 100%; min-width: 0; }

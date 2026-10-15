@@ -233,7 +233,7 @@ function jsonLd(value) {
 function head({ title, description, canonical, type = 'article', schema }) {
   return `
     <meta charset="UTF-8" />
-    <link rel="stylesheet" href="/consent.css" />
+    <link rel="stylesheet" href="/consent.css?v=party1" />
     <script src="/consent.js" defer></script>
     <script src="/visit.js?v=admin1" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -249,18 +249,18 @@ function head({ title, description, canonical, type = 'article', schema }) {
     <meta property="og:title" content="${html(title)}" />
     <meta property="og:description" content="${html(description)}" />
     <meta property="og:url" content="${canonical}" />
-    <meta property="og:image" content="${BASE_URL}/og-image-v2.png" />
+    <meta property="og:image" content="${BASE_URL}/og-image-v3.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="El Impostor, juego de palabras online gratis" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${html(title)}" />
     <meta name="twitter:description" content="${html(description)}" />
-    <meta name="twitter:image" content="${BASE_URL}/og-image-v2.png" />
+    <meta name="twitter:image" content="${BASE_URL}/og-image-v3.png" />
     <meta name="twitter:image:alt" content="El Impostor, juego de palabras online gratis" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="stylesheet" href="/seo.css" />
-    <link href="/fonts/fonts.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/seo.css?v=party1" />
+    <link href="/fonts/fonts.css?v=party1" rel="stylesheet" />
     <script type="application/ld+json">${jsonLd(schema)}</script>`
 }
 
