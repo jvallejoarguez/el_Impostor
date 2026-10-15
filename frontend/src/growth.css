@@ -1,25 +1,24 @@
-.feedback-footer { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 24px; padding: 20px 16px 28px; color: var(--ink-soft); }
-.feedback-footer .text-button { font-size: 12px; min-height: 36px; }
-.room-social { flex-wrap: wrap; }
+.feedback-footer { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 24px; padding: 20px 16px 28px; color: var(--soft); }
+.feedback-footer .text-button { font-size: 13px; min-height: 36px; }
 .invite-sheet label, .feedback-form label { display: block; font-weight: 700; margin: 16px 0 8px; }
-.invite-sheet input, .feedback-form select, .feedback-form textarea { width: 100%; min-width: 0; padding: 12px; border: 2px solid var(--ink); border-radius: 10px; background: var(--paper); color: var(--ink); font: inherit; font-size: 16px; }
+.invite-sheet input, .feedback-form select, .feedback-form textarea { width: 100%; min-width: 0; padding: 12px; border: 3px solid var(--ink); border-radius: var(--radius-sm); background: var(--cream); color: var(--ink); font: inherit; font-size: 16px; }
 .feedback-form textarea { resize: vertical; }
 .feedback-form fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .feedback-form .helper-text { line-height: 1.6; }
 .feedback-ratings, .postgame-rating > div { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .feedback-ratings [aria-pressed="true"] { background: var(--mustard); box-shadow: inset 0 0 0 2px var(--ink); }
 .feedback-thanks { padding: 12px 0 24px; line-height: 1.6; }
-.feedback-thanks p:first-child { font: 28px var(--font-display); }
-.invite-qr { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px; margin: 20px 0; border: 2px dashed var(--ink); border-radius: 12px; }
+.feedback-thanks p:first-child { font: 32px var(--font-display); }
+.invite-qr { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px; margin: 20px 0; border: 3px dashed var(--ink); border-radius: var(--radius-md); background: var(--cream); }
 .invite-qr svg { width: min(224px, 100%); height: auto; }
-.invite-qr strong { font: 28px var(--font-mono); letter-spacing: .15em; }
-.invite-qr span { font-size: 13px; color: var(--ink-soft); }
+.invite-qr strong { font: 40px var(--font-display); letter-spacing: .18em; }
+.invite-qr span { font-size: 14px; font-weight: 800; color: var(--soft); }
 .invite-actions { display: grid; gap: 10px; }
 .invite-actions a { text-align: center; text-decoration: none; }
-.postgame-rating { width: 100%; max-width: 540px; margin: 24px 0; padding: 18px 12px; border-top: 1px solid var(--line); text-align: center; }
+.postgame-rating { width: 100%; max-width: 540px; margin: 24px 0; padding: 18px 12px; border-top: 2px solid #FFFFFF26; text-align: center; }
 .postgame-rating p { font-weight: 700; }
 .postgame-rating > .text-button { margin-top: 14px; }
-.exit-survey { max-width: 540px; margin: 16px auto; padding: 16px 24px; border: 1px solid var(--line); border-radius: 12px; }
+.exit-survey { max-width: 540px; margin: 16px auto; padding: 16px 24px; background: var(--paper); border: 3px solid var(--ink); border-radius: var(--radius-lg); box-shadow: var(--shadow-hard); }
 .exit-survey button { margin: 6px 16px 6px 0; }
 .privacy-copy { line-height: 1.65; }
 .measurement-choice { display: flex; align-items: flex-start; gap: 10px; font-weight: 700; }

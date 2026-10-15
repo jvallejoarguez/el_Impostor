@@ -105,6 +105,13 @@ async function readPassword(request) {
   try { return JSON.parse(new TextDecoder().decode(bytes))?.password } catch { return null }
 }
 
+// Only the Pages proxy knows ADMIN_PROXY_KEY; a spoofed client IP header is ignored.
+async function clientIp(request, env) {
+  const key = request.headers.get('X-Admin-Proxy-Key')
+  if (env.ADMIN_PROXY_KEY && key && await secureEqual(key, env.ADMIN_PROXY_KEY)) return request.headers.get('X-Admin-Client-IP')
+  return request.headers.get('CF-Connecting-IP')
+}
+
 export async function handleAdmin(request, env) {
   const path = new URL(request.url).pathname
   const action = path.split('/').at(-1)
@@ -120,7 +127,7 @@ export async function handleAdmin(request, env) {
     if (action === 'login') {
       const password = await readPassword(request)
       if (typeof password !== 'string' || password.length > 256) return reply({ error: 'Introduce una clave válida.' }, 400)
-      const result = await auth.fetch(new Request('https://internal/auth', { method: 'POST', body: JSON.stringify({ action, password, ip: request.headers.get('CF-Connecting-IP') }) }))
+      const result = await auth.fetch(new Request('https://internal/auth', { method: 'POST', body: JSON.stringify({ action, password, ip: await clientIp(request, env) }) }))
       const data = await result.json()
       if (!result.ok) return reply({ error: data.error }, result.status, result.status === 429 ? { 'Retry-After': '900' } : {})
       return reply({ authenticated: true, expires: data.expires }, 200, { 'Set-Cookie': cookie(request, data.token, SESSION_MS / 1000) })

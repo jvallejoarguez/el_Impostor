@@ -44,7 +44,8 @@ export const errorLabels = {
   socket_disconnected: 'Conexión interrumpida', room_not_found: 'Sala no encontrada', room_full: 'Sala llena',
   game_in_progress: 'Partida ya iniciada', invalid_join: 'Datos de entrada inválidos',
   room_capacity: 'No quedan códigos disponibles', room_create_failed: 'Error al crear sala',
-  websocket_open_failed: 'Error al abrir conexión', unknown: 'Sin detalle',
+  websocket_open_failed: 'Error al abrir conexión', reconnect_timeout: 'Reconexión lenta',
+  message_failed: 'Error al procesar una acción', alarm_failed: 'Error en un temporizador', unknown: 'Sin detalle',
 }
 
 export const feedbackLabels = {

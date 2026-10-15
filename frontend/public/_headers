@@ -5,3 +5,20 @@
   X-Frame-Options: DENY
   Referrer-Policy: no-referrer
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'
+
+# Vite fingerprints these file names, so they can be cached for a year.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/fonts/*
+  Cache-Control: public, max-age=2592000
+
+# Only the apex domain should be indexed; the canonical tags already point there.
+https://www.juegoimpostor.app/*
+  X-Robots-Tag: noindex
+
+https://:project.pages.dev/*
+  X-Robots-Tag: noindex
+
+https://:version.:project.pages.dev/*
+  X-Robots-Tag: noindex

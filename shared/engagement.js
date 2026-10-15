@@ -3,8 +3,8 @@ import { consentReceipt } from './consent.js'
 export const CLIENT_EVENTS = new Set([
   'visit', 'create_intent', 'create_failed', 'join_attempt', 'join_failed',
   'invite_link_opened', 'share_invite', 'copy_room_code', 'qr_opened',
-  'demo_guess', 'play_again_requested', 'new_group_intent', 'lobby_left',
-  'download_result_card', 'feedback_opened', 'rating_prompt_shown', 'page_view', 'client_error',
+  'play_again_requested', 'new_group_intent', 'lobby_left',
+  'feedback_opened', 'rating_prompt_shown', 'page_view', 'client_error',
 ])
 export const SERVER_EVENTS = new Set([
   'room_created', 'player_joined', 'group_ready', 'room_activated', 'game_started', 'game_finished', 'game_repeated',

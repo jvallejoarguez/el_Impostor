@@ -3,13 +3,13 @@ import { AVATAR_NAMES, portraitSeed, avatarIndex } from '../../../shared/avatars
 export { portraitSeed } from '../../../shared/avatars.js'
 
 // Original vector portraits, drawn for El Impostor. No external avatar service.
-const INK = '#28251E'
-const CREAM = '#F6EBD3'
-const RUST = '#B8432E'
-const GREEN = '#485F42'
-const BLUE = '#375666'
-const GOLD = '#C79239'
-const BACKGROUNDS = ['#D6BF89', '#C4C9AB', '#BAC7C7', '#D8AA89']
+const INK = '#1C0B40'
+const CREAM = '#FFF8EC'
+const RUST = '#FF4766'
+const GREEN = '#18C99A'
+const BLUE = '#4D8DFF'
+const GOLD = '#FFCF26'
+const BACKGROUNDS = ['#FFD95E', '#7FE3C4', '#C4B5FF', '#FF9DB0', '#8EC5FF']
 export const CLUB_CHARACTERS = AVATAR_NAMES
 
 function Eyes({ y = 76, left = 61, right = 96, narrow = false, look = 1 }) {
@@ -143,7 +143,7 @@ export function ClubAvatar({ name = '', size = 72, speaking = false, eliminated 
   return <span className={`club-avatar ${speaking ? 'is-speaking' : ''} ${eliminated ? 'is-eliminated' : ''}`} data-avatar={CLUB_CHARACTERS[kind]} style={{width:size, height:size, '--portrait-accent':accent}} aria-hidden="true">
     <svg viewBox="0 0 160 160" width={size} height={size} className="portrait-illustration" focusable="false">
       <defs><clipPath id={`portrait-${id}`}><rect x="6" y="6" width="148" height="148" rx="70"/></clipPath><pattern id={`hatch-${id}`} width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(25)"><path d="M0 0v9" stroke={INK} strokeWidth=".6" opacity=".14"/></pattern></defs>
-      <rect x="4" y="4" width="152" height="152" rx="73" fill={CREAM} stroke={INK} strokeWidth="2.5"/>
+      <rect x="4" y="4" width="152" height="152" rx="73" fill={CREAM} stroke={INK} strokeWidth="4"/>
       <g clipPath={`url(#portrait-${id})`}>
         <path d="M6 6h148v148H6Z" fill={BACKGROUNDS[(seed >>> 8) % BACKGROUNDS.length]}/>
         <path d="M6 6h148v148H6Z" fill={`url(#hatch-${id})`}/>
@@ -156,10 +156,3 @@ export function ClubAvatar({ name = '', size = 72, speaking = false, eliminated 
   </span>
 }
 
-export function ClubCast() {
-  return <div className="club-cast" aria-hidden="true">
-    <svg className="cast-orbit" viewBox="0 0 460 360"><path d="M24 202Q76 41 243 55T440 230M55 274Q264 357 428 130" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="4 8"/><path d="m369 35 4 12 12 4-12 4-4 12-4-12-12-4 12-4ZM50 101l3 8 8 3-8 3-3 8-3-8-8-3 8-3Z" fill="currentColor"/></svg>
-    {[{name:'Nico', caption:'Yo no he sido.'}, {name:'Hugo', caption:'De total confianza.'}, {name:'Lola', caption:'Demasiado tranquila.'}].map((p,i) => <div className={`cast-card cast-card-${i}`} key={p.name}><span className="cast-number">SOCIO / 0{i+1}</span><ClubAvatar name={p.name} size={i === 1 ? 152 : 112}/><strong>{p.name}</strong><span className="cast-caption">{p.caption}</span></div>)}
-    <span className="cast-stamp">SE ADMITEN<br/>COARTADAS</span>
-  </div>
-}

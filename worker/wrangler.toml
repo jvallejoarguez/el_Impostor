@@ -2,6 +2,10 @@ name = "el-impostor-worker"
 main = "src/index.js"
 compatibility_date = "2024-09-23"
 
+# Keep console.error/warn output (for example GameRoom server errors) in Workers Logs.
+[observability]
+enabled = true
+
 [vars]
 FRONTEND_ORIGIN = "http://localhost:3000"
 FRONTEND_ORIGINS = "http://localhost:3000"
@@ -38,7 +42,14 @@ new_sqlite_classes = ["AdminAuth"]
 
 [env.production.vars]
 FRONTEND_ORIGIN = "https://juegoimpostor.app"
-FRONTEND_ORIGINS = "https://juegoimpostor.app,https://www.juegoimpostor.app,https://el-impostor-djf.pages.dev"
+FRONTEND_ORIGINS = "https://juegoimpostor.app,https://www.juegoimpostor.app,https://el-impostor-djf.pages.dev,https://*.el-impostor-djf.pages.dev"
+
+# POST /rooms limit per client IP. Unsafe bindings are not inherited by envs.
+[[env.production.unsafe.bindings]]
+name = "ROOM_LIMITER"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 10, period = 60 }
 
 [[env.production.durable_objects.bindings]]
 name = "GAME_ROOM"

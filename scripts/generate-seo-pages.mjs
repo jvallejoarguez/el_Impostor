@@ -7,6 +7,8 @@ const PUBLIC_DIR = path.join(ROOT, 'frontend', 'public')
 const WORDS_PATH = path.join(ROOT, 'worker', 'src', 'words.json')
 const BASE_URL = 'https://juegoimpostor.app'
 const LAST_MODIFIED = '2026-09-03'
+// Home and the two guides gained crawlable copy and head fixes on this date.
+const GUIDES_MODIFIED = '2026-10-15'
 const CHECK_ONLY = process.argv.includes('--check')
 
 const categories = [
@@ -594,9 +596,9 @@ async function main() {
   }
 
   const staticUrls = [
-    { loc: '/', modified: LAST_MODIFIED },
-    { loc: '/juego-impostor-online/', modified: LAST_MODIFIED },
-    { loc: '/como-jugar/', modified: LAST_MODIFIED },
+    { loc: '/', modified: GUIDES_MODIFIED },
+    { loc: '/juego-impostor-online/', modified: GUIDES_MODIFIED },
+    { loc: '/como-jugar/', modified: GUIDES_MODIFIED },
     { loc: '/palabras-para-el-impostor/', modified: LAST_MODIFIED },
     ...categories.map((category) => ({
       loc: `/palabras-para-el-impostor/${category.slug}/`,

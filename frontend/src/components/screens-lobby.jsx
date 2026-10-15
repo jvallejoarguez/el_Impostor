@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { Avatar } from './primitives.jsx'
 import { AvatarPickerButton } from './avatar-picker.jsx'
-import { RoomRadio } from './room-radio.jsx'
 import { Sheet } from './sheet.jsx'
 import { play } from '../audio/soundManager.js'
 import { useServerCountdown } from '../ws/useServerCountdown.js'
@@ -9,7 +8,7 @@ import { WORD_CATEGORIES, normalizeWordCategories, wordCategoriesLabel } from '.
 import { getInviteUrl, getInviteText, getWhatsAppShareUrl, track } from '../analytics.js'
 import { InviteSheet } from './invite-sheet.jsx'
 
-function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onSelectAvatar, onStartGame, onLeave }) {
+function LobbyScreen({ room, myId, amOwner, onReady, onUpdateRules, onSelectAvatar, onStartGame, onLeave }) {
   const [feedback, setFeedback] = useState('')
   const [showInvite, setShowInvite] = useState(false)
   const [showCategories, setShowCategories] = useState(false)
@@ -30,6 +29,12 @@ function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onSel
     } catch { setShowInvite(true) }
   }
   const invite = () => { setShowInvite(true); track('qr_opened', { phase: 'lobby' }) }
+  // A pop for every new arrival, like players dropping into a party lobby.
+  const joinedRef = React.useRef(connected.length)
+  React.useEffect(() => {
+    if (connected.length > joinedRef.current) play('join')
+    joinedRef.current = connected.length
+  }, [connected.length])
 
   return <main className="room-lobby">
     <header className="room-topbar">
@@ -43,13 +48,13 @@ function LobbyScreen({ theme, room, myId, amOwner, onReady, onUpdateRules, onSel
         <div className="room-roster">
           {room.players.map(p => <div key={p.id} className={`room-person ${p.connected === false ? 'is-disconnected' : ''}`}>
             {p.id === myId ? <AvatarPickerButton name={p.name} avatarId={p.avatarId} onSelect={onSelectAvatar} size={76} showCrown={p.isOwner}/>
-              : <Avatar name={p.name} avatarId={p.avatarId} style={theme.avatarStyle} size={76} showCrown={p.isOwner}/>}
+              : <Avatar name={p.name} avatarId={p.avatarId} size={76} showCrown={p.isOwner}/>}
             <strong title={p.name}>{p.name}{p.id === myId && <small> · tú</small>}</strong>
             <span className={`room-person-status ${p.ready || p.isOwner ? 'is-ready' : ''}`}>{p.connected === false ? 'Sin conexión' : p.isOwner ? '★ Anfitrión' : p.ready ? '✓ Listo' : 'Preparándose'}</span>
           </div>)}
           {Array.from({length:missing}, (_, i) => <button type="button" className="room-empty-seat" key={`seat-${i}`} onClick={invite} aria-label="Invitar a un jugador"><span aria-hidden="true">＋</span><small>Invitar</small></button>)}
         </div>
-        <div className="room-social"><button type="button" onClick={invite} className="room-invite">＋ Invitar / QR</button><a className="text-button" href={getWhatsAppShareUrl(getInviteText(connected.length), getInviteUrl(room.code, 'whatsapp'))} target="_blank" rel="noreferrer" onClick={() => track('share_invite', { method: 'whatsapp', phase: 'lobby' })}>WhatsApp ↗</a><RoomRadio code={room.code}/></div>
+        <div className="room-social"><button type="button" onClick={invite} className="room-invite">＋ Invitar / QR</button><a className="text-button" href={getWhatsAppShareUrl(getInviteText(connected.length), getInviteUrl(room.code, 'whatsapp'))} target="_blank" rel="noreferrer" onClick={() => track('share_invite', { method: 'whatsapp', phase: 'lobby' })}>WhatsApp ↗</a></div>
         <p className="room-feedback" role="status">{feedback}</p>
       </section>
       <section className="room-settings" aria-labelledby="settings-title">
@@ -101,25 +106,15 @@ function CategoryPicker({ value, editable, onChange }) {
 
 // === COUNTDOWN ===
 // Server drives phase transition via alarm; this component is a 4s visual animation only.
-function CountdownScreen({ theme, timerEnd }) {
+function CountdownScreen({ timerEnd }) {
   const remaining = useServerCountdown(timerEnd, 4);
   const n = Math.max(0, remaining - 1);
-  React.useEffect(() => { if (n > 0) play('tick'); }, [n]);
+  React.useEffect(() => { play(n > 0 ? 'tick' : 'go'); }, [n]);
 
   return (
-    <div style={{
-      minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-      background: "var(--ink)", position: "fixed", inset: 0, zIndex: 100,
-    }}>
-      <div key={n} className="pop" style={{
-        fontFamily: "var(--font-display)",
-        fontSize: "min(40vw, 340px)",
-        color: n === 0 ? "var(--mustard)" : "var(--red)",
-        WebkitTextStroke: "6px var(--paper)",
-        letterSpacing: 0,
-        lineHeight: 1,
-        textShadow: "12px 12px 0 var(--paper)",
-      }}>
+    <div className="reveal" style={{ background: "var(--stage)", zIndex: 100 }}>
+      <div className="reveal-rays" aria-hidden="true"/>
+      <div key={n} className="reveal-word slam" style={{ fontSize: "min(42vw, 340px)", color: n === 0 ? "var(--teal)" : "var(--mustard)" }}>
         {n === 0 ? "¡YA!" : n}
       </div>
     </div>

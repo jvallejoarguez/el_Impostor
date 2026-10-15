@@ -53,7 +53,7 @@ el-impostor/
 │   ├── app.jsx                  Main app, screen routing, WS state
 │   ├── components/              Screen components (entry, lobby, game, vote, primitives)
 │   ├── ws/useGameSocket.js      WebSocket hook — connects, reconnects, exposes send()
-│   └── audio/soundManager.js   Howler.js SFX — call play("win") etc.
+│   └── audio/soundManager.js   Web Audio synth SFX — call play("win") etc.
 ├── worker/src/
 │   ├── index.js                 HTTP routing: POST /rooms, GET /rooms/:code/ws
 │   ├── GameRoom.js              Durable Object — one per room, holds state + WS sessions
@@ -75,9 +75,14 @@ Private statistics live at `/admin-panel/` (separate Vite entry). `worker/src/Ad
    `gameLogic.js` functions. The frontend never mutates game state directly.
 3. **Timers:** Turn timers and voting timers are Durable Object alarms (`ctx.storage.setAlarm`).
    Clients receive a `timerEnd` timestamp and render a local countdown. The server auto-advances
-   on alarm fire regardless of whether the client acted.
-4. **Reconnection:** Players reconnect with the same `playerId` (stored in `sessionStorage`).
-   The server marks them `connected: true` and re-sends their `ROLE` message.
+   on alarm fire regardless of whether the client acted. Every in-game phase has a deadline
+   (including the 30 s between-round choice). Lobby and results have no game timer, so their alarm
+   does housekeeping: it hands the host role over 20 s after the host drops and deletes rooms
+   left without connected players for 30 minutes.
+4. **Reconnection:** Players reconnect with the same `playerId` (stored per tab in `sessionStorage`;
+   production also remembers the last room's ID in `localStorage` so reopening the invite in a new tab
+   rejoins). The server marks them `connected: true` and re-sends their `ROLE` message. The 20 s
+   keepalive is the plain string `ping`, answered by the runtime with `pong` without waking the room.
 
 ## WebSocket Message Protocol
 
@@ -97,6 +102,7 @@ Client → Server: `{ type, payload }`
 | CONFIRM_VOTE   | `{}`                             | Lock in vote                 |
 | PLAY_AGAIN     | `{}`                             | Results — any player         |
 | BACK_TO_LOBBY  | `{}`                             | Results — owner only         |
+| LEAVE          | `{}`                             | Explicit exit: frees the lobby seat, passes host at once |
 
 Server → Client:
 
@@ -108,15 +114,17 @@ Server → Client:
 
 ## Sounds
 
-Call `play(name)` from `soundManager.js`. Must call `initSounds()` once after first user interaction.
+Call `play(name)` from `soundManager.js`. Effects are synthesised with Web Audio (no audio files); the context unlocks on the first tap or key press. The fixed sound button (`components/sound-toggle.jsx`) mutes everything and remembers it in `localStorage` (`el-impostor-sound`).
 
 | Name          | Trigger                        |
 |---------------|--------------------------------|
 | tick          | Countdown each number          |
+| go            | Countdown reaches ¡YA!         |
+| join          | A player joins the lobby       |
 | roleImpostor  | Role reveal: you're impostor   |
 | roleCrewmate  | Role reveal: you have word     |
 | yourTurn      | It becomes your turn           |
-| timerWarning  | Timer drops below 25%          |
+| timerWarning  | Each second of a turn's last quarter |
 | wordSubmit    | Any player submits a word      |
 | voteCast      | You cast a vote                |
 | win           | Impostor found (team wins)     |

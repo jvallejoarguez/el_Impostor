@@ -6,9 +6,10 @@ import './club.css'
 import './room-lobby.css'
 import './growth.css'
 import { FeedbackProvider } from './components/feedback.jsx'
+import { SoundToggle } from './components/sound-toggle.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <FeedbackProvider><App /></FeedbackProvider>
+    <FeedbackProvider><App /><SoundToggle /></FeedbackProvider>
   </React.StrictMode>
 )

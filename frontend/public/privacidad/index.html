@@ -17,7 +17,7 @@
 <body><main>
   <a href="/">← Volver al juego</a>
   <h1>Privacidad y cookies</h1>
-  <p>Última actualización: 3 de octubre de 2026.</p>
+  <p>Última actualización: 15 de octubre de 2026.</p>
   <p class="intro">Puedes jugar sin aceptar la medición. Las visitas, los clics y las campañas se miden solo si eliges «Aceptar medición». Puedes cambiarlo en «Configurar medición», al pie de cualquier página. Enviar una opinión es voluntario e independiente de esa decisión.</p>
 
   <h2>Quién es el responsable</h2>
@@ -25,7 +25,7 @@
 
   <h2>Datos necesarios para jugar</h2>
   <p>No necesitas una cuenta. Para prestar el juego solicitado se utilizan un identificador aleatorio de jugador, el apodo que eliges, el avatar, el código de sala y el estado de la partida (conexión, pistas, votos y resultados). El apodo, el avatar y la información pública de la partida son visibles para quienes participan en tu sala. Las palabras y los roles secretos se envían individualmente según las reglas del juego.</p>
-  <p>La base del tratamiento es la prestación del servicio que solicitas. Usar un apodo evita que tengas que facilitarnos tu nombre real. El estado de sala se guarda en el servidor para recuperar la partida tras una desconexión. Actualmente no hay un borrado automático de las salas inactivas; puedes solicitar su eliminación por correo indicando el código de sala y una fecha aproximada. El plazo de 30 días descrito a continuación corresponde a las métricas y opiniones, no al estado de las salas.</p>
+  <p>La base del tratamiento es la prestación del servicio que solicitas. Usar un apodo evita que tengas que facilitarnos tu nombre real. El estado de sala se guarda en el servidor para recuperar la partida tras una desconexión. Cada sala se borra automáticamente unos 30 minutos después de quedarse sin jugadores conectados; si una partida estaba en curso, primero se cierra sola al agotarse sus turnos. Puedes solicitar antes su eliminación por correo indicando el código de sala y una fecha aproximada. El plazo de 30 días descrito a continuación corresponde a las métricas y opiniones, no al estado de las salas.</p>
   <p>El servidor también genera contadores generales de salas, entradas, partidas, interrupciones y errores del servicio, sin consultar almacenamiento de seguimiento en tu navegador. Cuando no hay consentimiento válido, estos contadores no incluyen tu campaña de procedencia. Su finalidad es conocer el funcionamiento del servicio, sobre la base del interés legítimo en mantenerlo y mejorarlo.</p>
 
   <h2>Medición opcional</h2>
@@ -43,8 +43,8 @@
   <p>El código de la aplicación usa almacenamiento local y de sesión del navegador, tecnologías con funciones similares a las cookies. El almacenamiento necesario está activo para prestar el servicio o recordar decisiones que solicitas; el opcional requiere tu aceptación previa.</p>
   <ul>
     <li><strong>Acceso de administración:</strong> solo al iniciar sesión en el panel privado se crea una cookie necesaria, <code>__Host-impostor-admin</code>, con las protecciones <code>Secure</code>, <code>HttpOnly</code> y <code>SameSite=Strict</code>. Caduca a las ocho horas o al cerrar sesión. El servidor guarda un resumen criptográfico de la sesión; los límites contra intentos de acceso usan resúmenes con clave y caducidad de quince minutos. No se crea esta cookie al jugar y el panel no envía eventos de medición.</li>
-    <li><strong>Sesión de juego:</strong> identificador de jugador, sala, apodo y avatar en <code>sessionStorage</code>. Permiten entrar y reconectar. Duran la sesión de pestaña; algunos navegadores la restauran al recuperar pestañas cerradas.</li>
-    <li><strong>Ajustes de sonido:</strong> las preferencias de radio que cambias se guardan en <code>localStorage</code> hasta que las cambies o borres los datos del sitio.</li>
+    <li><strong>Sesión de juego:</strong> identificador de jugador, sala, apodo y avatar en <code>sessionStorage</code>. Permiten entrar y reconectar. Duran la sesión de pestaña; algunos navegadores la restauran al recuperar pestañas cerradas. Además, <code>el-impostor-last-room</code> en <code>localStorage</code> guarda solo el código de tu última sala y tu identificador en ella, para que al reabrir la invitación en otra pestaña vuelvas como el mismo jugador. Se sustituye al entrar en otra sala o al borrar los datos del sitio.</li>
+    <li><strong>Sonido:</strong> <code>el-impostor-sound</code> en <code>localStorage</code> recuerda si has silenciado los efectos de sonido, hasta que lo cambies o borres los datos del sitio.</li>
     <li><strong>Tu decisión:</strong> <code>el-impostor-consent</code> en <code>localStorage</code> recuerda aceptación o rechazo, fecha y versión durante 180 días de validez. Al caducar, la medición se bloquea y vuelve a solicitarse una decisión. El registro se sustituye cuando eliges de nuevo o desaparece al borrar los datos del sitio.</li>
     <li><strong>Medición opcional:</strong> <code>el-impostor-acquisition</code> y <code>el-impostor-events</code> en <code>sessionStorage</code> conservan procedencia y evitan contar dos veces ciertas acciones durante la sesión de pestaña. Se eliminan también al rechazar.</li>
     <li><strong>Frecuencia de preguntas:</strong> si aceptas, <code>el-impostor-prompt-rating</code> y <code>el-impostor-prompt-exit</code> en <code>localStorage</code> guardan la fecha de la última pregunta para no repetirla durante 24 horas. La fecha permanece hasta sustituirla, retirar el consentimiento o borrar los datos del sitio. Sin aceptación, este límite funciona solo en memoria mientras mantienes abierta la página.</li>

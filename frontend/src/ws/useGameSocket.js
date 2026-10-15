@@ -6,11 +6,19 @@ import { getAttribution, getMeasurementConsent, wasInvited, track } from '../ana
 import { WORKER_BASE } from '../config.js'
 export { WORKER_BASE } from '../config.js'
 
-function getOrCreatePlayerId() {
+// sessionStorage gives each tab its own player. In production, localStorage also
+// remembers the player of the last room, so reopening that invite in another tab
+// rejoins instead of being refused mid-game. Development skips it so several
+// local tabs can still play as different people.
+export function playerIdFor(code) {
+  const tabKey = 'el-impostor-player-id'
+  const roomKey = 'el-impostor-last-room'
+  const remember = !import.meta.env.DEV
   try {
-    const key = 'el-impostor-player-id'
-    const id = sessionStorage.getItem(key) || crypto.randomUUID()
-    sessionStorage.setItem(key, id)
+    const last = remember ? JSON.parse(localStorage.getItem(roomKey)) : null
+    const id = (last?.code === code && last.id) || sessionStorage.getItem(tabKey) || crypto.randomUUID()
+    sessionStorage.setItem(tabKey, id)
+    if (remember) localStorage.setItem(roomKey, JSON.stringify({ code, id }))
     return id
   } catch { return crypto.randomUUID() }
 }
@@ -20,7 +28,7 @@ export function useGameSocket() {
   const [myRole, setMyRole] = useState(null)
   const [connectionState, setConnectionState] = useState('disconnected')
   const [lastError, setLastError] = useState(null)
-  const [myId] = useState(getOrCreatePlayerId)
+  const [myId, setMyId] = useState(null)
   const clockRef = useRef(createServerClock())
   const connectionRef = useRef(null)
   const wsRef = useRef(null)
@@ -75,20 +83,32 @@ export function useGameSocket() {
     let lastMessageAt = performance.now()
     setConnectionState(hadStateRef.current ? 'reconnecting' : 'connecting')
 
+    // PING syncs the server clock; the plain 'ping' keepalive is answered by the
+    // runtime without waking the room.
     const ping = () => {
       if (wsRef.current === ws) send('PING', { clientSentAt: performance.now() })
     }
+    const keepAlive = () => {
+      if (wsRef.current === ws) try { ws.send('ping') } catch {}
+    }
     resumeRef.current = () => {
       // Mobile browsers can suspend timers and messages while backgrounded.
-      // Start a fresh grace period before judging a resumed socket stale.
+      // Start a fresh grace period, then reconnect quickly if the resumed
+      // socket only looks open and the ping gets no answer.
       lastMessageAt = performance.now()
       ping()
+      clearTimeout(timersRef.current.resume)
+      timersRef.current.resume = setTimeout(() => {
+        if (wsRef.current === ws && performance.now() - lastMessageAt >= 5000) ws.close()
+      }, 5000)
     }
 
     // Includes opening the socket and waiting for JOIN to be accepted.
     timersRef.current.join = setTimeout(() => {
       if (wsRef.current !== ws || joined) return
-      track('join_failed', { method: 'timeout' })
+      // A slow reconnect is not a failed entry; keep the two apart in the report.
+      if (hadStateRef.current) track('client_error', { method: 'reconnect_timeout' })
+      else track('join_failed', { method: 'timeout' })
       setLastError('La conexión está tardando. Puedes reintentarlo o volver a la entrada.')
       try { ws.close() } catch {}
     }, 12000)
@@ -96,9 +116,9 @@ export function useGameSocket() {
     ws.onopen = () => {
       if (wsRef.current !== ws) return
       const consent = getMeasurementConsent()
-      if (!send('JOIN', { ...connection, playerId: myId, ...(consent ? { consent, attribution: getAttribution(), wasInvited: wasInvited() } : {}) })) return
+      if (!send('JOIN', { ...connection, ...(consent ? { consent, attribution: getAttribution(), wasInvited: wasInvited() } : {}) })) return
       ping()
-      timersRef.current.heartbeat = setInterval(ping, 20000)
+      timersRef.current.heartbeat = setInterval(keepAlive, 20000)
       timersRef.current.watchdog = setInterval(() => {
         if (document.visibilityState !== 'visible') return
         if (performance.now() - lastMessageAt > 35000) ws.close()
@@ -107,14 +127,15 @@ export function useGameSocket() {
 
     ws.onmessage = event => {
       if (wsRef.current !== ws) return
+      lastMessageAt = performance.now()
+      if (event.data === 'pong') return
       let msg
       try { msg = JSON.parse(event.data) } catch { return }
-      lastMessageAt = performance.now()
       const roundTrip = msg.type === 'PONG' && Number.isFinite(msg.clientSentAt)
         ? Math.max(0, performance.now() - msg.clientSentAt) : 0
       clockRef.current.sync(msg.serverNow, roundTrip)
       if (msg.type === 'STATE') {
-        const player = msg.payload?.players?.find(p => p.id === myId)
+        const player = msg.payload?.players?.find(p => p.id === connection.playerId)
         if (!player) return
         joined = true
         hadStateRef.current = true
@@ -157,7 +178,8 @@ export function useGameSocket() {
         setConnectionState('failed')
         return
       }
-      if (joined) track('client_error', { method: 'socket_disconnected' })
+      // Backgrounded mobile tabs close sockets routinely; only count visible drops.
+      if (joined && document.visibilityState === 'visible') track('client_error', { method: 'socket_disconnected' })
       setConnectionState('reconnecting')
       const delay = Math.min(300 * (2 ** retriesRef.current++), 8000)
       if (navigator.onLine !== false && document.visibilityState === 'visible') {
@@ -171,7 +193,9 @@ export function useGameSocket() {
   const connect = useCallback((code, name) => {
     stopTimers()
     closeSocket()
-    connectionRef.current = { code, name, avatarId: readAvatarPreference() }
+    const playerId = playerIdFor(code)
+    connectionRef.current = { code, name, avatarId: readAvatarPreference(), playerId }
+    setMyId(playerId)
     retriesRef.current = 0
     hadStateRef.current = false
     clockRef.current.reset()

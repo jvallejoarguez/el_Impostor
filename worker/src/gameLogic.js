@@ -152,10 +152,10 @@ export function applySubmitWord(state, { playerId, word }) {
   if (activePlayer?.id !== playerId) return state
 
   const newHistory = [...state.wordHistory, { playerId, word, round: state.currentRound }]
-  const turnOrder = connectedPlayerIndices(state)
-  const currentTurnPosition = turnOrder.indexOf(state.activePlayerIdx)
-  const roundComplete = currentTurnPosition === -1 || currentTurnPosition === turnOrder.length - 1
-  const nextActiveIdx = roundComplete ? firstConnectedPlayerIdx(state) : turnOrder[currentTurnPosition + 1]
+  // Search from the active seat, not its position among connected players:
+  // a disconnected active player must not end the round for everyone after them.
+  const nextActiveIdx = connectedPlayerIndices(state).find(idx => idx > state.activePlayerIdx)
+  const roundComplete = nextActiveIdx === undefined
 
   if (!roundComplete) {
     return { ...state, wordHistory: newHistory, activePlayerIdx: nextActiveIdx }
@@ -187,10 +187,20 @@ export function applyBetweenVote(state, { playerId, choice }) {
       : state.betweenRoundVotes.vote,
   }
 
-  const connectedCount = state.players.filter(p => p.connected).length
-  const majority = Math.floor(connectedCount / 2) + 1
+  return settleBetweenRound(state, newVotes)
+}
 
-  if (newVotes.continue.length >= majority) {
+// Decides the between-round choice from connected players' votes. Re-run on
+// disconnects and on timeout so one silent player can never stall the room;
+// a timeout continues only with more "continue" votes, otherwise it votes.
+export function settleBetweenRound(state, votes = state.betweenRoundVotes, timedOut = false) {
+  if (state.phase !== 'betweenRound') return state
+  const connected = new Set(state.players.filter(p => p.connected).map(p => p.id))
+  const continues = votes.continue.filter(id => connected.has(id)).length
+  const voteNow = votes.vote.filter(id => connected.has(id)).length
+  const majority = Math.floor(connected.size / 2) + 1
+
+  if (continues >= majority || (timedOut && continues > voteNow)) {
     return {
       ...state,
       phase: 'playing',
@@ -200,7 +210,7 @@ export function applyBetweenVote(state, { playerId, choice }) {
     }
   }
 
-  if (newVotes.vote.length >= majority || newVotes.continue.length + newVotes.vote.length >= connectedCount) {
+  if (timedOut || voteNow >= majority || continues + voteNow >= connected.size) {
     return {
       ...state,
       phase: 'voting',
@@ -208,7 +218,7 @@ export function applyBetweenVote(state, { playerId, choice }) {
     }
   }
 
-  return { ...state, betweenRoundVotes: newVotes }
+  return { ...state, betweenRoundVotes: votes }
 }
 
 export function applyCastVote(state, { voterId, targetId }) {

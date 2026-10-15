@@ -2,7 +2,7 @@
 import {
   applyJoin, applyReady, applyUpdateRules, applyUpdateAvatar, applyStartGame,
   applySubmitWord, applyBetweenVote, applyCastVote,
-  applyConfirmVote, computeResult, firstConnectedPlayerIdx, normalizeCategories,
+  applyConfirmVote, computeResult, firstConnectedPlayerIdx, normalizeCategories, settleBetweenRound,
 } from './gameLogic.js'
 import words from './words.json'
 import { recordRoomEvent } from './Engagement.js'
@@ -11,6 +11,9 @@ import { consentReceipt } from '../../shared/consent.js'
 
 const ROUND_REVIEW_MS = 3500
 const VOTING_MS = 30000
+const BETWEEN_ROUND_MS = 30000
+const OWNER_GRACE_MS = 20000
+const ROOM_TTL_MS = 30 * 60 * 1000
 
 const INITIAL_STATE = (code, category = 'all') => ({
   code,
@@ -62,24 +65,32 @@ export class GameRoom {
       const att = ws.deserializeAttachment?.()
       if (att?.playerId) this.sessions.set(att.playerId, ws)
     }
+    // Keepalive pings are answered by the runtime without waking a hibernated room.
+    if (typeof WebSocketRequestResponsePair === 'function') {
+      ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'))
+    }
   }
 
   async _save() {
-    if (this.state) await this.ctx.storage.put('state', this.state)
+    if (!this.state) return
+    this.state.updatedAt = Date.now()
+    await this.ctx.storage.put('state', this.state)
+  }
+
+  // Rooms saved before expiry existed never cleaned up; treat them as free codes.
+  _isAbandoned() {
+    return this.ctx.getWebSockets().length === 0 && Date.now() - (this.state.updatedAt || 0) > ROOM_TTL_MS
   }
 
   async fetch(request) {
     const url = new URL(request.url)
 
-    if (url.pathname === '/exists') {
-      return Response.json({ active: this.state !== null || this.sessions.size > 0 })
-    }
-
-    // Claim the room code at creation time so a concurrent POST /rooms
-    // cannot pick the same code before any client connects.
+    // Check-and-claim in one request (the DO is single-threaded), so two
+    // concurrent POST /rooms can never receive the same code.
     if (url.pathname === '/claim') {
       const code = url.searchParams.get('code') || 'UNKNOWN'
-      if (!this.state) {
+      const claimed = !this.state || this._isAbandoned()
+      if (claimed) {
         this.state = INITIAL_STATE(code, url.searchParams.get('category'))
         let consent
         try { consent = consentReceipt(JSON.parse(url.searchParams.get('consent'))) } catch {}
@@ -89,8 +100,9 @@ export class GameRoom {
         }
         this._record('room_created', this.state.engagement.id)
         await this._save()
+        await this._scheduleHousekeeping() // a room nobody joins still expires
       }
-      return Response.json({ ok: true })
+      return Response.json({ claimed })
     }
 
     if (request.headers.get('Upgrade') !== 'websocket') {
@@ -104,6 +116,13 @@ export class GameRoom {
   }
 
   async webSocketMessage(ws, rawMessage) {
+    try { await this._handleMessage(ws, rawMessage) }
+    catch (error) { this._recordServerError('message_failed', error); throw error }
+  }
+
+  async _handleMessage(ws, rawMessage) {
+    // Fallback where the runtime auto-response is unavailable (it never wakes the room).
+    if (rawMessage === 'ping') { try { ws.send('pong') } catch {} return }
     let msg
     try { msg = JSON.parse(rawMessage) } catch { return }
 
@@ -152,6 +171,9 @@ export class GameRoom {
       case 'BACK_TO_LOBBY':
         if (playerId) this._handleBackToLobby(playerId)
         break
+      case 'LEAVE':
+        if (playerId) await this._handleLeave(ws, playerId)
+        break
     }
   }
 
@@ -164,24 +186,52 @@ export class GameRoom {
     const playerId = this._playerIdForWs(ws)
     if (!playerId || !this.state) return
     this.sessions.delete(playerId)
-    const wasOwner = this.state.players.find(p => p.id === playerId)?.isOwner
     this.state = {
       ...this.state,
       players: this.state.players.map(p => p.id === playerId ? { ...p, connected: false } : p),
     }
-    // Transfer ownership to the next connected player whenever the owner
-    // drops, regardless of phase — otherwise owner-only actions (START_GAME,
-    // BACK_TO_LOBBY) get stranded if the host never reconnects.
-    if (wasOwner) {
-      const nextOwner = this.state.players.find(p => p.connected)
-      if (nextOwner) {
-        this.state = {
-          ...this.state,
-          players: this.state.players.map(p => ({ ...p, isOwner: p.id === nextOwner.id })),
-        }
-      }
+    await this._afterDeparture(false)
+  }
+
+  // An explicit exit frees the lobby seat and hands over the host role at once.
+  async _handleLeave(ws, playerId) {
+    this.sessions.delete(playerId)
+    try { ws.serializeAttachment({}) } catch {} // the following close is then ignored
+    this.state = {
+      ...this.state,
+      players: this.state.phase === 'lobby'
+        ? this.state.players.filter(p => p.id !== playerId)
+        : this.state.players.map(p => p.id === playerId ? { ...p, connected: false } : p),
+    }
+    await this._afterDeparture(true)
+  }
+
+  async _afterDeparture(explicit) {
+    // A departure can complete the between-round majority.
+    if (this.state.phase === 'betweenRound') return this._enterAfterBetweenRound(settleBetweenRound(this.state))
+    if (['lobby', 'results'].includes(this.state.phase)) {
+      // A dropped host (often just sharing the invite) keeps the role for a
+      // grace period; mid-game the role is only needed again at results.
+      if (explicit) this._ensureOwner()
+      await this._scheduleHousekeeping()
     }
     this._broadcast()
+  }
+
+  // Lobby and results run no game timer, so their alarm hands the host role
+  // over after the grace period and expires rooms nobody is using.
+  async _scheduleHousekeeping() {
+    const players = this.state.players
+    const hostAway = players.some(p => p.connected) && !players.some(p => p.connected && p.isOwner)
+    await this.ctx.storage.setAlarm(Date.now() + (hostAway ? OWNER_GRACE_MS : ROOM_TTL_MS))
+  }
+
+  _ensureOwner() {
+    const players = this.state.players
+    const next = players.find(p => p.connected)
+    if (!next || players.some(p => p.connected && p.isOwner)) return false
+    this.state = { ...this.state, players: players.map(p => ({ ...p, isOwner: p.id === next.id })) }
+    return true
   }
 
   async webSocketError(ws) {
@@ -190,6 +240,11 @@ export class GameRoom {
 
   // Durable Object alarm — drives phase transitions on timer expiry
   async alarm() {
+    try { await this._handleAlarm() }
+    catch (error) { this._recordServerError('alarm_failed', error); throw error }
+  }
+
+  async _handleAlarm() {
     if (!this.state) return
     switch (this.state.phase) {
       case 'countdown': {
@@ -257,6 +312,24 @@ export class GameRoom {
           result: computeResult(this.state),
         }
         this._broadcast()
+        await this._scheduleHousekeeping()
+        break
+      }
+
+      case 'betweenRound': {
+        await this._enterAfterBetweenRound(settleBetweenRound(this.state, undefined, true))
+        break
+      }
+
+      case 'lobby':
+      case 'results': {
+        if (!this.state.players.some(p => p.connected) || this.ctx.getWebSockets().length === 0) {
+          await this.ctx.storage.deleteAll()
+          this.state = null
+          this.sessions.clear()
+          return
+        }
+        if (this._ensureOwner()) this._broadcast()
         break
       }
     }
@@ -296,6 +369,7 @@ export class GameRoom {
         this._sendRoleTo(playerId, ws)
       }
       this._broadcast()
+      await this._checkHost()
       return
     }
 
@@ -312,8 +386,9 @@ export class GameRoom {
       ws.close()
       return
     }
-    const isOwner = !this.state.players.some(p => p.connected && p.isOwner)
-    if (isOwner) this.state = { ...this.state, players: this.state.players.map(p => ({ ...p, isOwner: false })) }
+    // Only the first player takes the host role; a host who briefly dropped
+    // keeps it, and the housekeeping alarm hands it over if they never return.
+    const isOwner = !this.state.players.some(p => p.isOwner)
     this.sessions.set(playerId, ws)
     try { ws.serializeAttachment({ playerId }) } catch {}
     this.state = applyJoin(this.state, { id: playerId, name, isOwner, avatarId })
@@ -322,6 +397,15 @@ export class GameRoom {
     if (!accepted) this._withdrawMeasurement(playerId)
     recordRoomEvent(this.ctx, this.env, 'player_joined', crypto.randomUUID(), cleanAttribution(accepted ? attribution : { source: 'unattributed' }), { wasInvited: !!accepted && wasInvited === true })
     this._broadcast()
+    await this._checkHost()
+  }
+
+  // A room whose host left gets a new one at once; a host who only dropped
+  // keeps the role until the grace-period alarm.
+  async _checkHost() {
+    if (!['lobby', 'results'].includes(this.state.phase)) return
+    if (!this.state.players.some(p => p.isOwner) && this._ensureOwner()) this._broadcast()
+    else if (!this.state.players.some(p => p.connected && p.isOwner)) await this._scheduleHousekeeping()
   }
 
   async _handleStartGame(playerId) {
@@ -339,7 +423,10 @@ export class GameRoom {
 
   async _handleBetweenVote(playerId, choice) {
     const next = applyBetweenVote(this.state, { playerId, choice })
-    if (next === this.state) return
+    if (next !== this.state) await this._enterAfterBetweenRound(next)
+  }
+
+  async _enterAfterBetweenRound(next) {
     this.state = next
     if (this.state.phase === 'playing') {
       const nextTurnEnd = Date.now() + this.state.rules.turnTime * 1000
@@ -348,7 +435,7 @@ export class GameRoom {
       await this.ctx.storage.setAlarm(nextTurnEnd)
     } else if (this.state.phase === 'voting') {
       const voteEnd = Date.now() + VOTING_MS
-      this.state = { ...this.state, votingTimerEnd: voteEnd }
+      this.state = { ...this.state, timerEnd: null, votingTimerEnd: voteEnd }
       this._broadcast()
       await this.ctx.storage.setAlarm(voteEnd)
     } else {
@@ -388,18 +475,15 @@ export class GameRoom {
   async _handleConfirmVote(playerId) {
     this.state = applyConfirmVote(this.state, playerId)
     this._broadcast()
-    if (this.state.phase === 'results') {
-      await this.ctx.storage.deleteAlarm()
-    }
+    if (this.state.phase === 'results') await this._scheduleHousekeeping() // replaces the voting alarm
   }
 
   _handlePlayAgain() {
     if (this.state?.phase !== 'results') return
-    const remaining = this.state.players.filter(p => p.connected)
-    if (remaining.length === 0) return
+    if (!this.state.players.some(p => p.connected)) return
     this.state = {
       ...INITIAL_STATE(this.state.code),
-      players: remaining.map((p, i) => ({ ...p, ready: false, isOwner: i === 0 })),
+      players: this._lobbyPlayers(),
       rules: this.state.rules,
       engagement: this.state.engagement,
     }
@@ -411,13 +495,18 @@ export class GameRoom {
     if (!player?.isOwner || this.state.phase !== 'results') return
     this.state = {
       ...INITIAL_STATE(this.state.code),
-      players: this.state.players
-        .filter(p => p.connected)
-        .map((p, i) => ({ ...p, ready: false, isOwner: i === 0 })),
+      players: this._lobbyPlayers(),
       rules: this.state.rules, // keep current rules
       engagement: this.state.engagement,
     }
     this._broadcast()
+  }
+
+  // Connected players return to the lobby with the current host kept.
+  _lobbyPlayers() {
+    const remaining = this.state.players.filter(p => p.connected)
+    const hostStays = remaining.some(p => p.isOwner)
+    return remaining.map((p, i) => ({ ...p, ready: false, isOwner: hostStays ? p.isOwner : i === 0 }))
   }
 
   async _startRoundReview() {
@@ -451,17 +540,19 @@ export class GameRoom {
       return
     }
 
+    const choiceEnd = Date.now() + BETWEEN_ROUND_MS
     this.state = {
       ...this.state,
       phase: 'betweenRound',
       activePlayerIdx: firstConnectedPlayerIdx(this.state),
-      timerEnd: null,
+      timerEnd: choiceEnd,
       roundReviewEnd: null,
       phaseAfterReview: null,
       votingTimerEnd: null,
       betweenRoundVotes: { continue: [], vote: [] },
     }
     this._broadcast()
+    await this.ctx.storage.setAlarm(choiceEnd)
   }
 
   _pickWordPair() {
@@ -524,7 +615,7 @@ export class GameRoom {
   }
 
   _publicState() {
-    const { impostorIdx, secretWord, hint, engagement, ...pub } = this.state
+    const { impostorIdx, secretWord, hint, engagement, updatedAt, ...pub } = this.state
     return pub
   }
 
@@ -537,6 +628,11 @@ export class GameRoom {
 
   _recordJoinRejected(reason) {
     recordRoomEvent(this.ctx, this.env, 'join_rejected', crypto.randomUUID(), { source: 'unattributed' }, { method: reason })
+  }
+
+  _recordServerError(method, error) {
+    console.error(`GameRoom ${method}`, error)
+    recordRoomEvent(this.ctx, this.env, 'server_error', crypto.randomUUID(), { source: 'unattributed' }, { method })
   }
 
   _withdrawMeasurement(playerId) {

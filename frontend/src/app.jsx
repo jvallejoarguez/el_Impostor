@@ -5,23 +5,11 @@ import { LobbyScreen, CountdownScreen } from './components/screens-lobby.jsx'
 import { RoleRevealScreen, GameplayScreen } from './components/screens-game.jsx'
 import { BetweenRoundScreen, VotingScreen, ResultsScreen } from './components/screens-vote.jsx'
 import { useGameSocket, WORKER_BASE } from './ws/useGameSocket.js'
-import { initSounds } from './audio/soundManager.js'
 import { captureCampaign, getAttribution, getMeasurementConsent, wasInvited, track } from './analytics.js'
 import { useFeedback } from './components/feedback.jsx'
 import { readSession, clearSession, entryFromUrl, updateEntryUrl } from './session.js'
 import { ServerClockContext } from './ws/useServerCountdown.js'
 import { saveAvatarPreference } from './avatarPreferences.js'
-
-// Theming defaults (keep existing theme system intact)
-const DEFAULT_THEME = {
-  primaryColor: '#B8432E',
-  logoVariant: 'stacked',
-  avatarStyle: 'club',
-  circleLayout: 'orbit',
-  revealStyle: 'flash',
-  typography: 'club',
-  dark: false,
-}
 
 export default function App() {
   const [entry] = useState(() => entryFromUrl(window.location.search, readSession()))
@@ -33,30 +21,12 @@ export default function App() {
   const createRequestRef = useRef(null)
   const [joinError, setJoinError] = useState(null)
   const [createError, setCreateError] = useState(null)
-  const [theme] = useState(DEFAULT_THEME)
   const { setContext: setFeedbackContext, offerExitSurvey } = useFeedback()
   const lobbyEnteredAt = useRef(0)
   const hasPlayed = useRef(false)
 
   const { gameState, myRole, myId, connectionState, lastError, connect, disconnect, send, clock } =
     useGameSocket()
-
-  // Apply theme variables to document (preserved from previous app.jsx behavior)
-  useEffect(() => {
-    document.documentElement.style.setProperty('--red', theme.primaryColor)
-    document.documentElement.setAttribute('data-theme', theme.dark ? 'dark' : 'light')
-    const fonts = {
-      club: ['Fraunces', 'Space Grotesk', 'JetBrains Mono'],
-      archivo: ['Archivo Black', 'Space Grotesk', 'JetBrains Mono'],
-      bricolage: ['Bricolage Grotesque', 'Space Grotesk', 'JetBrains Mono'],
-      condensed: ['Anton', 'Space Grotesk', 'JetBrains Mono'],
-      rounded: ['DM Sans', 'DM Sans', 'JetBrains Mono'],
-    }
-    const [disp, ui, mono] = fonts[theme.typography] || fonts.archivo
-    document.documentElement.style.setProperty('--font-display', `"${disp}", sans-serif`)
-    document.documentElement.style.setProperty('--font-ui', `"${ui}", sans-serif`)
-    document.documentElement.style.setProperty('--font-mono', `"${mono}", monospace`)
-  }, [theme])
 
   // Derived values
   const phase = gameState?.phase ?? null
@@ -92,13 +62,8 @@ export default function App() {
 
   // ── Navigation helpers ────────────────────────────────────────
 
-  const handleSoundsInit = useCallback(() => {
-    initSounds() // must be called from a user interaction
-  }, [])
-
   const handleCreateRoom = useCallback(async (name) => {
     if (createRequestRef.current) return
-    handleSoundsInit()
     setCreateError(null)
     setPlayerName(name)
     setCreating(true)
@@ -124,10 +89,9 @@ export default function App() {
       clearTimeout(timeout)
       if (createRequestRef.current === controller) { createRequestRef.current = null; setCreating(false) }
     }
-  }, [connect, category, handleSoundsInit])
+  }, [connect, category])
 
   const handleJoinRoom = useCallback((name, code) => {
-    handleSoundsInit()
     setPlayerName(name)
     setRoomCode(code)
     setJoinError(null)
@@ -135,7 +99,7 @@ export default function App() {
     connect(code, name)
     track('join_attempt')
     setScreen('lobby')
-  }, [connect, handleSoundsInit])
+  }, [connect])
 
   const handleLeaveRoom = useCallback(() => {
     if (phase === 'lobby') {
@@ -147,13 +111,14 @@ export default function App() {
     setCreating(false)
     setCreateError(null)
     setJoinError(null)
+    send('LEAVE') // frees the seat instead of leaving a "Sin conexión" ghost
     disconnect()
     clearSession()
     updateEntryUrl()
     setScreen('home')
     setRoomCode('')
     setCategory('all')
-  }, [disconnect, phase, playerCount, feedbackCategory, offerExitSurvey])
+  }, [disconnect, send, phase, playerCount, feedbackCategory, offerExitSurvey])
 
   const handleCreateIntent = () => { track('create_intent', { category }); setScreen('create') }
   const handleNewGroup = () => {
@@ -192,7 +157,6 @@ export default function App() {
   if (screen === 'home') {
     return (
       <HomeScreen
-        theme={theme}
         onCreateRoom={handleCreateIntent}
         onJoinRoom={() => setScreen('join')}
       />
@@ -202,7 +166,6 @@ export default function App() {
   if (screen === 'create') {
     return (
       <HomeScreen
-        theme={theme}
         mode="create"
         error={createError}
         creating={creating}
@@ -217,7 +180,6 @@ export default function App() {
   if (screen === 'join') {
     return (
       <JoinScreen
-        theme={theme}
         error={joinError || lastError}
         initialCode={roomCode}
         initialName={playerName}
@@ -235,7 +197,7 @@ export default function App() {
         <section className="card connection-card" aria-labelledby="connection-title">
           <p className="eyebrow-text">Sala {roomCode}</p>
           <h1 id="connection-title">{connectionState === 'failed' ? 'No hemos podido entrar' : 'Entrando en la sala…'}</h1>
-          <p role={lastError ? 'alert' : 'status'}>{lastError || `Conectando como ${playerName}. Tu sitio te espera.`}</p>
+          <p role={lastError ? 'alert' : 'status'}>{lastError || `Conectando como ${playerName}…`}</p>
           <button className="btn btn--primary btn--block" onClick={() => connect(roomCode, playerName)}>Reintentar conexión</button>
           <button className="btn btn--ghost btn--block" onClick={editConnection}>Cambiar nombre o código</button>
           <button className="text-button" onClick={handleLeaveRoom}>Volver al inicio</button>
@@ -249,7 +211,6 @@ export default function App() {
     case 'lobby':
       screenEl = (
         <LobbyScreen
-          theme={theme}
           room={{ ...gameState, code: roomCode }}
           myId={myId}
           amOwner={amOwner}
@@ -262,16 +223,15 @@ export default function App() {
       )
       break
     case 'countdown':
-      screenEl = <CountdownScreen theme={theme} timerEnd={gameState.timerEnd} />
+      screenEl = <CountdownScreen timerEnd={gameState.timerEnd} />
       break
     case 'roleReveal':
-      screenEl = <RoleRevealScreen theme={theme} myRole={myRole} timerEnd={gameState.timerEnd} revealStyle={theme.revealStyle} />
+      screenEl = <RoleRevealScreen myRole={myRole} timerEnd={gameState.timerEnd} />
       break
     case 'playing':
     case 'roundReview':
       screenEl = (
         <GameplayScreen
-          theme={theme}
           room={gameState}
           myId={myId}
           myRole={myRole}
@@ -280,12 +240,11 @@ export default function App() {
       )
       break
     case 'betweenRound':
-      screenEl = <BetweenRoundScreen theme={theme} room={gameState} myId={myId} onVote={handleBetweenVote} />
+      screenEl = <BetweenRoundScreen room={gameState} myId={myId} onVote={handleBetweenVote} />
       break
     case 'voting':
       screenEl = (
         <VotingScreen
-          theme={theme}
           room={gameState}
           myId={myId}
           onCastVote={handleCastVote}
@@ -296,7 +255,6 @@ export default function App() {
     case 'results':
       screenEl = (
         <ResultsScreen
-          theme={theme}
           room={gameState}
           myId={myId}
           onPlayAgain={handlePlayAgain}
@@ -332,7 +290,7 @@ function ReconnectBanner({ onLeave }) {
       border: '2.5px solid var(--ink)', borderRadius: 10,
       fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 700,
       letterSpacing: '0.04em',
-      boxShadow: '4px 4px 0 var(--mustard)',
+      boxShadow: '0 4px 0 var(--mustard)',
       zIndex: 1000,
       display: 'flex', alignItems: 'center', gap: 8,
     }}>

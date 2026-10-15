@@ -1,14 +1,17 @@
 .consent-panel[hidden] { display: none !important; }
-.consent-panel { position: fixed; z-index: 1100; bottom: 16px; left: 16px; width: min(540px, calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow: auto; box-sizing: border-box; padding: 20px; border: 2px solid #28251e; border-radius: 16px; background: #f8f0df; color: #28251e; box-shadow: 4px 5px 0 #28251e; font: 14px/1.5 system-ui, sans-serif; text-align: left; }
-.consent-panel h2 { margin: 0 0 10px; font: 700 21px/1.2 system-ui, sans-serif; color: inherit; letter-spacing: normal; }
+.consent-panel { position: fixed; z-index: 1100; bottom: 16px; left: 16px; width: min(540px, calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow: auto; box-sizing: border-box; padding: 20px; border: 3px solid #1c0b40; border-radius: 20px; background: #fff; color: #1c0b40; box-shadow: 0 6px 0 #1c0b40, 0 18px 50px #0006; font: 600 14px/1.5 "Nunito", system-ui, sans-serif; text-align: left; }
+.consent-panel h2 { margin: 0 0 10px; font: 400 24px/1.15 "Lilita One", "Nunito", system-ui, sans-serif; color: inherit; letter-spacing: normal; }
 .consent-panel p { margin: 8px 0; }
 .consent-panel .consent-status:empty { display: none; }
 .consent-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0 12px; }
-.consent-actions button { appearance: none; cursor: pointer; min-height: 46px; border: 2px solid #28251e; border-radius: 8px; padding: 10px 8px; background: #f8f0df; color: #28251e; font: 700 14px/1.3 system-ui, sans-serif; box-shadow: 2px 2px 0 #28251e; }
-.consent-actions button:hover { background: #e8dec8; }
+/* Both choices carry the same visual weight. */
+.consent-actions button { appearance: none; cursor: pointer; min-height: 48px; border: 3px solid #1c0b40; border-radius: 14px; padding: 10px 8px; background: #eee8ff; color: #1c0b40; font: 900 15px/1.3 "Nunito", system-ui, sans-serif; box-shadow: 0 4px 0 #1c0b40; }
+.consent-actions button:hover { background: #ffcf26; }
+.consent-actions button:active { transform: translateY(3px); box-shadow: 0 1px 0 #1c0b40; }
 .consent-actions button:disabled { cursor: not-allowed; opacity: .6; }
-.consent-panel a, .consent-footer a, .consent-footer button { color: #28251e; text-decoration: underline; text-underline-offset: 3px; font: 13px/1.5 system-ui, sans-serif; }
-.consent-panel :focus-visible, .consent-footer :focus-visible { outline: 3px solid #b8432e; outline-offset: 4px; }
-.consent-footer { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px 24px; padding: 12px 20px 24px; }
+.consent-panel a { color: #1c0b40; text-decoration: underline; text-underline-offset: 3px; font: 700 13px/1.5 "Nunito", system-ui, sans-serif; }
+.consent-footer a, .consent-footer button { color: inherit; text-decoration: underline; text-underline-offset: 3px; font: 700 13px/1.5 "Nunito", system-ui, sans-serif; }
+.consent-panel :focus-visible, .consent-footer :focus-visible { outline: 4px solid #ffcf26; outline-offset: 4px; }
+.consent-footer { position: relative; z-index: 1; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px 24px; padding: 12px 20px 24px; opacity: .85; }
 .consent-footer button { appearance: none; cursor: pointer; background: transparent; border: 0; padding: 8px 0; }
 @media (max-width: 420px) { .consent-panel { padding: 16px; bottom: 10px; left: 10px; width: calc(100% - 20px); } }

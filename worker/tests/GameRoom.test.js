@@ -7,7 +7,7 @@ async function setup(category = 'animales') {
   const ctx = {
     blockConcurrencyWhile: fn => { hydration = fn() },
     getWebSockets: () => sockets,
-    storage: { get: vi.fn(), put: vi.fn(), setAlarm: vi.fn(), deleteAlarm: vi.fn() },
+    storage: { get: vi.fn(), put: vi.fn(), setAlarm: vi.fn(), deleteAlarm: vi.fn(), deleteAll: vi.fn() },
   }
   const room = new GameRoom(ctx, {})
   await hydration
@@ -218,5 +218,113 @@ describe('room flow and private roles', () => {
     expect(room.state.rules.wordCategories).toEqual(['all'])
     await room.fetch(new Request('https://room/claim?code=TEST&category=futbol'))
     expect(room.state.rules.wordCategories).toEqual(['all'])
+  })
+})
+
+const owner = room => room.state.players.find(p => p.isOwner)?.id
+async function toBetweenRound(game) {
+  const { room, players, send } = game
+  await send(players[0], 'START_GAME')
+  await room.alarm(); await room.alarm()
+  for (const [i, ws] of players.entries()) await send(ws, 'SUBMIT_WORD', { word: `Pista${i}` })
+  await room.alarm()
+}
+
+describe('reliability', () => {
+  it('a between-round deadline moves a silent group to the vote', async () => {
+    const game = await trio()
+    const { room, ctx } = game
+    await toBetweenRound(game)
+    expect(room.state.phase).toBe('betweenRound')
+    expect(room.state.timerEnd).toBeGreaterThan(Date.now())
+    expect(ctx.storage.setAlarm).toHaveBeenLastCalledWith(room.state.timerEnd)
+    await room.alarm()
+    expect(room.state.phase).toBe('voting')
+    expect(room.state.timerEnd).toBeNull()
+    expect(ctx.storage.setAlarm).toHaveBeenLastCalledWith(room.state.votingTimerEnd)
+  })
+
+  it('a player who drops after the others chose completes the between-round decision', async () => {
+    const game = await trio()
+    const { room, players, send } = game
+    await toBetweenRound(game)
+    await send(players[0], 'BETWEEN_VOTE', { choice: 'vote' })
+    await send(players[1], 'BETWEEN_VOTE', { choice: 'continue' })
+    expect(room.state.phase).toBe('betweenRound')
+    await room.webSocketClose(players[2])
+    expect(room.state.phase).toBe('voting')
+    expect(room.state.votingTimerEnd).toBeGreaterThan(Date.now())
+  })
+
+  it('keeps the host through a brief drop and hands the role over only after the grace period', async () => {
+    const { room, players, join } = await trio()
+    await room.webSocketClose(players[0]) // e.g. switching apps to share the invite
+    expect(owner(room)).toBe('Ana')
+    await join('Diego')
+    expect(owner(room)).toBe('Ana')
+    await join('Ana')
+    await room.alarm()
+    expect(owner(room)).toBe('Ana')
+    await room.webSocketClose(room.sessions.get('Ana'))
+    await room.alarm()
+    expect(owner(room)).toBe('Bruno')
+    expect(room.state.players.find(p => p.id === 'Ana').connected).toBe(false)
+  })
+
+  it('an explicit leave frees the lobby seat and passes the host role at once', async () => {
+    const { room, players, send, join } = await trio()
+    await send(players[0], 'LEAVE')
+    expect(room.state.players.map(p => p.id)).toEqual(['Bruno', 'Clara'])
+    expect(owner(room)).toBe('Bruno')
+    await room.webSocketClose(players[0]) // the socket closing afterwards changes nothing
+    expect(room.state.players).toHaveLength(2)
+    // The last host leaving: a returning player takes the role at once.
+    await room.webSocketClose(room.sessions.get('Clara'))
+    await send(room.sessions.get('Bruno'), 'LEAVE')
+    expect(owner(room)).toBeUndefined()
+    await join('Clara')
+    expect(owner(room)).toBe('Clara')
+  })
+
+  it('play again keeps the current host', async () => {
+    const game = await trio()
+    const { room, players, send } = game
+    await toBetweenRound(game)
+    await room.alarm(); await room.alarm()
+    expect(room.state.phase).toBe('results')
+    room.state = { ...room.state, players: room.state.players.map(p => ({ ...p, isOwner: p.id === 'Clara' })) }
+    await send(players[1], 'PLAY_AGAIN')
+    expect(room.state.phase).toBe('lobby')
+    expect(owner(room)).toBe('Clara')
+  })
+
+  it('expires an empty room so old links and codes do not live forever', async () => {
+    const { room, players, join, ctx } = await trio()
+    for (const ws of players) await room.webSocketClose(ws)
+    expect(ctx.storage.setAlarm.mock.calls.at(-1)[0]).toBeGreaterThan(Date.now() + 29 * 60 * 1000)
+    await room.alarm()
+    expect(ctx.storage.deleteAll).toHaveBeenCalled()
+    expect(room.state).toBeNull()
+    const again = await join('Ana')
+    expect(messages(again, 'ERROR').at(-1).payload.reason).toBe('room_not_found')
+  })
+
+  it('claims a code in one step and reuses only abandoned rooms', async () => {
+    const { room } = await setup()
+    const claim = async () => (await (await room.fetch(new Request('https://room/claim?code=TEST'))).json()).claimed
+    expect(await claim()).toBe(false)
+    room.state.updatedAt = Date.now() - 31 * 60 * 1000
+    expect(await claim()).toBe(true)
+    expect(await claim()).toBe(false)
+  })
+
+  it('answers plain keepalive pings and records server errors before rethrowing', async () => {
+    const { room, players } = await trio()
+    await room.webSocketMessage(players[0], 'ping')
+    expect(players[0].send).toHaveBeenLastCalledWith('pong')
+    const recorded = vi.spyOn(room, '_recordServerError').mockImplementation(() => {})
+    vi.spyOn(room, '_handleAlarm').mockRejectedValue(new Error('boom'))
+    await expect(room.alarm()).rejects.toThrow('boom')
+    expect(recorded).toHaveBeenCalledWith('alarm_failed', expect.any(Error))
   })
 })

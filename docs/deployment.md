@@ -56,6 +56,8 @@ npm run deploy:worker
 npm run deploy:frontend
 ```
 
+Para que el límite de intentos del login sea por visitante, configurar también la misma clave aleatoria `ADMIN_PROXY_KEY` en el Worker (`npx wrangler secret put ADMIN_PROXY_KEY --config worker/wrangler.toml --env production`) y como secreto del proyecto Pages `el-impostor` (Settings → Variables and Secrets, Production). Sin ella, Cloudflare sustituye `CF-Connecting-IP` en la subpetición del proxy y todos los visitantes comparten el mismo contador.
+
 La clave debe tener al menos 32 caracteres aleatorios, estar fuera de Git y tener permisos 0600. Rotarla invalida sesiones anteriores. Comprobar el login y logout en el dominio principal, el rechazo 401 del informe sin cookie y la ausencia de credenciales en assets. La configuración local de Playwright usa exclusivamente una clave de prueba. Para desarrollo manual, usar `.dev.vars` o `--var ADMIN_PASSWORD:...` con una clave local, nunca la de producción.
 
 Latest verified activation (2026-09-06): source `38a843b`; Worker version `a34bdb09-eda0-4df3-9cb9-136184bf12d0`; Pages deployment `https://22503182.el-impostor-djf.pages.dev`, served by the production custom domain. Migration `v2` and the private report secret are active. A real three-player game, feedback submission and authenticated report retrieval passed on the public deployment. Details and the technical test campaign are recorded in `docs/growth.md`.
@@ -203,4 +205,5 @@ If costs ever start mattering, the most likely culprit is the watchdog/heartbeat
 
 ## Open follow-ups
 
-- Pages preview deployments (anything not on `--branch main`) currently won't pass CORS unless their origin is added to `FRONTEND_ORIGINS`. If we want to preview branches, the worker would need to allow `*.el-impostor-djf.pages.dev` (regex) or fall back to a loose CORS policy in non-production envs.
+- `www.juegoimpostor.app` and the `pages.dev` hosts are served with `X-Robots-Tag: noindex` (`frontend/public/_headers`), and their canonical tags point to the apex. Pages `_redirects` cannot redirect by hostname, so a true 301 from `www` needs a Cloudflare Redirect Rule (Rules → Redirect Rules: hostname equals `www.juegoimpostor.app` → `https://juegoimpostor.app${http.request.uri.path}`, 301, preserve query string).
+- `POST /rooms` is limited to 10 per minute per IP through the `ROOM_LIMITER` rate-limit binding (`[[env.production.unsafe.bindings]]`). Workers Logs are enabled with `[observability]`.

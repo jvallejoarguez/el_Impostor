@@ -12,7 +12,6 @@ export function AvatarPickerButton({ name, avatarId, onSelect, size = 76, showCr
       <ClubAvatar name={name} character={selected} size={size} showCrown={showCrown}/><span className="avatar-edit-mark" aria-hidden="true">✎</span>
     </button>
     {open && <Sheet title="Elige tu avatar" onClose={() => setOpen(false)} className="avatar-sheet">
-      <p className="sheet-intro">Toca una cara y entra en personaje.</p>
       <div className="avatar-options">{CLUB_CHARACTERS.map((character, index) => <button type="button" key={character} className="avatar-option" aria-pressed={index === selected} autoFocus={index === selected} onClick={() => {
         if (onSelect(index) === false) { setError('No se ha podido guardar. Comprueba la conexión y reinténtalo.'); return }
         setOpen(false)
