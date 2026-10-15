@@ -27,6 +27,7 @@ export function entryFromUrl(search, saved) {
   const code = rawCode.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4)
   const requestedCategory = params.get('category')
   const category = WORD_CATEGORIES.some(item => item.id === requestedCategory) ? requestedCategory : 'all'
+  if (params.get('modo') === 'un-movil') return { screen: 'local', code: '', name: saved?.name || '', category, resume: false }
   // An explicit invitation or new-game link takes precedence over a previous session.
   if (rawCode) return { screen: saved?.code === code ? 'lobby' : 'join', code, name: saved?.name || '', category, resume: saved?.code === code }
   if (requestedCategory || params.get('create') === '1') return { screen: 'create', code: '', name: saved?.name || '', category, resume: false }
@@ -34,9 +35,10 @@ export function entryFromUrl(search, saved) {
   return { screen: 'home', code: '', name: '', category, resume: false }
 }
 
-export function updateEntryUrl(code = '') {
+export function updateEntryUrl(code = '', mode = '') {
   const url = new URL(window.location.href)
-  for (const key of ['room', 'sala', 'category', 'create']) url.searchParams.delete(key)
+  for (const key of ['room', 'sala', 'category', 'create', 'modo']) url.searchParams.delete(key)
   if (code) url.searchParams.set('room', code)
+  if (mode) url.searchParams.set('modo', mode)
   window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
 }

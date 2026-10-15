@@ -1,0 +1,37 @@
+/* One-phone mode: setup card, pass-the-phone screens and the table view */
+.one-phone-setup .room-stepper { margin-top: 22px; }
+.one-phone-names { border: 0; padding: 0; margin: 22px 0 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.one-phone-names legend { font-size: 14px; font-weight: 900; margin-bottom: 8px; padding: 0; }
+.one-phone-names legend small { font-weight: 700; color: var(--soft); }
+.entry-card .one-phone-names input { padding: 10px 12px; font-size: 16px; }
+.one-phone-setup .room-extra-rules { margin-top: 14px; flex-wrap: wrap; }
+
+/* Same stage colour for every role: nothing changes on screen that the table could read. */
+.one-phone-stage { background: var(--stage); color: var(--paper); gap: 14px; overflow-y: auto; user-select: none; -webkit-user-select: none; }
+.one-phone-stage .reveal-kicker { margin: 0; }
+.one-phone-stage .reveal-hint { margin-top: 12px; display: grid; gap: 4px; }
+.one-phone-stage .btn--lg { margin-top: 18px; max-width: 100%; white-space: normal; }
+.one-phone-step { margin: 0; font: 18px var(--font-display); color: var(--mustard); }
+.one-phone-name { font-size: clamp(44px, 14vw, 104px); overflow-wrap: anywhere; color: var(--mustard); }
+.one-phone-secret { color: var(--mustard); overflow-wrap: anywhere; margin: 6px auto; }
+.one-phone-note { margin: 0; font-weight: 800; color: var(--soft); }
+.one-phone-cancel { color: var(--paper); margin-top: 4px; }
+/* Appears a moment late so a double tap can't skip straight past someone's turn. */
+.one-phone-armed { animation: armed 0s .6s backwards; }
+@keyframes armed { from { visibility: hidden; } }
+
+.one-phone-play { justify-content: flex-start; padding-top: 72px; }
+.one-phone-title { font-size: clamp(42px, 10vw, 84px); overflow-wrap: anywhere; color: var(--mustard); }
+.one-phone-rules { margin: 0 0 16px; font-size: 16px; font-weight: 700; line-height: 1.5; }
+.one-phone-order { list-style: none; counter-reset: turn; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.one-phone-order li { counter-increment: turn; display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; background: var(--cream-deep); border: 3px solid var(--ink); border-radius: var(--radius-pill); font-size: 15px; font-weight: 900; }
+.one-phone-order li::before { content: counter(turn); font: 14px var(--font-display); color: var(--ink-soft); padding-left: 6px; }
+.one-phone-timer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; padding: 12px 14px; background: var(--ink); color: var(--mustard); border-radius: var(--radius-md); }
+.one-phone-timer [role="timer"] { font: 36px var(--font-display); }
+.one-phone-timer.is-low [role="timer"] { color: var(--red); }
+.one-phone-timer .btn--ghost { color: var(--paper); background: #FFFFFF1A; border-color: currentColor; box-shadow: none; }
+
+@media (max-width: 640px) {
+  .one-phone-play { padding-top: 64px !important; }
+  .one-phone-timer [role="timer"] { font-size: 28px; }
+}

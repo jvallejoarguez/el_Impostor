@@ -1,5 +1,5 @@
 // frontend/src/app.jsx
-import React, { useState, useCallback, useEffect, useRef } from 'react'
+import React, { useState, useCallback, useEffect, useRef, Suspense, lazy } from 'react'
 import { HomeScreen, JoinScreen } from './components/screens-entry.jsx'
 import { LobbyScreen, CountdownScreen } from './components/screens-lobby.jsx'
 import { RoleRevealScreen, GameplayScreen } from './components/screens-game.jsx'
@@ -12,6 +12,9 @@ import { useFeedback } from './components/feedback.jsx'
 import { readSession, clearSession, entryFromUrl, updateEntryUrl } from './session.js'
 import { ServerClockContext } from './ws/useServerCountdown.js'
 import { saveAvatarPreference } from './avatarPreferences.js'
+
+// Loaded on demand: it bundles the whole word list, which online rooms keep on the server.
+const OnePhoneGame = lazy(() => import('./components/one-phone.jsx'))
 
 export default function App() {
   const [entry] = useState(() => entryFromUrl(window.location.search, readSession()))
@@ -58,7 +61,7 @@ export default function App() {
   const playerCount = gameState?.players.filter(p => p.connected !== false).length || 0
   const feedbackCategory = gameState?.rules?.wordCategories?.join('_') || category
   useEffect(() => {
-    setFeedbackContext({ phase: ['home', 'create', 'join'].includes(screen) ? screen : phase || 'connecting', gameId: gameState?.gameId, playerCount, category: feedbackCategory })
+    setFeedbackContext({ phase: ['home', 'create', 'join', 'local'].includes(screen) ? screen : phase || 'connecting', gameId: gameState?.gameId, playerCount, category: feedbackCategory })
   }, [screen, phase, gameState?.gameId, playerCount, feedbackCategory, setFeedbackContext])
   useEffect(() => {
     if (phase === 'lobby') lobbyEnteredAt.current = Date.now()
@@ -169,8 +172,13 @@ export default function App() {
       <HomeScreen
         onCreateRoom={handleCreateIntent}
         onJoinRoom={() => setScreen('join')}
+        onOnePhone={() => { updateEntryUrl('', 'un-movil'); setScreen('local') }}
       />
     )
+  }
+
+  if (screen === 'local') {
+    return <Suspense fallback={null}><OnePhoneGame onExit={() => { updateEntryUrl(); setScreen('home') }}/></Suspense>
   }
 
   if (screen === 'create') {

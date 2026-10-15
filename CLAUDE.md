@@ -52,6 +52,7 @@ el-impostor/
 ├── frontend/src/
 │   ├── app.jsx                  Main app, screen routing, WS state
 │   ├── components/              Screen components (entry, lobby, game, vote, primitives)
+│   │   └── one-phone.jsx        One-phone mode: deals locally (localGame.js), pass-the-phone reveal, no Worker
 │   ├── ws/useGameSocket.js      WebSocket hook — connects, reconnects, exposes send()
 │   └── audio/soundManager.js   Web Audio synth SFX — call play("win") etc.
 ├── worker/src/
@@ -68,7 +69,8 @@ el-impostor/
 1. **Privacy:** `impostorIdx`, `secretWord`, `hint` are NEVER sent in public `STATE` broadcasts.
    They travel only in private `ROLE` WebSocket messages to individual players.
 2. **Server-authoritative:** All game state transitions happen in `GameRoom.js` by calling
-   `gameLogic.js` functions. The frontend never mutates game state directly.
+   `gameLogic.js` functions. The frontend never mutates game state directly. (One-phone mode is the
+   exception by design: everyone shares the device, so it deals and reveals on the client.)
 3. **Timers:** Turn timers and voting timers are Durable Object alarms (`ctx.storage.setAlarm`).
    Clients receive a `timerEnd` timestamp and render a local countdown. The server auto-advances
    on alarm fire regardless of whether the client acted. Every in-game phase has a deadline
