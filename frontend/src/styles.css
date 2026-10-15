@@ -310,6 +310,8 @@ body:has(.reveal) .consent-footer { display: none; }
   .card { border-radius: 20px; box-shadow: var(--shadow-hard-lg); }
   .screen-pad { padding: 16px !important; }
   .screen-pad-tight { padding: 12px !important; }
+  /* Entry cards clear the back button and the fixed sound button. */
+  .entry-page.screen-pad { padding-top: 72px !important; }
   .entry-page { padding-top: 84px; }
   .entry-card, .connection-card { padding: 24px 20px; }
   .entry-card h1 { font-size: 32px; }

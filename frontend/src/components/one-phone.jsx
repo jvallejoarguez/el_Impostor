@@ -20,8 +20,8 @@ function readSetup() {
   try {
     const saved = JSON.parse(localStorage.getItem(SETUP_KEY))
     return {
-      count: Math.min(12, Math.max(3, Number.isInteger(saved?.count) ? saved.count : 4)),
-      names: Array.isArray(saved?.names) ? saved.names.slice(0, 12).map(name => String(name).slice(0, 16)) : [],
+      count: Math.min(16, Math.max(3, Number.isInteger(saved?.count) ? saved.count : 4)),
+      names: Array.isArray(saved?.names) ? saved.names.slice(0, 16).map(name => String(name).slice(0, 16)) : [],
       categories: normalizeWordCategories(saved?.categories),
       hint: saved?.hint !== false,
       timer: TIMER_OPTIONS.some(([value]) => value === saved?.timer) ? saved.timer : 120,
@@ -72,7 +72,7 @@ function SetupScreen({ setup, onChange, onStart, onBack }) {
     <form className="card entry-card slide-up" onSubmit={e => { e.preventDefault(); onStart() }}>
       <h1>Jugar con un solo móvil</h1>
       <p className="helper-text">Os vais pasando el móvil para que cada uno vea su palabra en secreto. Después dais las pistas en voz alta.</p>
-      <RuleStepper label="Jugadores" value={setup.count} min={3} max={12} step={1} editable onChange={count => onChange({ count })}/>
+      <RuleStepper label="Jugadores" value={setup.count} min={3} max={16} step={1} editable onChange={count => onChange({ count })}/>
       <fieldset className="one-phone-names">
         <legend>Nombres <small>(opcional)</small></legend>
         {Array.from({ length: setup.count }, (_, i) => <input key={i} aria-label={`Nombre del jugador ${i + 1}`} placeholder={`Jugador ${i + 1}`} maxLength={16} autoComplete="off"
