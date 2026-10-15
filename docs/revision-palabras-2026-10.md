@@ -101,10 +101,11 @@ Formato: `antes → después` y motivo.
 
 ## Streamers
 
-- Quitados por polémicas graves: **AuronPlay** (acusación en 2023 de mensajes sexuales a una menor en 2013; él lo niega y no hubo causa penal, pero no encaja en un juego familiar) y **ElXokas** (vídeo de 2022 usado en una campaña del Gobierno contra el machismo; Burger King rompió con él en julio de 2026).
+- **AuronPlay** se mantiene con pista nueva, *Jeringuilla → Tortillaland* (su serie de Minecraft, premiada en los Esland). Antes no se encontró ninguna fuente que relacionara «jeringuilla» con él, y además es una pista poco familiar.
+- **ElXokas** se mantiene con pista nueva, *Excel → Lugo* (es de Lugo). Tampoco se encontró fuente para «Excel».
 - Quitados por poca notoriedad o inactividad: Nexxuz, Saara Ismael, Ampeter, Guanyar y Gemita.
-- Añadidos: **YoSoyPlex (Vuelta)**, que pasa de YouTubers y estuvo en la Velada VI; **Kun Agüero (Manchester)**, **Gerard Romero (Jijantes)**, **Adri Contreras (Barrio)** y **xBuyer (Hermanos)**, todos presidentes de la Kings League; **Alexby11 (Egoland)** y **Lucii (Pilares)**, copresidenta de Las Pilares en la Queens League.
-- Pistas que no se pudieron verificar o eran erróneas: Rubius *Criaturas → Noruega*, TheGrefg *Pico → Skin* (su récord con la skin de Fortnite), Perxitaa *Ciudad → Troncos* (Los Troncos FC), Spursito *Presidente → Rayo* (Rayo de Barcelona), Mixwell *Clutch → Puntería*, Cristinini *Estoque → Tarragona*, Mayichi *Karmaland → Queens* (no participó en Karmaland; preside 1K FC en la Queens League), Polispol *Fórmula → Fotografía* (se presenta como director de fotografía).
+- Añadidos: **YoSoyPlex (Vuelta)**, que pasa de YouTubers y estuvo en la Velada VI; **Gerard Piqué (Kings)**, fundador de la Kings League, que la retransmite con Ibai; y **Kun Agüero (Manchester)**, **Gerard Romero (Jijantes)**, **Adri Contreras (Barrio)** y **xBuyer (Hermanos)**, todos presidentes de equipos de la Kings League.
+- Pistas que no se pudieron verificar o eran erróneas: Rubius *Criaturas → Noruega*, TheGrefg *Pico → Skin* (su récord con la skin de Fortnite), Perxitaa *Ciudad → Troncos* (Los Troncos FC), Spursito *Presidente → Rayo* (Rayo de Barcelona), Mixwell *Clutch → Puntería*, Cristinini *Estoque → Tarragona*, Mayichi *Karmaland → Queens* (no participó en Karmaland; preside 1K FC en la Queens League).
 
 ## YouTubers
 
@@ -117,7 +118,7 @@ Formato: `antes → después` y motivo.
 
 - Quitados por polémicas graves: **Naim Darrechi** (sus declaraciones sobre fingir ser estéril para no usar preservativo) y **Benji Krol** (acusación en 2021 de sexting con una menor).
 - Quitados por poca notoriedad o identidad ambigua: Hurona Rolera, que apenas publica, y Abby.
-- Añadidos: **Khaby Lame (Obvio)**, conocido en todo el mundo hispano, y tres perfiles del top 20 español de Favikon 2025–26: **Escardi (Doblaje)**, **Xurxo Carreño (Galicia)** y **Zyrha (Magordito)**.
+- Añadidos: **Khaby Lame (Obvio)**, conocido en todo el mundo hispano; **Georgina Rodríguez (Netflix)**, por su docuserie *Soy Georgina*; **Dulceida (Ídolo)**, por los Premios Ídolo que organiza; y **Tatiana Kaer (Viajes)**, con unos 19 M de seguidores en TikTok y combate en la Velada VI.
 - Pistas: Lola Lolita *Benidorm → Elche* (es de Elche), Twin Melody *Espejo → Sayonara* (su canción del Benidorm Fest 2023; *Espejo* es otra palabra), Marta Díaz *Rutina → AlphaSniper* (su hermano), Esperansa Grasia *Personajes → Amparo* (su personaje principal), Nachter *Cotidiano → Chancla*, Ceciarmy *Ejército → Pasamontañas* («ejército» traducía «army»), Lucía Bellido *Diario → Playback*, Marina Rivers *Atlético → Getafe* (es del Getafe), Àngela Mármol *Cambio → Sonríe* (su libro contra el acoso escolar).
 
 ## Música
@@ -136,13 +137,13 @@ Formato: `antes → después` y motivo.
 
 - Quitados por polémicas: **WestCOL** (la Corte Constitucional de Colombia le ordenó disculparse por comentarios contra personas LGTBI; hay un proceso por desacato en 2026), **Spreen** (imputado en 2024 en Buenos Aires por presunta promoción de apuestas ilegales; no consta que se haya cerrado) y **Momo** (en 2025 prometió en público una foto desnudo en OnlyFans).
 - Quitados por poca notoriedad: Carrera, Staryuuki, Dylantero, laPoblet y BarcaGamer. Además, varias de sus pistas solo traducían o repetían el nombre (Estrella, Azulgrana).
-- Añadidos: **Luisito Comunica (Pasaporte)**, **Alejo Igoa (Récord)** (el canal en español con más suscriptores y dos récords Guinness), **Kimberly Loaiza (Familia)**, **Lele Pons (Vine)**, **Yuya (Tutoriales)**, **Enchufe.tv (Sketches)**, **Domelipa (Baile)** y **aldo_geo (Bloques)**.
+- Añadidos: **Luisito Comunica (Pasaporte)**, **Alejo Igoa (Récord)** (el canal en español con más suscriptores y dos récords Guinness), **Kimberly Loaiza (Familia)**, **Lele Pons (Vine)**, **Yuya (Tutoriales)**, **Enchufe.tv (Sketches)**, **Domelipa (Baile)** y **Fede Vigevani (Infiltrado)**, con más de 75 M de suscriptores y papel de infiltrado en *La Casa de los Famosos México 2026*.
 - Pistas: Germán Garmendia *Hola → Chile* («Hola» forma parte del nombre de su canal), JuanSGuarnizo *Arroyito → Aniquiladores* (su equipo de la Kings League), Quackity *Pato → Dream* («pato» traducía «quack»), ElMariana *Bigote → Guantes* (combate estelar de la Velada IV), Davoo Xeneize *Boca → FIFA* («xeneize» ya significa Boca), La Cobra *Fútbol → Barça* (*Fútbol* es otra palabra), Robleis *Tema → Bronceado* (su canción más conocida).
 
 ## Textos del generador
 
-En `scripts/generate-seo-pages.mjs` se actualizaron los ejemplos que nombraban palabras o pistas que ya no existen: narval, permafrost, *memoria* para glaciar, *esquina* para boxeo, licántropo, Outer Wilds, Rayuela, Severance, ElXokas, C. Tangana/shoegaze, *Arroyito*, el resumen de Libros y la lista de creadores de la portada.
-La tarjeta de ejemplo de la portada cambia AuronPlay/Jeringuilla por Perxitaa/Troncos.
+En `scripts/generate-seo-pages.mjs` se actualizaron los ejemplos que nombraban palabras o pistas que ya no existen: narval, permafrost, *memoria* para glaciar, *esquina* para boxeo, licántropo, Outer Wilds, Rayuela, Severance, C. Tangana/shoegaze, *Arroyito*, el resumen de Libros y la lista de creadores de la portada.
+La tarjeta de ejemplo de la portada pasa de AuronPlay/Jeringuilla a AuronPlay/Tortillaland.
 `LAST_MODIFIED` pasa a 2026-10-15 porque cambia el contenido de las 21 páginas de palabras.
 
 ## Mantenidos pese a dudas
@@ -152,8 +153,9 @@ La tarjeta de ejemplo de la portada cambia AuronPlay/Jeringuilla por Perxitaa/Tr
 - **Nil Ojeda**: su marca de batidos se llama «MilfShakes»; su contenido es generalista.
 - **Kimberly Loaiza**: tuvo una disputa familiar con su hermana en abril de 2026, de nivel de prensa rosa. Se evitó usar a su pareja como pista.
 - **Lele Pons**: hubo críticas por estereotipos en sus sketches antiguos, pero no es una polémica grave actual.
-- **Alexby11, Polispol, aldo_geo, Escardi, Xurxo Carreño, Zyrha, Lucii**: existen y tienen audiencia, pero son de segunda fila; conviene revisarlos en la próxima actualización.
+- **AuronPlay y ElXokas**: se mantienen por decisión expresa del propietario, porque su notoriedad pesa más que sus polémicas. A AuronPlay lo acusaron en 2023 de mensajes sexuales a una menor en 2013; él lo niega y no hubo causa penal. ElXokas protagonizó un vídeo de 2022 usado en una campaña del Gobierno contra el machismo, y Burger King rompió con él en julio de 2026.
+- **Gerard Piqué y Georgina Rodríguez**: no son streamers ni tiktokers puros, pero son muy mediáticos y tienen mucha presencia en directos y en TikTok.
 - **Fernanfloo**: está semirretirado, pero sigue siendo de los más conocidos de Latinoamérica y peleó en la Velada VI (julio de 2026).
 - **Manga**: en otros contextos también es la parte de una prenda; se mantiene porque la categoría Cultura deja claro el sentido.
 - **Baloncesto, Penalti, Metro, Camping, Capibara, Termo**: tienen variantes regionales (básquet, penal, subte, campamento, carpincho), pero se entienden en todos los países.
-- **Portada**: el bloque «Ibai, AuronPlay y el boom de Adivina el Impostor» describe un vídeo real de Ibai y no forma parte del catálogo. Se deja como está porque es texto SEO de otra sesión, aunque ahora AuronPlay ya no está en la lista.
+- **Portada**: el bloque «Ibai, AuronPlay y el boom de Adivina el Impostor» describe un vídeo real de Ibai y no forma parte del catálogo. Se deja como está porque es texto SEO de otra sesión.

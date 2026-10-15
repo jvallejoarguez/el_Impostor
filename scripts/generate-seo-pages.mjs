@@ -117,7 +117,7 @@ const categories = [
     label: 'Streamers',
     phrase: 'de streamers',
     slug: 'streamers',
-    summary: 'Ibai, Rubius, TheGrefg y protagonistas del streaming español con referencias para fans.',
+    summary: 'Ibai, AuronPlay, Rubius y protagonistas del streaming español con referencias para fans.',
     intro: 'El formato de Adivina el Impostor ha encontrado una audiencia enorme entre streamers. Esta lista reúne nombres muy reconocibles y participantes o figuras cercanas a las ediciones virales.',
     clue: 'Una serie, evento o muletilla suele funcionar mejor que el país o la plataforma. “Velada” para Ibai y “Troncos” para Perxitaa dejan margen al farol.',
     avoid: 'No uses el nombre real, la primera letra o una pareja pública. Esta categoría solo es justa si el grupo sigue a creadores parecidos.',
@@ -520,8 +520,8 @@ function hubPage(wordsByCategory) {
         <aside class="quote-card" aria-label="Ejemplos de pistas">
           <span>PALABRA</span><strong>IBAI</strong>
           <span>PISTA SUTIL</span><strong>VELADA</strong>
-          <span>PALABRA</span><strong>PERXITAA</strong>
-          <span>PISTA SUTIL</span><strong>TRONCOS</strong>
+          <span>PALABRA</span><strong>AURONPLAY</strong>
+          <span>PISTA SUTIL</span><strong>TORTILLALAND</strong>
         </aside>
       </section>
 
