@@ -59,7 +59,7 @@ el-impostor/
 │   ├── index.js                 HTTP routing: POST /rooms, GET /rooms/:code/ws
 │   ├── GameRoom.js              Durable Object — one per room, holds state + WS sessions
 │   ├── gameLogic.js             Pure functions: applyJoin, applySubmitWord, etc.
-│   └── words.json               60 Spanish word+hint pairs
+│   └── words.json               400 Spanish words in 20 categories
 └── worker/tests/
     └── gameLogic.test.js        Unit tests for all gameLogic functions
 ```

@@ -5,7 +5,7 @@
 Las mejoras de flujo, reconexión, votación, tarjeta de resultados y SEO quedaron
 publicadas antes de empezar esta propuesta visual:
 
-- Commit: `9bc6088` — `Improve room flow, session recovery and category SEO`.
+- Commit: `48b25c5` — `Improve room flow, session recovery and category SEO`.
 - Rama remota: `origin/main`.
 - Web: https://juegoimpostor.app
 - Despliegue de Pages: https://47879876.el-impostor-djf.pages.dev

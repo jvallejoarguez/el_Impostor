@@ -65,7 +65,7 @@ También acepta `INSIGHTS_READ_TOKEN` desde el entorno y `INSIGHTS_URL` para con
 
 ## Despliegue del consentimiento previo
 
-Publicado el 6 de septiembre de 2026, código `15524a4`. Worker `fb534232-fdff-4337-9b5e-6fe94361fab7`; Pages `https://19f8a36a.el-impostor-djf.pages.dev` y dominio principal verificados.
+Publicado el 6 de septiembre de 2026, código `d0dd96e`. Worker `fb534232-fdff-4337-9b5e-6fe94361fab7`; Pages `https://19f8a36a.el-impostor-djf.pages.dev` y dominio principal verificados.
 
 Validación: 82 pruebas unitarias, cinco escenarios de navegador (incluida partida completa con tres jugadores, rechazo en invitados, feedback y repetición), compilación y comprobación de las 22 páginas SEO. Las pruebas estáticas locales usan `/index.html` explícito porque Vite dev sirve la app como fallback en rutas de directorio; en producción también se verificaron las rutas públicas con barra final.
 
@@ -118,7 +118,7 @@ Referencias revisadas para las medidas de consentimiento: [guía de cookies de l
 ## Rutina semanal
 
 1. Comparar partidas terminadas, salas activadas y repeticiones con una ventana equivalente. La primera semana sirve de línea base; no hay objetivos inventados.
-2. Revisar fuentes y piezas del informe, junto con métricas de las plataformas. Elegir el siguiente experimento con `docs/promotion-kit.md`.
+2. Revisar fuentes y piezas del informe, junto con métricas de las plataformas. Elegir el siguiente experimento con `.local/docs-promocion/promotion-kit.md` (local, fuera de Git).
 3. Agrupar valoraciones y temas. Leer comentarios de quienes terminaron y de quienes salieron sin jugar: son grupos distintos y ninguna muestra representa a todos los usuarios.
 4. Seleccionar un problema repetido, solucionarlo y comprobar si desciende tras la siguiente versión. Ofrecer pruebas con personas del entorno por invitación directa; no se solicita correo a jugadores en esta primera versión.
 

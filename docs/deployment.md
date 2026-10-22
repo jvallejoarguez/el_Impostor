@@ -60,7 +60,7 @@ Para que el límite de intentos del login sea por visitante, configurar también
 
 La clave debe tener al menos 32 caracteres aleatorios, estar fuera de Git y tener permisos 0600. Rotarla invalida sesiones anteriores. Comprobar el login y logout en el dominio principal, el rechazo 401 del informe sin cookie y la ausencia de credenciales en assets. La configuración local de Playwright usa exclusivamente una clave de prueba. Para desarrollo manual, usar `.dev.vars` o `--var ADMIN_PASSWORD:...` con una clave local, nunca la de producción.
 
-Latest verified activation (2026-09-06): source `38a843b`; Worker version `a34bdb09-eda0-4df3-9cb9-136184bf12d0`; Pages deployment `https://22503182.el-impostor-djf.pages.dev`, served by the production custom domain. Migration `v2` and the private report secret are active. A real three-player game, feedback submission and authenticated report retrieval passed on the public deployment. Details and the technical test campaign are recorded in `docs/growth.md`.
+Latest verified activation (2026-09-06): source `5f7bb0b`; Worker version `a34bdb09-eda0-4df3-9cb9-136184bf12d0`; Pages deployment `https://22503182.el-impostor-djf.pages.dev`, served by the production custom domain. Migration `v2` and the private report secret are active. A real three-player game, feedback submission and authenticated report retrieval passed on the public deployment. Details and the technical test campaign are recorded in `docs/growth.md`.
 
 Always deploy the worker before the frontend. The frontend build inlines the worker URL, so the worker must exist (or its URL must be known) before the Pages build runs.
 

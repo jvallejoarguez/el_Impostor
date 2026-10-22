@@ -56,7 +56,7 @@ Google recomienda contenido útil para personas y una experiencia satisfactoria,
 
 ## Promoción y medición
 
-Probaría primero **tres vídeos cortos con el mismo juego y distinto inicio**: «¿Quién miente?», «Cuando te toca ser el impostor» y «El juego para tu próxima quedada». Son hipótesis creativas, no una promesa de alcance. El guion del primer experimento está en `guion-short-el-impostor.md`.
+Probaría primero **tres vídeos cortos con el mismo juego y distinto inicio**: «¿Quién miente?», «Cuando te toca ser el impostor» y «El juego para tu próxima quedada». Son hipótesis creativas, no una promesa de alcance. El guion del primer experimento está en `.local/docs-promocion/guion-short-el-impostor.md` (local, fuera de Git).
 
 Para distribución adicional, preparar una demostración breve para comunidades de juegos de mesa o Discord que admitan autopromoción, y una colaboración con un creador pequeño cuya audiencia juegue en grupo. La aportación sería una partida o un reto concreto. No se ha publicado ni enviado ningún mensaje.
 
