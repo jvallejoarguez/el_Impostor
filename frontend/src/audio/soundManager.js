@@ -19,12 +19,20 @@ export function initSounds() {
     const glue = ctx.createDynamicsCompressor()
     master.connect(glue)
     glue.connect(ctx.destination)
+    // One iOS audio session for music and effects; otherwise it drops to the
+    // ambient (silent-switch) category every time the music pauses.
+    if (navigator.audioSession) navigator.audioSession.type = 'playback'
   }
-  if (ctx.state === 'suspended') ctx.resume().catch(() => {})
+  // iOS suspends ("interrupted") the context on calls or a locked screen.
+  if (ctx.state !== 'running') ctx.resume().catch(() => {})
+  // iOS only starts an <audio> inside a tap, and the game track is chosen by a
+  // server message, so every track starts (silently) here the first time.
+  if (!muted) for (const name of Object.keys(TRACKS)) if (!music[name]) track(name).audio.play().catch(() => {})
   syncMusic()
 }
+// Not pointerdown: on iOS a touch only unlocks audio from touchend or click.
 if (typeof window !== 'undefined') {
-  for (const type of ['pointerdown', 'keydown']) window.addEventListener(type, initSounds, { once: true, passive: true })
+  for (const type of ['touchend', 'click', 'keydown']) window.addEventListener(type, initSounds, { passive: true })
 }
 
 export const isMuted = () => muted
@@ -51,21 +59,22 @@ function syncMusic() {
   for (const name of Object.keys(TRACKS)) {
     const on = name === wantedMusic && !muted
     if (!on && !music[name]) continue
-    if (!music[name]) {
-      const audio = new Audio(TRACKS[name])
-      audio.loop = true
-      const gain = ctx.createGain()
-      gain.gain.value = 0
-      ctx.createMediaElementSource(audio).connect(gain)
-      gain.connect(master)
-      music[name] = { audio, gain }
-    }
-    const { audio, gain } = music[name]
+    const { audio, gain } = music[name] || track(name)
     // Cross-fade; a silent track pauses once its fade has finished.
     gain.gain.setTargetAtTime(on ? MUSIC_VOLUME : 0, ctx.currentTime, on ? 0.6 : 0.3)
     if (on) audio.play().catch(() => {})
     else setTimeout(() => { if (name !== wantedMusic || muted) audio.pause() }, 1500)
   }
+}
+
+function track(name) {
+  const audio = new Audio(TRACKS[name])
+  audio.loop = true
+  const gain = ctx.createGain()
+  gain.gain.value = 0
+  ctx.createMediaElementSource(audio).connect(gain)
+  gain.connect(master)
+  return (music[name] = { audio, gain })
 }
 
 const NOTE = { E3: 164.8, F3: 174.6, Fs3: 185, G3: 196, Ab3: 207.7, D4: 293.7, G4: 392, C5: 523.3, E5: 659.3, G5: 784, D6: 1174.7, C6: 1046.5, E6: 1318.5, G6: 1568 }
@@ -154,6 +163,7 @@ const SOUNDS = {
 }
 
 export function play(name) {
-  if (!ctx || muted || !SOUNDS[name]) return
+  // A suspended context would queue the effect and fire it late on resume.
+  if (!ctx || muted || ctx.state !== 'running' || !SOUNDS[name]) return
   try { SOUNDS[name]() } catch {}
 }
