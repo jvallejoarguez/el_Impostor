@@ -7,6 +7,7 @@ import { play, setMusic } from '../audio/soundManager.js'
 import { normalizeWordCategories, wordCategoriesLabel } from '../wordCategories.js'
 import { dealRound, playerNames } from '../localGame.js'
 import { track } from '../analytics.js'
+import { useFitText } from '../fitText.js'
 import '../one-phone.css'
 
 // components/one-phone.jsx — a group sitting together shares one phone: it
@@ -106,10 +107,10 @@ function PassScreen({ name, step, total, onReveal, onCancel }) {
 // Both roles share one look and one sound, so nobody learns anything from across the table.
 function SecretScreen({ isImpostor, word, hint, last, onHide }) {
   const text = isImpostor ? 'IMPOSTOR' : word.toUpperCase()
-  const longest = Math.max(...text.split(/\s+/).map(part => part.length), 1)
+  const fitRef = useFitText(text, 'min(22vw, 160px)')
   return <main className="reveal one-phone-stage">
     <p className="reveal-kicker">{isImpostor ? 'Eres el' : 'Tu palabra es'}</p>
-    <h1 className="reveal-word one-phone-secret" style={{ fontSize: `min(22vw, ${(110 / longest).toFixed(2)}vw, 160px)` }}>{text}</h1>
+    <h1 ref={fitRef} className="reveal-word one-phone-secret">{text}</h1>
     <div className="reveal-hint">
       {isImpostor ? <>{hint ? <><span>Tu pista</span><strong>{hint}</strong></> : null}<span>Escucha las pistas y finge que conoces la palabra.</span></>
         : <span>No la digas en voz alta. Uno de vosotros no la sabe.</span>}

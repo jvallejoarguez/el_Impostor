@@ -13,7 +13,7 @@
 .one-phone-stage .btn--lg { margin-top: 18px; max-width: 100%; white-space: normal; }
 .one-phone-step { margin: 0; font: 18px var(--font-display); color: var(--mustard); }
 .one-phone-name { font-size: clamp(44px, 14vw, 104px); overflow-wrap: anywhere; color: var(--mustard); }
-.one-phone-secret { color: var(--mustard); overflow-wrap: anywhere; margin: 6px auto; }
+.one-phone-secret { color: var(--mustard); margin: 6px auto; }
 .one-phone-note { margin: 0; font-weight: 800; color: var(--soft); }
 .one-phone-cancel { color: var(--paper); margin-top: 4px; }
 /* Appears a moment late so a double tap can't skip straight past someone's turn. */

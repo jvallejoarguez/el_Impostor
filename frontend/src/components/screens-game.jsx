@@ -5,6 +5,7 @@ import { ClueHistory } from './clue-history.jsx'
 import { useServerCountdown } from '../ws/useServerCountdown.js'
 import { wordCategoriesLabel } from '../wordCategories.js'
 import { useStreamerMode } from '../streamerMode.js'
+import { useFitText } from '../fitText.js'
 
 // components/screens-game.jsx — role reveal and the turn-by-turn clue round
 
@@ -16,6 +17,9 @@ function RoleRevealScreen({ myRole, timerEnd }) {
   const remaining = useServerCountdown(timerEnd, 6);
   const streamer = useStreamerMode();
   const [peek, setPeek] = React.useState(false);
+  const isImposter = myRole?.isImpostor;
+  const revealText = isImposter ? "IMPOSTOR" : (myRole?.word ?? "").toUpperCase();
+  const wordRef = useFitText(revealText, "min(24vw, 190px)");
   React.useEffect(() => {
     // On stream the role sounds would give the impostor away, so both roles hear the same pop.
     if (myRole) play(streamer ? 'join' : myRole.isImpostor ? 'roleImpostor' : 'roleCrewmate');
@@ -41,16 +45,11 @@ function RoleRevealScreen({ myRole, timerEnd }) {
     );
   }
 
-  const isImposter = myRole.isImpostor;
-  const revealText = isImposter ? "IMPOSTOR" : (myRole.word ?? "").toUpperCase();
-  const longest = Math.max(...revealText.split(/\s+/).map(segment => segment.length), 1);
-  const wordSize = `min(24vw, ${(116 / longest).toFixed(2)}vw, 190px)`;
-
   return (
     <div className={`reveal ${isImposter ? "is-impostor shake" : "is-crew"}`}>
       <div className="reveal-rays" aria-hidden="true"/>
       <div className="reveal-kicker pop">{isImposter ? "Eres el" : "Tu palabra es"}</div>
-      <div className="reveal-word slam" style={{ fontSize: wordSize }}>{revealText}</div>
+      <div ref={wordRef} className="reveal-word slam">{revealText}</div>
       <div className="slide-up" style={{ animationDelay: ".5s" }}>
         {isImposter
           ? <div className="reveal-hint"><span>Tu pista</span><strong>{myRole.hint || "Sin pista"}</strong><span>Finge que conoces la palabra secreta.</span></div>
