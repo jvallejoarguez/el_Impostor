@@ -17,7 +17,7 @@ Real-time multiplayer over WebSockets. Anonymous play — no accounts.
 
 Cloudflare account: `jvallejoarguez@gmail.com` (free tier). Pages project name: `el-impostor`; the fallback Pages URL is `https://el-impostor-djf.pages.dev` because `el-impostor.pages.dev` was already taken. Worker name: `el-impostor-worker-production` (the `-production` suffix comes from deploying with `--env production`).
 
-Public author name: the alias **jvallejo.dev**. Use it in all user-facing copy; the legal name appears only once, in the controller section of `/privacidad/` (GDPR requires the controller's identity).
+Public author name: the alias **jvallejo.dev**. Use it in all user-facing copy; the legal name appears only once, in the controller section of `/privacidad/` (GDPR requires the controller's identity). Public contact email: `mail@jvallejo.dev` (Cloudflare Email Routing forwards it to the account Gmail); never publish the Gmail address.
 
 See [`docs/deployment.md`](docs/deployment.md) for the full deployment story, gotchas hit, and the exact redeploy commands.
 
