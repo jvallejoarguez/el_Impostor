@@ -1,5 +1,9 @@
 /* One-phone mode: setup card, pass-the-phone screens and the table view */
 .one-phone-setup .room-stepper { margin-top: 22px; }
+.one-phone-setup .room-stepper + .room-stepper { margin-top: 10px; }
+.one-phone-impostor-note { margin: 6px 0 0; font-size: 14px; font-weight: 700; color: var(--soft); }
+.one-phone-impostors { margin-bottom: 22px; display: grid; gap: 10px; }
+.one-phone-impostors .imposter-row { margin: 0; }
 .one-phone-names { border: 0; padding: 0; margin: 22px 0 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .one-phone-names legend { font-size: 14px; font-weight: 900; margin-bottom: 8px; padding: 0; }
 .one-phone-names legend small { font-weight: 700; color: var(--soft); }

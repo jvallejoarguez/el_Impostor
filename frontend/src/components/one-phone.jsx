@@ -5,7 +5,7 @@ import { Sheet } from './sheet.jsx'
 import { CategoryPicker, RuleStepper } from './screens-lobby.jsx'
 import { play, setMusic } from '../audio/soundManager.js'
 import { normalizeWordCategories, wordCategoriesLabel } from '../wordCategories.js'
-import { dealRound, playerNames } from '../localGame.js'
+import { dealRound, joinNames, maxImpostors, playerNames } from '../localGame.js'
 import { track } from '../analytics.js'
 import { useFitText } from '../fitText.js'
 import '../one-phone.css'
@@ -16,18 +16,21 @@ import '../one-phone.css'
 
 const SETUP_KEY = 'el-impostor-one-phone'
 const TIMER_OPTIONS = [[0, 'Sin límite'], [60, '1 min'], [120, '2 min'], [180, '3 min'], [300, '5 min']]
+const COUNT_WORDS = ['', 'Uno', 'Dos', 'Tres']
 
 function readSetup() {
   try {
     const saved = JSON.parse(localStorage.getItem(SETUP_KEY))
+    const count = Math.min(16, Math.max(3, Number.isInteger(saved?.count) ? saved.count : 4))
     return {
-      count: Math.min(16, Math.max(3, Number.isInteger(saved?.count) ? saved.count : 4)),
+      count,
+      impostors: Math.min(maxImpostors(count), Math.max(1, Number.isInteger(saved?.impostors) ? saved.impostors : 1)),
       names: Array.isArray(saved?.names) ? saved.names.slice(0, 16).map(name => String(name).slice(0, 16)) : [],
       categories: normalizeWordCategories(saved?.categories),
       hint: saved?.hint !== false,
       timer: TIMER_OPTIONS.some(([value]) => value === saved?.timer) ? saved.timer : 120,
     }
-  } catch { return { count: 4, names: [], categories: ['all'], hint: true, timer: 120 } }
+  } catch { return { count: 4, impostors: 1, names: [], categories: ['all'], hint: true, timer: 120 } }
 }
 
 export default function OnePhoneGame({ onExit }) {
@@ -38,7 +41,7 @@ export default function OnePhoneGame({ onExit }) {
   useEffect(() => { setMusic(stage.name === 'play' ? 'game' : stage.name === 'result' ? null : 'home') }, [stage.name])
 
   const deal = (players, used, method) => {
-    setGame({ players, used, ...dealRound(words, { playerCount: players.length, categories: setup.categories, used }) })
+    setGame({ players, used, ...dealRound(words, { playerCount: players.length, impostors: setup.impostors, categories: setup.categories, used }) })
     setStage({ name: 'pass', idx: 0 })
     track('one_phone_started', { playerCount: players.length, category: setup.categories.join('_'), method })
   }
@@ -58,7 +61,7 @@ export default function OnePhoneGame({ onExit }) {
   const name = game.players[stage.idx]
   if (stage.name === 'pass') return <PassScreen key={`${stage.idx}-${stage.again}`} name={name} step={stage.again ? null : stage.idx + 1} total={game.players.length}
     onReveal={() => { play('wordSubmit'); setStage({ ...stage, name: 'secret' }) }} onCancel={() => setStage(stage.again ? { name: 'play' } : { name: 'setup' })}/>
-  if (stage.name === 'secret') return <SecretScreen isImpostor={stage.idx === game.impostorIdx} word={game.word} hint={setup.hint ? game.hint : ''}
+  if (stage.name === 'secret') return <SecretScreen isImpostor={game.impostorIdxs.includes(stage.idx)} impostors={game.impostorIdxs.length} word={game.word} hint={setup.hint ? game.hint : ''}
     last={stage.again || stage.idx === game.players.length - 1} onHide={hide}/>
   if (stage.name === 'play') return <PlayScreen game={game} timed={setup.timer > 0} onRestartTimer={() => setGame(g => ({ ...g, timerEnd: Date.now() + setup.timer * 1000 }))} onPeek={idx => setStage({ name: 'pass', idx, again: true })}
     onReveal={() => { play('roleImpostor'); setStage({ name: 'result' }) }} onExit={() => setStage({ name: 'setup' })}/>
@@ -68,12 +71,15 @@ export default function OnePhoneGame({ onExit }) {
 function SetupScreen({ setup, onChange, onStart, onBack }) {
   const [showCategories, setShowCategories] = useState(false)
   const setName = (i, value) => { const names = [...setup.names]; names[i] = value; onChange({ names }) }
+  const maxCount = maxImpostors(setup.count)
   return <main className="entry-page screen-pad one-phone-setup">
     <button onClick={onBack} className="btn btn--ghost btn--sm entry-back">← Volver</button>
     <form className="card entry-card slide-up" onSubmit={e => { e.preventDefault(); onStart() }}>
       <h1>Jugar con un solo móvil</h1>
       <p className="helper-text">Os vais pasando el móvil para que cada uno vea su palabra en secreto. Después dais las pistas en voz alta.</p>
-      <RuleStepper label="Jugadores" value={setup.count} min={3} max={16} step={1} editable onChange={count => onChange({ count })}/>
+      <RuleStepper label="Jugadores" value={setup.count} min={3} max={16} step={1} editable onChange={count => onChange({ count, impostors: Math.min(setup.impostors, maxImpostors(count)) })}/>
+      <RuleStepper label="Impostores" value={setup.impostors} min={1} max={maxCount} step={1} editable onChange={impostors => onChange({ impostors })}/>
+      {maxCount === 1 && <p className="one-phone-impostor-note">Con 5 jugadores o más podéis jugar con 2 impostores.</p>}
       <fieldset className="one-phone-names">
         <legend>Nombres <small>(opcional)</small></legend>
         {Array.from({ length: setup.count }, (_, i) => <input key={i} aria-label={`Nombre del jugador ${i + 1}`} placeholder={`Jugador ${i + 1}`} maxLength={16} autoComplete="off"
@@ -105,15 +111,16 @@ function PassScreen({ name, step, total, onReveal, onCancel }) {
 }
 
 // Both roles share one look and one sound, so nobody learns anything from across the table.
-function SecretScreen({ isImpostor, word, hint, last, onHide }) {
+function SecretScreen({ isImpostor, impostors, word, hint, last, onHide }) {
   const text = isImpostor ? 'IMPOSTOR' : word.toUpperCase()
   const fitRef = useFitText(text, 'min(22vw, 160px)')
+  const others = impostors === 2 ? 'Hay otro impostor, pero no sabes quién es. ' : impostors > 2 ? `Hay otros ${COUNT_WORDS[impostors - 1].toLowerCase()} impostores, pero no sabes quiénes son. ` : ''
   return <main className="reveal one-phone-stage">
-    <p className="reveal-kicker">{isImpostor ? 'Eres el' : 'Tu palabra es'}</p>
+    <p className="reveal-kicker">{isImpostor ? (impostors > 1 ? 'Eres un' : 'Eres el') : 'Tu palabra es'}</p>
     <h1 ref={fitRef} className="reveal-word one-phone-secret">{text}</h1>
     <div className="reveal-hint">
-      {isImpostor ? <>{hint ? <><span>Tu pista</span><strong>{hint}</strong></> : null}<span>Escucha las pistas y finge que conoces la palabra.</span></>
-        : <span>No la digas en voz alta. Uno de vosotros no la sabe.</span>}
+      {isImpostor ? <>{hint ? <><span>Tu pista</span><strong>{hint}</strong></> : null}<span>{others}Escucha las pistas y finge que conoces la palabra.</span></>
+        : <span>No la digas en voz alta. {COUNT_WORDS[impostors]} de vosotros no la {impostors > 1 ? 'saben' : 'sabe'}.</span>}
     </div>
     <button className="btn btn--primary btn--lg one-phone-armed" onClick={onHide}>{last ? 'Ocultar' : 'Ocultar y pasar el móvil'}</button>
   </main>
@@ -122,16 +129,17 @@ function SecretScreen({ isImpostor, word, hint, last, onHide }) {
 function PlayScreen({ game, timed, onRestartTimer, onPeek, onReveal, onExit }) {
   const { players, starterIdx } = game
   const order = players.map((_, i) => players[(starterIdx + i) % players.length])
+  const solo = game.impostorIdxs.length === 1
   return <main className="results-page one-phone-play">
     <Sticker color="mustard" rotate={-2} size="lg">¡A jugar!</Sticker>
     <h1 className="results-title one-phone-title">Empieza {players[starterIdx]}</h1>
     <section className="card results-card">
-      <p className="one-phone-rules">Por turnos, decid en voz alta una palabra relacionada con la secreta, sin decirla. Cuando acabe la ronda, votad a quién creéis que es el impostor.</p>
+      <p className="one-phone-rules">Por turnos, decid en voz alta una palabra relacionada con la secreta, sin decirla. Cuando acabe la ronda, {solo ? 'votad a quién creéis que es el impostor' : `votad a quiénes creéis que son los ${COUNT_WORDS[game.impostorIdxs.length].toLowerCase()} impostores`}.</p>
       <ol className="one-phone-order" aria-label="Orden de turnos">{order.map((name, i) => <li key={i}><Avatar name={name} size={30}/>{name}</li>)}</ol>
       {timed && <RoundTimer end={game.timerEnd} onRestart={onRestartTimer}/>}
     </section>
     <div className="results-actions">
-      <button className="btn btn--primary btn--lg btn--block" onClick={onReveal}>Revelar impostor</button>
+      <button className="btn btn--primary btn--lg btn--block" onClick={onReveal}>{solo ? 'Revelar impostor' : 'Revelar impostores'}</button>
       <details className="result-share"><summary>¿Alguien olvidó su palabra?</summary><div className="result-share-actions">
         {players.map((name, i) => <button key={i} className="btn btn--ghost btn--sm" onClick={() => onPeek(i)}>{name}</button>)}
       </div></details>
@@ -157,13 +165,16 @@ function RoundTimer({ end, onRestart }) {
 }
 
 function ResultScreen({ game, hint, onAgain, onSetup, onExit }) {
-  const impostor = game.players[game.impostorIdx]
+  const impostors = game.impostorIdxs.map(idx => game.players[idx])
+  const solo = impostors.length === 1
   return <main className="results-page">
-    <h1 className="results-title slam is-impostor one-phone-title">¡Era {impostor}!</h1>
+    <h1 className="results-title slam is-impostor one-phone-title">¡{solo ? 'Era' : 'Eran'} {joinNames(impostors)}!</h1>
     <section className="card results-card slide-up">
-      <div className="imposter-row"><Avatar name={impostor} size={96}/><div><div className="result-label">El impostor era</div><div className="imposter-name">{impostor}</div></div></div>
+      {solo ? <div className="imposter-row"><Avatar name={impostors[0]} size={96}/><div><div className="result-label">El impostor era</div><div className="imposter-name">{impostors[0]}</div></div></div>
+        : <div className="one-phone-impostors"><div className="result-label">Los impostores eran</div>
+          {impostors.map((name, i) => <div className="imposter-row" key={i}><Avatar name={name} size={64}/><div className="imposter-name">{name}</div></div>)}</div>}
       <div className="result-word"><div className="result-label">La palabra secreta era</div><div>{game.word}</div></div>
-      {hint && <p className="helper-text">Pista del impostor: <strong>{game.hint}</strong></p>}
+      {hint && <p className="helper-text">{solo ? 'Pista del impostor' : 'Pista de los impostores'}: <strong>{game.hint}</strong></p>}
     </section>
     <div className="results-actions">
       <button className="btn btn--primary btn--lg btn--block" onClick={onAgain}>↻ Otra partida</button>
