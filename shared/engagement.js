@@ -51,12 +51,20 @@ export function cleanEvent(input, trusted = false) {
   return { id: input.id, event: input.event, attribution: cleanAttribution(input.attribution), context: cleanContext(input.context), ...(trusted ? {} : { consent: consentReceipt(input.consent) }) }
 }
 
+// Optional reply address. Deliberately stricter than RFC 5322 so it is always safe inside a mailto: link.
+export function cleanEmail(value) {
+  const email = typeof value === 'string' ? value.trim() : ''
+  return email.length <= 254 && /^[a-z0-9._+-]{1,64}@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,63}$/i.test(email) ? email : ''
+}
+
 export function cleanFeedback(input) {
   if (!input || !uuid(input.id) || !FEEDBACK_KINDS.includes(input.kind)) return null
   const rating = ['good', 'okay', 'bad'].includes(input.rating) ? input.rating : null
   const topic = FEEDBACK_TOPICS.includes(input.topic) ? input.topic : null
   const comment = typeof input.comment === 'string' ? input.comment.trim().replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 1000) : ''
+  const email = cleanEmail(input.email)
   if (input.kind === 'rating' && !rating) return null
   if (!rating && !topic && !comment) return null
-  return { id: input.id, kind: input.kind, rating, topic, comment, context: cleanContext(input.context) }
+  if (typeof input.email === 'string' && input.email.trim() && !email) return null
+  return { id: input.id, kind: input.kind, rating, topic, comment, ...(email ? { email } : {}), context: cleanContext(input.context) }
 }

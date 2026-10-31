@@ -94,6 +94,21 @@ describe('engagement ingestion and private reports', () => {
     expect(cleanFeedback({ id: crypto.randomUUID(), kind: 'idea', comment: ' ' })).toBeNull()
   })
 
+  it('keeps an optional reply email and rejects unsafe or malformed addresses', async () => {
+    const { post, report } = setup()
+    const id = crypto.randomUUID()
+    expect((await post('/feedback', { id, kind: 'idea', comment: 'Modo por equipos', email: ' ana.g+impostor@ejemplo.es ' })).status).toBe(200)
+    expect((await post('/feedback', { id: crypto.randomUUID(), kind: 'idea', comment: 'Sin correo', email: '' })).status).toBe(200)
+    expect((await post('/feedback', { id: crypto.randomUUID(), kind: 'idea', comment: 'x', email: 'no-es-correo' })).status).toBe(400)
+    const stored = (await report()).reports[0].feedback
+    expect(stored.find(item => item.id === id).email).toBe('ana.g+impostor@ejemplo.es')
+    expect(stored.find(item => item.comment === 'Sin correo')).not.toHaveProperty('email')
+    for (const email of ['a@b', 'a b@c.es', 'a@c.es?bcc=x@y.es', 'a&cc=x@c.es', `${'a'.repeat(65)}@c.es`, 'a\nb@c.es']) {
+      expect(cleanFeedback({ id: crypto.randomUUID(), kind: 'idea', comment: 'x', email })).toBeNull()
+    }
+    expect(cleanFeedback({ id: crypto.randomUUID(), kind: 'idea', comment: 'x', email: 42 })).not.toHaveProperty('email')
+  })
+
   it('requires a configured private token and bounds report date ranges', async () => {
     const { env } = setup()
     expect((await worker.fetch(new Request('https://worker/insights/report'), env)).status).toBe(401)

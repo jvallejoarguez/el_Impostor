@@ -23,7 +23,7 @@ export function FeedbackProvider({ children }) {
   }, [])
   const open = useCallback((kind = 'problem', rating = null, snapshot) => {
     const details = cleanContext({ ...(snapshot || context), version: APP_VERSION })
-    setDraft({ id: crypto.randomUUID(), kind, rating, topic: '', comment: '', context: details })
+    setDraft({ id: crypto.randomUUID(), kind, rating, topic: '', comment: '', email: '', context: details })
     setExitContext(null)
     track('feedback_opened', details)
   }, [context])
@@ -46,7 +46,7 @@ export function FeedbackProvider({ children }) {
       <div className="privacy-copy">
         <p>Solo si aceptas medimos visitas, clics y campañas. El almacenamiento necesario para jugar funciona también al rechazar.</p>
         <p>Estos registros no incluyen nombres, códigos de sala, pistas ni roles. No usamos grabaciones de pantalla ni enviamos esta medición a servicios publicitarios.</p>
-        <p>Si envías una opinión, guardamos tu respuesta junto con la fase, categoría, número de jugadores, versión y un identificador de partida, cuando están disponibles. No hace falta dar tu nombre ni tu correo. Evita incluir datos personales en el comentario.</p>
+        <p>Si envías una opinión, guardamos tu respuesta junto con la fase, categoría, número de jugadores, versión y un identificador de partida, cuando están disponibles. No hace falta dar tu nombre. El correo es opcional y solo sirve para responderte sobre esa opinión. Evita incluir datos personales en el comentario.</p>
         <p>Los registros se eliminan automáticamente en un máximo de 30 días y las opiniones solo están disponibles en un informe privado. Las partidas se cuentan desde el servidor aunque desactives la medición del navegador.</p>
         <p>Medición opcional: <strong>{enabled ? 'activada' : 'desactivada'}</strong>.</p>
         <button className="btn btn--ghost" onClick={() => { setPrivacy(false); window.elImpostorConsent?.open() }}>Cambiar mi decisión</button>
@@ -94,7 +94,7 @@ function FeedbackForm({ initial, onClose }) {
   }
   const title = draft.kind === 'rating' ? '¿Qué tal la partida?' : draft.kind === 'exit' ? '¿Qué os ha impedido jugar?' : 'Te leemos'
   return <Sheet title={title} onClose={onClose} className="feedback-sheet">
-    {status === 'sent' ? <div role="status" className="feedback-thanks"><p>¡Gracias por contárnoslo!</p><p>Tu respuesta nos ayuda a elegir qué mejorar.</p><button className="btn btn--primary" onClick={onClose}>Volver al juego</button></div> : <form onSubmit={submit} className="feedback-form">
+    {status === 'sent' ? <div role="status" className="feedback-thanks"><p>¡Gracias por contárnoslo!</p><p>{draft.email.trim() ? `Si tenemos novedades, te escribiremos a ${draft.email.trim()}.` : 'Tu respuesta nos ayuda a elegir qué mejorar.'}</p><button className="btn btn--primary" onClick={onClose}>Volver al juego</button></div> : <form onSubmit={submit} className="feedback-form" noValidate>
       <fieldset disabled={status === 'sending'}>
         {!['rating', 'exit'].includes(draft.kind) && <><label htmlFor="feedback-kind">¿Qué quieres contarnos?</label><select id="feedback-kind" value={draft.kind} onChange={e => change({ kind: e.target.value })}><option value="problem">Algo falla</option><option value="idea">Tengo una idea</option><option value="words">Sobre las palabras</option></select></>}
         {draft.kind === 'rating' && <div className="feedback-ratings" role="group" aria-label="Valoración">{ratings.map(([value, label]) => <button type="button" key={value} className="btn btn--ghost btn--sm" aria-pressed={draft.rating === value} onClick={() => change({ rating: value })}>{label}</button>)}</div>}
@@ -102,7 +102,10 @@ function FeedbackForm({ initial, onClose }) {
         <select id="feedback-topic" value={draft.topic} onChange={e => change({ topic: e.target.value })}><option value="">Elige una opción</option>{Object.entries(topics).filter(([key]) => draft.kind === 'exit' || !['missing_players', 'just_looking'].includes(key)).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
         <label htmlFor="feedback-comment">{draft.kind === 'idea' ? 'Tu idea' : 'Cuéntanos un poco más'} (opcional)</label>
         <textarea id="feedback-comment" rows={4} maxLength={1000} value={draft.comment} onChange={e => change({ comment: e.target.value })} placeholder="¿Qué ha pasado o qué te gustaría cambiar?" aria-describedby="feedback-note"/>
-        <p id="feedback-note" className="helper-text">Al enviar solicitas que Javier Vallejo reciba y revise tu opinión y el contexto de esta pantalla. Se conserva hasta 30 días. No incluyas nombres, correos ni otros datos personales. <a href="/privacidad/#opiniones" target="_blank" rel="noreferrer">Información de privacidad y derechos</a>.</p>
+        <label htmlFor="feedback-email">Tu correo, si quieres respuesta (opcional)</label>
+        <input id="feedback-email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} maxLength={254} value={draft.email} onChange={e => change({ email: e.target.value })} placeholder="nombre@ejemplo.com" aria-describedby="feedback-email-note"/>
+        <p id="feedback-email-note" className="helper-text">Solo lo usaremos para contestarte sobre esta opinión, por ejemplo para avisarte cuando lo hayamos arreglado o añadido. Nada de publicidad.</p>
+        <p id="feedback-note" className="helper-text">Al enviar solicitas que Javier Vallejo reciba y revise tu opinión, el correo si lo escribes y el contexto de esta pantalla. Se conserva hasta 30 días. No incluyas nombres ni otros datos personales en el comentario. <a href="/privacidad/#opiniones" target="_blank" rel="noreferrer">Información de privacidad y derechos</a>.</p>
         {['countdown', 'roleReveal', 'playing', 'roundReview', 'betweenRound', 'voting'].includes(draft.context.phase) && <p className="helper-text">La partida sigue mientras escribes. Puedes cerrar esta ventana y contárnoslo al terminar.</p>}
         {error && <p role="alert" className="form-error">{error}</p>}
         <button className="btn btn--primary btn--block" disabled={!draft.rating && !draft.topic && !draft.comment.trim()}>{status === 'sending' ? 'Enviando…' : 'Enviar opinión'}</button>

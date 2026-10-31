@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { summarizeReport } from '../src/admin/report.js'
+import { summarizeReport, replyMailto } from '../src/admin/report.js'
 
 describe('private dashboard measures', () => {
   it('keeps diagnostics distinct and separates JavaScript errors from disconnections', () => {
@@ -43,5 +43,13 @@ describe('private dashboard measures', () => {
     const report = { reports: ['2026-09-24', '2026-09-23'].map(day => ({ day, counters: [], feedback: [] })) }
     expect(summarizeReport(report).daily.map(row => row.day)).toEqual(['2026-09-23', '2026-09-24'])
     expect(report.reports[0].day).toBe('2026-09-24')
+  })
+  it('drafts a reply to the address the player left, quoting their opinion', () => {
+    const link = replyMailto({ email: 'ana@ejemplo.es', comment: 'Añadid modo & equipos' })
+    expect(link.startsWith('mailto:ana@ejemplo.es?subject=')).toBe(true)
+    const params = new URLSearchParams(link.split('?')[1])
+    expect(params.get('subject')).toBe('Gracias por tu opinión sobre El Impostor')
+    expect(params.get('body')).toContain('«Añadid modo & equipos»')
+    expect([...params.keys()]).toEqual(['subject', 'body'])
   })
 })
