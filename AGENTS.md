@@ -137,5 +137,5 @@ Call `play(name)` from `soundManager.js`. Effects are synthesised with Web Audio
 - JOIN may include `consent`, `attribution`, and `wasInvited` only after acceptance. Read the current preference on reconnect, never cache marketing metadata with connection credentials.
 - Keep room `engagement` metadata out of public STATE. No-consent counters use `source=unattributed`. `/events` requires a valid versioned receipt; voluntary `/feedback` does not depend on analytics consent.
 - Retention of 30 days applies to Engagement only. GameRoom has no inactive-room deletion yet; do not promise otherwise.
-- Public policy: `frontend/public/privacidad/index.html`. Legal contact: Javier Vallejo, jvallejoarguez@gmail.com (explicitly authorized for publication).
+- Public policy: `frontend/public/privacidad/index.html`. Legal contact: jvallejoarguez@gmail.com (explicitly authorized for publication). The public author name is the alias `jvallejo.dev`; the legal name Javier Vallejo appears only once, in the policy's controller section (GDPR identity requirement). Use the alias in all other copy.
 - Fonts are self-hosted under `frontend/public/fonts/`, with OFL licenses. Do not reintroduce automatic third-party font requests.

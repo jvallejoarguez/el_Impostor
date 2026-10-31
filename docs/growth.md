@@ -109,7 +109,7 @@ El Worker exige un recibo válido de aceptación en los eventos públicos de nav
 
 Los contadores agregados del servidor siguen operativos sin atribución cuando no hay consentimiento. **No dividir partidas totales entre visitas consentidas para calcular conversión:** las poblaciones difieren. Desde esta versión, menos visitas registradas puede reflejar rechazos, no una caída del tráfico. Search Console sigue siendo la referencia para los clics de Google.
 
-La política pública está en `/privacidad/`, con Javier Vallejo y el contacto autorizado. Las fuentes se alojan localmente con sus licencias; no se carga Google Fonts. No se instalan cookies publicitarias, grabaciones de sesión ni adaptadores a terceros.
+La política pública está en `/privacidad/`, con el alias jvallejo.dev (y el nombre legal solo en «Quién es el responsable») y el contacto autorizado. Las fuentes se alojan localmente con sus licencias; no se carga Google Fonts. No se instalan cookies publicitarias, grabaciones de sesión ni adaptadores a terceros.
 
 La caducidad de 30 días es la de `Engagement`, no la de `GameRoom`: aún no existe una política automática de borrado de salas inactivas. Se ha documentado esta limitación de forma expresa en la política pública; no afirmar que todos los datos del juego se eliminan a los 30 días. Como trabajo separado, definir e implementar la caducidad de salas con pruebas de reconexión y alarmas antes de prometerla.
 
