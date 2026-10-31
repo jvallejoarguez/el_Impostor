@@ -1,8 +1,11 @@
 /* Home, entry and portraits on the violet stage. */
-.home-page { max-width: 980px; margin: auto; padding: 0 28px 32px; }
-.club-masthead { display: flex; align-items: center; gap: 14px; padding: 16px 64px 16px 0; }
-.club-monogram { font: 28px/1 var(--font-display); background: var(--mustard); color: var(--ink); padding: 4px 9px 7px; border: 3px solid var(--ink); border-radius: 12px; box-shadow: 0 4px 0 var(--ink); transform: rotate(-4deg); }
-.club-masthead a { margin-left: auto; font-size: 16px; font-weight: 900; }
+.home-page { max-width: 980px; margin: auto; padding: 64px 28px 32px; }
+/* Spans the full-width app wrapper so its edges and centre line match the fixed .sound-toggle (14px in, 12px down, 52px tall). */
+.club-masthead { position: absolute; top: 0; left: 0; right: 0; z-index: 2; display: flex; align-items: center; gap: 14px; padding: 12px 82px 0 14px; }
+.club-monogram { display: block; flex: 0 0 auto; line-height: 0; transform: rotate(-4deg); transition: transform .15s; }
+.club-monogram img { display: block; width: 52px; height: 52px; }
+.club-monogram:hover { transform: rotate(-4deg) scale(1.06); }
+.club-masthead a:not(.club-monogram) { margin-left: auto; font-size: 16px; font-weight: 900; }
 
 .home-hero { padding: 40px 0 56px; text-align: center; }
 .home-brand { display: flex; justify-content: center; margin: 0 0 26px; line-height: 1; }
@@ -47,9 +50,9 @@
   .club-how { padding: 22px 20px 6px; }
 }
 @media (max-width: 640px) {
-  .home-page { padding: 0 16px 24px; }
-  .club-masthead { padding: 12px 54px 12px 0; }
-  .club-monogram { font-size: 24px; }
+  .home-page.screen-pad { padding-top: 52px !important; }
+  .club-masthead { padding: 8px 66px 0 10px; }
+  .club-monogram img { width: 44px; height: 44px; }
   .home-hero { padding: 26px 0 36px; }
   .home-tagline { font-size: 18px; }
   .home-actions { flex-direction: column; max-width: 360px; margin: auto; gap: 14px; }
