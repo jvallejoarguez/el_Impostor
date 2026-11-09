@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { summarizeReport } from '../src/admin/report.js'
+import { summarizeReport, splitPeriod, weekdayAverages } from '../src/admin/report.js'
 
 describe('private dashboard measures', () => {
   it('keeps diagnostics distinct and separates JavaScript errors from disconnections', () => {
@@ -43,5 +43,27 @@ describe('private dashboard measures', () => {
     const report = { reports: ['2026-09-24', '2026-09-23'].map(day => ({ day, counters: [], feedback: [] })) }
     expect(summarizeReport(report).daily.map(row => row.day)).toEqual(['2026-09-23', '2026-09-24'])
     expect(report.reports[0].day).toBe('2026-09-24')
+  })
+  it('compares a period with the one before it only when retention covers both', () => {
+    const report = { reports: Array.from({ length: 30 }, (_, i) => ({ day: `2026-10-${String(i + 1).padStart(2, '0')}`, counters: [], feedback: [] })).reverse() }
+    const week = splitPeriod(report, 7)
+    expect(week.current.reports.map(row => row.day)).toEqual(['2026-10-24', '2026-10-25', '2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30'])
+    expect(week.previous.reports.at(-1).day).toBe('2026-10-23')
+    expect(splitPeriod(report, 30).previous).toBeNull()
+  })
+  it('groups visit sources, invited joins and ratings', () => {
+    const result = summarizeReport({ reports: [{ day: '2026-10-05', counters: [
+      { event: 'visit', source: 'google', medium: 'organic', count: 4 },
+      { event: 'visit', source: 'tiktok', medium: 'social', count: 2 },
+      { event: 'visit', source: 'direct', medium: 'none', count: 1 },
+      { event: 'player_joined', wasInvited: true, count: 3 }, { event: 'player_joined', wasInvited: false, count: 5 },
+    ], feedback: [{ id: 'a', rating: 'good', receivedAt: '1' }, { id: 'b', rating: 'bad', receivedAt: '2' }, { id: 'c', kind: 'idea', receivedAt: '3' }] }] })
+    expect(result.sources).toEqual([{ path: 'google', count: 4 }, { path: 'tiktok · social', count: 2 }, { path: 'direct', count: 1 }])
+    expect(result.invitedJoins).toBe(3)
+    expect(result.ratings).toEqual({ good: 1, okay: 0, bad: 1 })
+  })
+  it('averages weekdays over complete days, Monday first', () => {
+    const daily = [{ day: '2026-11-02', game_finished: 4 }, { day: '2026-11-09', game_finished: 2 }, { day: '2026-11-08', game_finished: 6 }, { day: '2026-11-10', game_finished: 99 }]
+    expect(weekdayAverages(daily, 'game_finished')).toEqual([3, null, null, null, null, null, 6])
   })
 })
