@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { summarizeReport, splitPeriod, weekdayAverages } from '../src/admin/report.js'
+import { summarizeReport, splitPeriod, weekdayAverages, replyMailto } from '../src/admin/report.js'
 
 describe('private dashboard measures', () => {
   it('keeps diagnostics distinct and separates JavaScript errors from disconnections', () => {
@@ -65,5 +65,13 @@ describe('private dashboard measures', () => {
   it('averages weekdays over complete days, Monday first', () => {
     const daily = [{ day: '2026-11-02', game_finished: 4 }, { day: '2026-11-09', game_finished: 2 }, { day: '2026-11-08', game_finished: 6 }, { day: '2026-11-10', game_finished: 99 }]
     expect(weekdayAverages(daily, 'game_finished')).toEqual([3, null, null, null, null, null, 6])
+  })
+  it('drafts a reply to the address the player left, quoting their opinion', () => {
+    const link = replyMailto({ email: 'ana@ejemplo.es', comment: 'Añadid modo & equipos' })
+    expect(link.startsWith('mailto:ana@ejemplo.es?subject=')).toBe(true)
+    const params = new URLSearchParams(link.split('?')[1])
+    expect(params.get('subject')).toBe('Gracias por tu opinión sobre El Impostor')
+    expect(params.get('body')).toContain('«Añadid modo & equipos»')
+    expect([...params.keys()]).toEqual(['subject', 'body'])
   })
 })

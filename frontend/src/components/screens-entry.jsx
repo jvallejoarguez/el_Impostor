@@ -11,7 +11,7 @@ function HomeScreen({ mode, error, creating, category, initialName, onCreateRoom
   const isMobile = useIsMobile()
   if (mode === 'create') return <CreateNameForm error={error} creating={creating} category={category} initialName={initialName} onSubmitName={onSubmitName} onBack={onBack}/>
   return <main className="home-page screen-pad">
-    <header className="club-masthead"><span className="club-monogram" aria-hidden="true">ei.</span><a href="/como-jugar/">Reglas</a></header>
+    <header className="club-masthead"><a href="/" className="club-monogram" aria-label="El Impostor, inicio"><img src="/favicon.svg" alt="" width="52" height="52"/></a><a href="/como-jugar/">Reglas</a></header>
     <section className="home-hero" aria-labelledby="home-title">
       <div className="home-intro">
       <h1 id="home-title" className="home-brand"><span className="sr-only">El Impostor online: juego de palabras con amigos</span><span aria-hidden="true"><Logo size={isMobile ? 0.62 : 1}/></span></h1>

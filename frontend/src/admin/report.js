@@ -78,3 +78,10 @@ export const feedbackLabels = {
   good: 'Bien', okay: 'Regular', bad: 'Mal', connection: 'Conexión', rules: 'Reglas', pace: 'Ritmo',
   missing_players: 'Faltan jugadores', just_looking: 'Solo miraba', other: 'Otro',
 }
+
+// Opens the owner's mail app with a ready-to-edit thank-you; cleanEmail keeps the address mailto-safe.
+export function replyMailto(item) {
+  const quoted = item.comment ? `\n\nNos escribiste:\n«${item.comment}»` : ''
+  const body = `¡Hola!\n\nMuchas gracias por tu opinión sobre El Impostor. Te escribo para contarte que ya lo hemos tenido en cuenta: \n\nPuedes probarlo en https://juegoimpostor.app${quoted}\n\nUn saludo,\nJavier`
+  return `mailto:${item.email}?subject=${encodeURIComponent('Gracias por tu opinión sobre El Impostor')}&body=${encodeURIComponent(body)}`
+}

@@ -1,5 +1,5 @@
 import { WORKER_BASE } from './config.js'
-import { cleanFeedback } from '../../shared/engagement.js'
+import { cleanEmail, cleanFeedback } from '../../shared/engagement.js'
 import { measurementEnabled } from './analytics.js'
 
 const promptedInMemory = new Set()
@@ -20,6 +20,7 @@ export function claimPrompt(kind, now = Date.now()) {
 }
 
 export async function submitFeedback(draft, signal) {
+  if (draft.email?.trim() && !cleanEmail(draft.email)) throw new Error('Revisa el correo o déjalo vacío.')
   const value = cleanFeedback(draft)
   if (!value) throw new Error('Selecciona una opción o escribe un comentario.')
   const response = await fetch(`${WORKER_BASE}/feedback`, {

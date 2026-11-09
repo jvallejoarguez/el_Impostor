@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { summarizeReport, splitPeriod, weekdayAverages, sourceLabels, errorLabels, feedbackLabels } from './report.js'
+import { summarizeReport, splitPeriod, weekdayAverages, sourceLabels, errorLabels, feedbackLabels, replyMailto } from './report.js'
 import './styles.css'
 
 const number = value => new Intl.NumberFormat('es-ES').format(value || 0)
@@ -230,17 +230,19 @@ function Errors({ data }) {
 function Feedback({ items, compact = false }) {
   const [kind, setKind] = useState('all')
   const [search, setSearch] = useState('')
+  const [withEmail, setWithEmail] = useState(false)
   const [page, setPage] = useState(0)
-  const matching = items.filter(item => (kind === 'all' || item.kind === kind) && `${item.comment} ${feedbackLabels[item.topic] || ''}`.toLowerCase().includes(search.toLowerCase()))
+  const matching = items.filter(item => (kind === 'all' || item.kind === kind) && (!withEmail || item.email) && `${item.comment} ${item.email || ''} ${feedbackLabels[item.topic] || ''}`.toLowerCase().includes(search.toLowerCase()))
   const size = compact ? 3 : 20
   const safePage = Math.min(page, Math.max(0, Math.ceil(matching.length / size) - 1))
   const visible = matching.slice(safePage * size, (safePage + 1) * size)
   return <Panel title={compact ? 'Últimas opiniones' : 'Feedback de los jugadores'} note="Opiniones voluntarias. No contienen atribución, por lo que el filtro de pruebas no se aplica aquí.">
-    {!compact && <div className="feedback-controls"><label>Tipo<select value={kind} onChange={e => { setKind(e.target.value); setPage(0) }}><option value="all">Todos los tipos</option>{['rating', 'problem', 'idea', 'words', 'exit'].map(value => <option key={value} value={value}>{feedbackLabels[value]}</option>)}</select></label><label>Buscar<input placeholder="Texto de la opinión…" value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} /></label></div>}
+    {!compact && <div className="feedback-controls"><label>Tipo<select value={kind} onChange={e => { setKind(e.target.value); setPage(0) }}><option value="all">Todos los tipos</option>{['rating', 'problem', 'idea', 'words', 'exit'].map(value => <option key={value} value={value}>{feedbackLabels[value]}</option>)}</select></label><label>Buscar<input placeholder="Texto de la opinión…" value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} /></label><label className="check-label"><input type="checkbox" checked={withEmail} onChange={e => { setWithEmail(e.target.checked); setPage(0) }} />Solo con correo</label></div>}
     {visible.length ? <div className="feedback-list">{visible.map(item => <article className="feedback-item" key={item.id}>
       <div className="feedback-meta"><span className={`tag ${item.rating || ''}`}>{feedbackLabels[item.rating] || feedbackLabels[item.kind] || item.kind}</span>{item.topic && <span>{feedbackLabels[item.topic] || item.topic}</span>}<time dateTime={item.receivedAt}>{stamp(item.receivedAt)} UTC</time></div>
       <p>{item.comment || 'Sin comentario escrito.'}</p>
       <small>{[feedbackLabels[item.kind] || item.kind, item.context?.phase, item.context?.playerCount != null ? `${item.context.playerCount} jugadores` : null, item.context?.category].filter(Boolean).join(' · ')}</small>
+      {item.email && <a className="reply-link" href={replyMailto(item)}>Responder a {item.email}</a>}
     </article>)}</div> : <Empty>{items.length ? 'No hay opiniones que coincidan con los filtros.' : 'Aún no hay opiniones en este período.'}</Empty>}
     {!compact && matching.length > size && <div className="pagination"><button disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>← Anterior</button><span>{safePage + 1} / {Math.ceil(matching.length / size)}</span><button disabled={(safePage + 1) * size >= matching.length} onClick={() => setPage(safePage + 1)}>Siguiente →</button></div>}
   </Panel>

@@ -2,136 +2,215 @@ import React, { useId } from 'react'
 import { AVATAR_NAMES, portraitSeed, avatarIndex } from '../../../shared/avatars.js'
 export { portraitSeed } from '../../../shared/avatars.js'
 
-// Original vector portraits, drawn for El Impostor. No external avatar service.
+// Original marker-doodle portraits, drawn for El Impostor: big heads, thick ink, a meme face each.
+// No external avatar service.
 const INK = '#1C0B40'
-const CREAM = '#FFF8EC'
-const RUST = '#FF4766'
-const GREEN = '#18C99A'
-const BLUE = '#4D8DFF'
+const WHITE = '#FFFFFF'
+const PINK = '#FF8FB0'
+const RED = '#FF4766'
 const GOLD = '#FFCF26'
-const BACKGROUNDS = ['#FFD95E', '#7FE3C4', '#C4B5FF', '#FF9DB0', '#8EC5FF']
+const TEAR = '#6FB6FF'
+// One flat backdrop per character, spread so neighbours in the picker grid never match.
+const BACKGROUNDS = ['#7FE3C4', '#FF9DB0', '#8EC5FF', '#FFD95E', '#C4B5FF', '#FFB27A', '#FF9DB0', '#8EC5FF', '#FFD95E', '#7FE3C4', '#C4B5FF', '#FFB27A']
 export const CLUB_CHARACTERS = AVATAR_NAMES
 
-function Eyes({ y = 76, left = 61, right = 96, narrow = false, look = 1 }) {
-  return <g className="portrait-eyes">
-    <ellipse cx={left} cy={y} rx="9" ry={narrow ? 5 : 9} fill={CREAM}/>
-    <ellipse cx={right} cy={y} rx="9" ry={narrow ? 5 : 9} fill={CREAM}/>
-    <ellipse cx={left + look * 2} cy={y + 1} rx="3" ry={narrow ? 4 : 6} fill={INK}/>
-    <ellipse cx={right + look * 2} cy={y + 1} rx="3" ry={narrow ? 4 : 6} fill={INK}/>
-  </g>
+const f = n => +n.toFixed(1)
+// Closed, slightly lumpy oval through n points (Catmull-Rom), so shapes look drawn with a marker.
+function blob(cx, cy, rx, ry = rx, wobble = .04, n = 8) {
+  const pts = Array.from({ length: n }, (_, i) => {
+    const a = i / n * Math.PI * 2, k = 1 + wobble * Math.sin(i * 2.4 + cx + cy)
+    return [cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k]
+  })
+  const p = i => pts[(i + n) % n]
+  let d = `M${f(pts[0][0])} ${f(pts[0][1])}`
+  for (let i = 0; i < n; i++) {
+    const [a, b, c, e] = [p(i - 1), p(i), p(i + 1), p(i + 2)]
+    d += `C${f(b[0] + (c[0] - a[0]) / 6)} ${f(b[1] + (c[1] - a[1]) / 6)} ${f(c[0] - (e[0] - b[0]) / 6)} ${f(c[1] - (e[1] - b[1]) / 6)} ${f(c[0])} ${f(c[1])}`
+  }
+  return d + 'Z'
 }
-function Shirt({ color = GREEN, tie = false, collar = true }) {
-  return <g stroke={INK} strokeWidth="2.4" strokeLinejoin="round">
-    <path d="M37 156 42 128Q46 115 66 112H94Q115 114 120 129L127 156Z" fill={color}/>
-    {collar && <path d="m65 112 15 13 15-13 5 19-20-6-20 6Z" fill={CREAM}/>}
-    {tie ? <path d="m77 127-5 19 8 9 8-9-5-19Z" fill={RUST}/> : <path d="M80 129v26" fill="none"/>}
-    <path d="m51 140-2 15m63-15 2 15" fill="none" opacity=".45"/>
-  </g>
+// Scalloped circle for fluffy things.
+function fluff(cx, cy, r, n = 14, puff = 6) {
+  let d = `M${f(cx + r)} ${f(cy)}`
+  for (let i = 1; i <= n; i++) {
+    const a = i / n * Math.PI * 2, m = (i - .5) / n * Math.PI * 2
+    d += `Q${f(cx + Math.cos(m) * (r + puff))} ${f(cy + Math.sin(m) * (r + puff))} ${f(cx + Math.cos(a) * r)} ${f(cy + Math.sin(a) * r)}`
+  }
+  return d + 'Z'
 }
+const RIM = blob(80, 80, 71, 71, .025, 10)
+
+// Googly eye: white ball with the pupil pushed toward (dx, dy).
+function Eye({ x, y, r = 11, dx = 0, dy = 0, pupil = r * .42 }) {
+  return <><path d={blob(x, y, r)} fill={WHITE}/><circle cx={x + dx} cy={y + dy} r={pupil} fill={INK} stroke="none"/></>
+}
+function Blush({ x, y }) {
+  return <ellipse cx={x} cy={y} rx="9" ry="5.5" fill={PINK} stroke="none" opacity=".85"/>
+}
+function Sparkle({ x, y, r = 8 }) {
+  return <path d={`M${x} ${y - r}Q${x} ${y} ${x + r} ${y}Q${x} ${y} ${x} ${y + r}Q${x} ${y} ${x - r} ${y}Q${x} ${y} ${x} ${y - r}Z`} fill={WHITE} strokeWidth="3"/>
+}
+function Drop({ x, y, s = 1 }) {
+  return <path d="M0-11Q7-1 4 4Q0 8-4 4Q-7-1 0-11Z" transform={`translate(${x} ${y}) scale(${s})`} fill={TEAR} strokeWidth={3.5 / s}/>
+}
+
 function Portrait({ kind, look }) {
   switch (kind) {
-    case 0: return <>
-      <Shirt color={GOLD} tie/>
-      <path d="m40 67-5-43 29 18q17-8 33 0l27-20-5 49 9 15-25 21-23 13-24-14-24-23Z" fill="#BB5F32"/>
-      <path d="m40 65 2-27 19 16m41-1 17-17-3 30" fill={INK} stroke="none"/>
-      <path d="m40 83 29 8 11 20 12-20 27-8-19 25-20 11-23-13Z" fill={CREAM} stroke="none"/>
-      <Eyes y={76} narrow look={look}/><path d="m72 96 8 8 9-8Z" fill={INK}/>
-      <path d="m80 103-1 8m-10 0q10 5 19-1M52 62l16 3m23-1 14-5" fill="none"/>
-      <path d="M52 37q4-14 25-15 22 0 30 13l-3 10H54Z" fill={GREEN}/><path d="m43 45 57 3 19-8-8-5-30 7Z" fill={GREEN}/>
-    </>
-    case 1: return <>
-      <Shirt color={BLUE}/>
-      <path d="M46 68Q28 19 44 10q15-3 21 50M88 61q1-53 16-53 18 8 3 61" fill={CREAM}/>
-      <path d="M49 55q-12-34-7-34m56 33q3-29 7-31" stroke="#CA9179" strokeWidth="7" fill="none"/>
-      <path d="M43 72q3-22 37-22 38 2 39 36-1 32-38 34-40-1-38-34Z" fill={CREAM}/>
-      <Eyes look={-look}/><path d="m75 94 7 5 7-6Z" fill={RUST}/><path d="m82 101 1 8m-9-1q8 6 17-1" fill="none"/>
-      <path d="M41 67q17-30 54-18l18 14-2 9-40-8Z" fill={RUST}/><path d="m43 67 48 1 27 6-7 5-32-4Z" fill={RUST}/>
-      <path d="m66 137 11 4-11 4m28-8-11 4 11 4" fill={GOLD}/>
-    </>
-    case 2: return <>
-      <Shirt color={RUST} collar={false}/>
-      <path d="m41 39 18 10q20-13 39-1l24-15-3 30q17 52-39 63-50-8-43-49Z" fill="#80613F"/>
-      <path d="M44 69q5-20 24-12l12 10 14-12q18-6 24 15l-5 31-32 19-35-21Z" fill={CREAM} stroke="none"/>
-      <Eyes y={79} left={62} right={101} look={look}/>
-      <g fill="none" strokeWidth="3"><circle cx="61" cy="78" r="19"/><circle cx="103" cy="78" r="19"/><path d="M80 76h4m-44-1-8-4m91 4 7-4"/></g>
-      <path d="m75 97 7 13 7-13Z" fill={GOLD}/><path d="m64 111 3 3m31-4-3 4" fill="none"/>
-      <path d="M67 135q14 10 27 0m-30 9q16 9 32 0" fill="none" stroke={CREAM}/>
-    </>
-    case 3: return <>
-      <Shirt color={CREAM} collar={false}/>
-      <path d="M49 130h65m-68 10h72m-73 10h75" fill="none" strokeWidth="6" stroke={BLUE}/>
-      <path d="m39 73 3-44 27 25q14-5 27-1l23-23-1 43q16 44-36 48-47 0-43-31Z" fill={INK}/>
-      <path d="m48 49 1 19 13-7m40 0 10-13-1 21" fill="#A97B65" stroke="none"/>
-      <Eyes narrow look={-look}/><path d="m77 96 6 5 7-6Z" fill={RUST} stroke="none"/>
-      <path d="m69 107 14-3 12 3m-45-6-17-3m20 10-20 1m71-9 17-5m-16 13 18 3" fill="none" stroke={CREAM} strokeWidth="1.6"/>
-      <path d="M42 53q-13-13 13-24 31-11 47 2 8 4 5 15l-23 8Z" fill={RUST}/><path d="m70 25 4-8 7 2-2 9" fill={INK}/>
-    </>
-    case 4: return <>
-      <Shirt color={GREEN}/>
-      <circle cx="44" cy="54" r="17" fill="#9D7149"/><circle cx="115" cy="53" r="17" fill="#9D7149"/>
-      <circle cx="44" cy="54" r="8" fill="#684E38" stroke="none"/><circle cx="115" cy="53" r="8" fill="#684E38" stroke="none"/>
-      <path d="M42 71q1-33 38-33 39 2 39 40v19q-5 27-40 26-38-1-39-29Z" fill="#AE8154"/>
-      <Eyes y={73} look={look}/><ellipse cx="81" cy="100" rx="24" ry="17" fill={CREAM} stroke="none"/>
-      <path d="M72 92q9-6 18 0-2 9-9 8-7 0-9-8Z" fill={INK}/><path d="M81 100v9m-9 0q10 6 19-1" fill="none"/>
-      <path d="M47 42q6-22 38-19 27 2 29 24-27-10-67-5Z" fill={GOLD}/><path d="M46 40q36-7 69 4v10q-35-9-70-4Z" fill={GOLD}/>
-      <path d="m60 28 2 9m10-12 1 10m13-10v10m13-7-2 9" fill="none" strokeWidth="1.3"/>
-    </>
-    case 5: return <>
-      <Shirt color={BLUE} collar={false}/><path d="M62 120h35v12H62Z" fill={BLUE}/>
-      <path d="m43 64-7-32 30 17q17-5 32 0l24-19-4 38 10 19-11 19-37 16-36-17-13-23Z" fill="#A4A797"/>
-      <path d="m42 77 16-18 22 13 19-13 23 15-15 22-27-8-26 8Z" fill={INK} stroke="none"/>
-      <Eyes y={77} narrow look={look}/><path d="m57 100 22-14 28 16-25 19Z" fill={CREAM} stroke="none"/>
-      <path d="m73 99 9 7 9-8Z" fill={INK}/><path d="m82 106 1 8m-7 0 15-1" fill="none"/>
-      <path d="M53 45q20-31 45-8l11 8-22 4Z" fill={RUST}/><path d="M46 46q18-2 44 2l25 10-39-6Z" fill={RUST}/>
-    </>
-    case 6: return <>
-      <Shirt color={GOLD} tie/>
-      <path d="M40 68q-12-33 12-32 18-1 25 21h10q9-25 26-20 21 8 7 37l4 19q-1 33-44 31-49 0-45-29Z" fill="#78905A"/>
-      <Eyes y={57} left={54} right={107} look={-look}/>
-      <path d="M49 94q31 22 61-2" fill="none" strokeWidth="3"/><path d="m47 89-4 8m69-11 5 8" fill="none"/>
-      <ellipse cx="75" cy="82" rx="2" ry="3" fill={INK} stroke="none"/><ellipse cx="88" cy="82" rx="2" ry="3" fill={INK} stroke="none"/>
-      <path d="m83 97 18-1q-4 12-12 11Z" fill={RUST} stroke="none"/>
-    </>
-    case 7: return <>
-      <Shirt color={RUST}/>
-      <path d="M45 51q31-18 61-2l15 28-8 25q-12 28-38 19-39 0-36-29Z" fill="#D6B982"/>
-      <path d="M48 48Q27 42 24 74q-4 27 13 28 16-8 16-38m55-14q22-11 28 25 4 24-12 28-12-2-15-28" fill="#6D5137"/>
-      <Eyes y={77} look={look}/><path d="M64 97q13-19 32-1l8 13-17 14-20-4-9-9Z" fill={CREAM} stroke="none"/>
-      <ellipse cx="85" cy="98" rx="10" ry="6" fill={INK}/><path d="M84 104v9m-10-1q10 9 19-2" fill="none"/>
-      <path d="m41 49 12-22 44 2 14 24Z" fill={BLUE}/><path d="M27 57q47-16 106 0l-2 8q-53-12-101 1Z" fill={BLUE}/><path d="m50 42 50 1" fill="none" stroke={GOLD} strokeWidth="6"/>
-    </>
-    case 8: return <>
-      <path d="M78 60Q12 31 16 87q2 42 42 57l23-22 21 23q48-22 43-61-2-43-64-23Z" fill={GOLD}/>
-      <path d="m73 77-30-8-12 13 23 30m34-35 29-10 14 16-25 28" fill="none" stroke={RUST} strokeWidth="7"/>
-      <path d="M62 140 56 85q2-29 23-30 25 2 26 30l-7 55Z" fill={BLUE}/>
-      <path d="M64 65q-19-25-26-19m56 17q17-28 29-23" fill="none"/><circle cx="36" cy="44" r="5" fill={RUST}/><circle cx="126" cy="39" r="5" fill={RUST}/>
-      <Eyes y={84} left={68} right={95} look={look}/><path d="m76 103 12 1m-24 12h34m-35 10h35" fill="none" stroke={CREAM}/><path d="m54 117-10 13m60-13 11 10" fill="none"/>
-    </>
-    case 9: return <>
-      <Shirt color={GOLD}/>
-      <path d="M52 111q-18-28 0-61 20-23 46-8 27 20 13 65l-15 17Z" fill="#A6AFAC"/>
-      <path d="M57 105q26 19 50-9l-9 24-34 4Z" fill={GREEN} stroke="none"/>
-      <Eyes y={76} look={look}/><path d="m75 89 27 9-24 9Z" fill={RUST}/>
-      <path d="M44 52q-1-26 31-29 30-2 38 18l-17 16Z" fill={BLUE}/><path d="m43 51 58-2 26 8-36 4Z" fill={BLUE}/>
-      <path d="m71 130 9 12 15-15" fill="none" strokeWidth="5" stroke={CREAM}/>
-    </>
-    case 10: return <>
-      <Shirt color={RUST} collar={false}/>
-      <circle cx="44" cy="63" r="12" fill="#996C45"/><circle cx="116" cy="63" r="12" fill="#996C45"/>
-      <path d="M40 80q-3-39 40-39 39-1 41 38 1 47-41 44-43 1-40-43Z" fill="#AB7C4E"/>
-      <Eyes look={look}/><path d="M45 92q18-18 36-2 19-18 36 2-1 28-36 29-33 0-36-29Z" fill={CREAM} stroke="none"/>
-      <path d="m73 93 9 6 9-6q-8-8-18 0Z" fill={INK}/><path d="m82 100-1 11m-10-1q10 5 20 0m-27-10-22-2m20 8-19 5m54-12 22-2m-22 8 20 5" fill="none" strokeWidth="1.4"/>
-      <path d="M42 57q7-37 41-32 33-2 37 36-33-14-78-4Z" fill={GREEN}/><path d="M42 54q35-9 77 4v12q-46-10-77-4Z" fill={GREEN}/>
-      <path d="M52 137h56m-57 11h59" stroke={CREAM} strokeWidth="4"/>
-    </>
-    default: return <>
-      <Shirt color={BLUE} tie/>
-      <circle cx="40" cy="47" r="26" fill="#B5A48D"/><circle cx="120" cy="47" r="26" fill="#B5A48D"/>
-      <circle cx="40" cy="47" r="16" fill="#BD7E64" stroke="none"/><circle cx="120" cy="47" r="16" fill="#BD7E64" stroke="none"/>
-      <path d="M42 69q1-28 38-28 34 0 38 30l-9 26-27 25-30-22Z" fill="#B5A48D"/>
-      <Eyes y={73} look={-look}/><path d="m75 100 7 7 8-8Z" fill={RUST}/><path d="m65 100-25-2m22 8-20 5m54-12 24-4m-23 12 23 6" fill="none" strokeWidth="1.4"/>
-      <path d="m57 41 9-19 31 1 9 22Z" fill={GREEN}/><path d="M48 46q33-8 63 1l-1 7q-30-6-62 0Z" fill={GREEN}/>
-    </>
+    case 0: { // zorro: smug, side-eyeing, absolutely the impostor
+      const head = 'M28 86Q28 50 80 48Q132 50 132 86Q133 108 112 120L80 136 48 120Q27 108 28 86Z'
+      return <>
+        <path d="M38 70 30 18 72 48Z" fill="#FF8A3D"/><path d="M122 70 130 18 88 48Z" fill="#FF8A3D"/>
+        <path d="M41 56 37 32 56 47Z" fill="#FFE7D1" stroke="none"/><path d="M119 56 123 32 104 47Z" fill="#FFE7D1" stroke="none"/>
+        <path d={head} fill="#FF8A3D" stroke="none"/>
+        <path d="M37 101Q58 89 80 103Q102 89 123 101L108 120 80 133 52 120Z" fill={WHITE} stroke="none"/>
+        <path d={head}/>
+        <path d="M47 80H73Q71 93 60 93Q49 93 47 80Z" fill={WHITE}/><circle cx={60 + look * 6} cy="85" r="4.5" fill={INK} stroke="none"/>
+        <path d="M87 80H113Q111 93 100 93Q89 93 87 80Z" fill={WHITE}/><circle cx={100 + look * 6} cy="85" r="4.5" fill={INK} stroke="none"/>
+        <path d="M46 70Q58 66 72 71M88 65Q100 53 114 60"/>
+        <path d="M73 103H87L80 110Z" fill={INK}/>
+        <path d="M67 118Q84 124 98 110M95 106l4 7"/>
+      </>
+    }
+    case 1: // conejo: buck teeth, eyes going two ways
+      return <>
+        <path d="M50 66Q32 10 53 5Q72 5 68 62Z" fill="#F4F1FF"/><path d="M55 54Q46 22 55 16Q63 18 62 54Z" fill={PINK} stroke="none"/>
+        <path d="M94 62Q110 12 138 24Q152 36 114 72Z" fill="#F4F1FF"/><path d="M103 58Q115 26 133 31Q140 38 113 63Z" fill={PINK} stroke="none"/>
+        <path d={blob(80, 100, 48, 42)} fill="#F4F1FF"/>
+        <Eye x={59} y={90} r={15} dx={-6 * look} dy={-5} pupil={5}/><Eye x={101} y={88} r={10} dx={4} dy={4 * look} pupil={4}/>
+        <path d="M74 105H86L80 111Z" fill={PINK}/>
+        <path d="M71 115H89V130Q85 134 80 130Q75 134 71 130Z" fill={WHITE}/><path d="M80 116V130" strokeWidth="3.5"/>
+        <path d="M60 111Q70 118 80 114Q90 118 100 111"/>
+        <Blush x={42} y={112}/><Blush x={118} y={110}/>
+      </>
+    case 2: { // búho: O_O
+      const body = 'M30 124Q22 76 42 50L36 20 62 40Q80 34 98 40L124 20 118 50Q138 76 130 124Q120 150 80 150Q40 150 30 124Z'
+      return <>
+        <path d="M138 30l6-9M143 46l11-4M22 30l-6-9" strokeWidth="4.5"/>
+        <path d={body} fill="#B9824F"/>
+        <path d={blob(59, 86, 25)} fill="#F6DDB4" stroke="none"/><path d={blob(101, 86, 25)} fill="#F6DDB4" stroke="none"/>
+        <Eye x={59} y={86} r={21} dx={look} pupil={3.5}/><Eye x={101} y={86} r={21} dx={look} pupil={3.5}/>
+        <path d="M73 104H87L80 119Z" fill={GOLD}/>
+        <path d="M62 132l5 5 5-5M88 132l5 5 5-5M75 140l5 5 5-5" strokeWidth="3.5"/>
+      </>
+    }
+    case 3: // gato: 🥺
+      return <>
+        <path d="M28 104Q26 66 46 56L40 16 72 46Q80 44 88 46L120 16 114 56Q134 66 132 104Q132 142 80 142Q28 142 28 104Z" fill="#6A6690"/>
+        <path d="M46 50 44 29 62 45Z" fill={PINK} stroke="none"/><path d="M114 50 116 29 98 45Z" fill={PINK} stroke="none"/>
+        <path d="M45 71 64 63M115 71 96 63"/>
+        <path d={blob(60, 92, 15, 17)} fill={INK}/><path d={blob(100, 92, 15, 17)} fill={INK}/>
+        <circle cx="54" cy="85" r="6" fill={WHITE} stroke="none"/><circle cx="66" cy="99" r="3" fill={WHITE} stroke="none"/>
+        <circle cx="94" cy="85" r="6" fill={WHITE} stroke="none"/><circle cx="106" cy="99" r="3" fill={WHITE} stroke="none"/>
+        <path d="M46 103Q60 118 74 103M86 103Q100 118 114 103" stroke={TEAR} strokeWidth="4"/>
+        <path d="M75 109H85L80 114Z" fill={PINK} stroke="none"/>
+        <path d="M71 118Q75.5 123 80 117Q84.5 123 89 118" strokeWidth="4"/>
+        <path d="M44 112 16 106M44 120 18 127M116 112 144 106M116 120 142 127" strokeWidth="3.5"/>
+        <Drop x={121} y={112}/>
+      </>
+    case 4: // oso: blep
+      return <>
+        <path d={blob(40, 50, 17)} fill="#C08350"/><path d={blob(120, 50, 17)} fill="#C08350"/>
+        <circle cx="41" cy="51" r="8" fill="#8A5530" stroke="none"/><circle cx="119" cy="51" r="8" fill="#8A5530" stroke="none"/>
+        <path d={blob(80, 100, 54, 48)} fill="#C08350"/>
+        <circle cx="67" cy="85" r="4.5" fill={INK} stroke="none"/><circle cx="93" cy="85" r="4.5" fill={INK} stroke="none"/>
+        <path d={blob(80, 111, 25, 18)} fill="#FFF1DC"/>
+        <path d="M74 118Q73 135 81 135Q89 135 88 118Z" fill={PINK}/><path d="M81 122V129" strokeWidth="3"/>
+        <path d="M70 101Q80 95 90 101Q88 109 80 109Q72 109 70 101Z" fill={INK}/>
+        <path d="M80 109V115M68 115Q74 121 80 115Q86 121 92 115"/>
+        <Blush x={44} y={106}/><Blush x={116} y={106}/>
+      </>
+    case 5: // mapache: plotting something
+      return <>
+        <path d="M36 70 38 24 70 50Z" fill="#A9ACC2"/><path d="M124 70 122 24 90 50Z" fill="#A9ACC2"/>
+        <path d="M42 58 42 37 58 50Z" fill="#3A3157" stroke="none"/><path d="M118 58 118 37 102 50Z" fill="#3A3157" stroke="none"/>
+        <path d={blob(80, 98, 52, 45)} fill="#A9ACC2"/>
+        <path d="M80 56V68M70 58l2 9M90 58l-2 9" stroke="#3A3157" strokeWidth="4"/>
+        <path d="M34 92Q40 75 60 77Q72 79 80 87Q88 79 100 77Q120 75 126 92Q118 107 100 104Q88 102 80 96Q72 102 60 104Q42 107 34 92Z" fill="#3A3157" stroke="none"/>
+        <Eye x={60} y={90} r={10} dx={4 * look} pupil={4.5}/><Eye x={100} y={90} r={10} dx={4 * look} pupil={4.5}/>
+        <path d="M47 68 68 77M113 68 92 77"/>
+        <path d={blob(80, 120, 24, 15)} fill={WHITE} stroke="none"/>
+        <ellipse cx="80" cy="110" rx="8" ry="5.5" fill={INK}/>
+        <path d="M62 120Q80 138 98 120Q80 128 62 120Z" fill={INK}/><path d="M68 122 71 130 75 123Z" fill={WHITE} stroke="none"/>
+      </>
+    case 6: // rana: unimpressed, eyes not agreeing
+      return <>
+        <path d={blob(52, 66, 22)} fill="#62D47F"/><path d={blob(108, 66, 22)} fill="#62D47F"/>
+        <path d={blob(80, 106, 58, 38)} fill="#62D47F"/>
+        <Eye x={52} y={64} r={14} dx={5} dy={4} pupil={5.5}/><Eye x={108} y={64} r={14} dx={-5 * look} dy={5} pupil={5.5}/>
+        <path d="M38 63Q38 49 52 49Q66 49 66 63Z" fill="#62D47F"/><path d="M94 63Q94 49 108 49Q122 49 122 63Z" fill="#62D47F"/>
+        <circle cx="72" cy="96" r="2.5" fill={INK} stroke="none"/><circle cx="88" cy="96" r="2.5" fill={INK} stroke="none"/>
+        <path d="M38 110Q80 132 122 110M34 106l6 6M126 106l-6 6"/>
+        <Blush x={46} y={124}/><Blush x={114} y={124}/>
+      </>
+    case 7: // perro: one big eye, tongue out sideways
+      return <>
+        <path d="M46 58Q18 50 20 96Q24 113 40 100Q44 78 54 64Z" fill="#B8743C"/>
+        <path d="M112 58Q136 44 146 74Q148 93 132 92Q124 72 106 64Z" fill="#B8743C"/>
+        <path d={blob(80, 98, 46, 44)} fill="#F3D2A2"/>
+        <path d={blob(100, 84, 18, 17)} fill="#B8743C" stroke="none"/>
+        <Eye x={60} y={84} r={10} dx={3} dy={3} pupil={4.5}/><Eye x={100} y={84} r={14} dx={-4 * look} dy={-4} pupil={4.5}/>
+        <path d={blob(80, 112, 23, 16)} fill={WHITE}/>
+        <path d="M84 119Q85 139 96 138Q105 136 99 118Z" fill={PINK}/><path d="M91 124l2 8" strokeWidth="3"/>
+        <path d="M70 102Q80 96 90 102Q88 110 80 110Q72 110 70 102Z" fill={INK}/>
+        <path d="M80 110V116M67 115Q73 122 80 116Q87 122 94 115"/>
+      </>
+    case 8: // polilla: has seen the lamp
+      return <>
+        <path d="M72 96Q28 34 12 62Q4 96 38 110Q18 130 36 144Q58 152 74 120Z" fill="#FFF1D6"/>
+        <path d="M88 96Q132 34 148 62Q156 96 122 110Q142 130 124 144Q102 152 86 120Z" fill="#FFF1D6"/>
+        <circle cx="30" cy="76" r="7" fill="#B8743C" stroke="none"/><circle cx="130" cy="76" r="7" fill="#B8743C" stroke="none"/>
+        <circle cx="34" cy="128" r="4" fill="#B8743C" stroke="none"/><circle cx="126" cy="128" r="4" fill="#B8743C" stroke="none"/>
+        <path d="M68 64Q58 36 42 28M92 64Q102 36 118 28"/>
+        <path d="M60 48l-7 3M53 38l-7 0M100 48l7 3M107 38l7 0" strokeWidth="3.5"/>
+        <path d={fluff(80, 140, 26, 10, 5)} fill={WHITE}/>
+        <path d={fluff(80, 96, 34)} fill="#E9B872"/>
+        <path d={blob(62, 93, 14, 16)} fill={INK}/><path d={blob(98, 93, 14, 16)} fill={INK}/>
+        <circle cx="56" cy="86" r="5.5" fill={WHITE} stroke="none"/><circle cx="92" cy="86" r="5.5" fill={WHITE} stroke="none"/>
+        <circle cx="68" cy="101" r="3" fill={GOLD} stroke="none"/><circle cx="104" cy="101" r="3" fill={GOLD} stroke="none"/>
+        <path d="M74 115Q80 120 86 115" strokeWidth="4"/>
+        <Blush x={50} y={112}/><Blush x={110} y={112}/>
+        <Sparkle x={140} y={30}/><Sparkle x={22} y={34} r={6}/>
+      </>
+    case 9: // paloma: nothing behind the eyes
+      return <>
+        <path d="M18 164Q24 116 80 112Q136 116 142 164Z" fill="#A8B0D6"/>
+        <path d="M46 124Q80 106 114 124Q104 142 80 142Q56 142 46 124Z" fill="#3FD3A8" stroke="none"/>
+        <path d="M54 133Q80 121 106 133" stroke="#B07BFF" strokeWidth="6"/>
+        <path d={blob(80, 80, 44, 42)} fill="#A8B0D6"/>
+        <path d="M78 38Q70 24 80 17M84 38Q90 27 99 28" strokeWidth="4"/>
+        <circle cx="45" cy="78" r="11" fill="#FF8A3D"/><circle cx={45 + look} cy="78" r="3.5" fill={INK} stroke="none"/>
+        <circle cx="115" cy="78" r="11" fill="#FF8A3D"/><circle cx={115 + look} cy="78" r="3.5" fill={INK} stroke="none"/>
+        <path d="M72 88Q80 83 88 88L80 108Z" fill="#5B5470"/>
+        <path d={blob(80, 87, 8, 4.5)} fill={WHITE} strokeWidth="3.5"/>
+      </>
+    case 10: // nutria: has a rock, is thrilled
+      return <>
+        <path d={blob(40, 64, 9)} fill="#A0693F"/><path d={blob(120, 64, 9)} fill="#A0693F"/>
+        <path d={blob(80, 96, 50, 44)} fill="#A0693F"/>
+        <path d="M40 106Q44 84 64 90Q80 96 96 90Q116 84 120 106Q116 130 80 132Q44 130 40 106Z" fill="#F4DCBC" stroke="none"/>
+        <path d="M52 84Q60 73 68 84M92 84Q100 73 108 84"/>
+        <path d="M70 98Q80 92 90 98Q88 106 80 106Q72 106 70 98Z" fill={INK}/>
+        <path d="M68 110Q80 111 92 110Q90 126 80 126Q70 126 68 110Z" fill={RED}/><path d="M73 121Q80 115 87 121Q84 125 80 125Q76 125 73 121Z" fill={PINK} stroke="none"/>
+        <path d="M80 106V110"/>
+        <g fill={INK} stroke="none"><circle cx="62" cy="104" r="1.8"/><circle cx="58" cy="110" r="1.8"/><circle cx="98" cy="104" r="1.8"/><circle cx="102" cy="110" r="1.8"/></g>
+        <Blush x={46} y={98}/><Blush x={114} y={98}/>
+        <path d={blob(80, 146, 18, 11)} fill="#B9B4C9"/>
+        <path d={blob(60, 141, 9, 8)} fill="#A0693F"/><path d={blob(100, 141, 9, 8)} fill="#A0693F"/>
+        <Sparkle x={136} y={36} r={7}/>
+      </>
+    default: // ratón: sweating bullets
+      return <>
+        <path d={blob(40, 54, 27)} fill="#C3BED6"/><path d={blob(120, 54, 27)} fill="#C3BED6"/>
+        <path d={blob(41, 55, 16)} fill={PINK} stroke="none"/><path d={blob(119, 55, 16)} fill={PINK} stroke="none"/>
+        <path d={blob(80, 100, 44, 42)} fill="#C3BED6"/>
+        <path d="M54 76 68 70M106 76 92 70"/>
+        <Eye x={64} y={90} r={11} dx={look} pupil={3}/><Eye x={96} y={90} r={11} dx={look} pupil={3}/>
+        <circle cx="80" cy="107" r="5" fill={PINK}/>
+        <path d="M63 116Q80 112 97 116L96 128Q80 132 64 128Z" fill={WHITE}/>
+        <path d="M64 122Q80 120 96 122M72 115V129M80 114V130M88 115V129" strokeWidth="3"/>
+        <path d="M46 110 18 106M46 118 20 124M114 110 142 106M114 118 140 124" strokeWidth="3.5"/>
+        <Drop x={126} y={86} s={1.2}/>
+      </>
   }
 }
 
@@ -139,20 +218,17 @@ export function ClubAvatar({ name = '', size = 72, speaking = false, eliminated 
   const id = useId().replaceAll(':', '')
   const seed = portraitSeed(name)
   const kind = avatarIndex(name, character)
-  const accent = [RUST, GREEN, BLUE, GOLD][(seed >>> 4) % 4]
-  return <span className={`club-avatar ${speaking ? 'is-speaking' : ''} ${eliminated ? 'is-eliminated' : ''}`} data-avatar={CLUB_CHARACTERS[kind]} style={{width:size, height:size, '--portrait-accent':accent}} aria-hidden="true">
+  return <span className={`club-avatar ${speaking ? 'is-speaking' : ''} ${eliminated ? 'is-eliminated' : ''}`} data-avatar={CLUB_CHARACTERS[kind]} style={{width:size, height:size}} aria-hidden="true">
     <svg viewBox="0 0 160 160" width={size} height={size} className="portrait-illustration" focusable="false">
-      <defs><clipPath id={`portrait-${id}`}><rect x="6" y="6" width="148" height="148" rx="70"/></clipPath><pattern id={`hatch-${id}`} width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(25)"><path d="M0 0v9" stroke={INK} strokeWidth=".6" opacity=".14"/></pattern></defs>
-      <rect x="4" y="4" width="152" height="152" rx="73" fill={CREAM} stroke={INK} strokeWidth="4"/>
+      <defs><clipPath id={`portrait-${id}`}><path d={RIM}/></clipPath></defs>
+      <path d={RIM} fill={INK} transform="translate(0 4)"/>
+      <path d={RIM} fill={BACKGROUNDS[kind]}/>
       <g clipPath={`url(#portrait-${id})`}>
-        <path d="M6 6h148v148H6Z" fill={BACKGROUNDS[(seed >>> 8) % BACKGROUNDS.length]}/>
-        <path d="M6 6h148v148H6Z" fill={`url(#hatch-${id})`}/>
-        <path d="M19 130q59-30 122 0v30H19Z" fill={accent} opacity=".16"/>
-        <g fill="none" stroke={INK} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><Portrait kind={kind} look={seed % 2 ? 1 : -1}/></g>
+        <path d="M28 58Q36 32 62 21" fill="none" stroke={WHITE} strokeWidth="7" strokeLinecap="round" opacity=".5"/>
+        <g fill="none" stroke={INK} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"><Portrait kind={kind} look={seed % 2 ? 1 : -1}/></g>
       </g>
-      <rect x="9" y="9" width="142" height="142" rx="67" fill="none" stroke={CREAM} strokeWidth="1.5" opacity=".6"/>
+      <path d={RIM} fill="none" stroke={INK} strokeWidth="5"/>
     </svg>
-    {showCrown && <svg className="portrait-host" viewBox="0 0 32 36" width="24" height="27"><path d="m9 20-3 14 10-5 9 5-2-15" fill={RUST} stroke={INK} strokeWidth="1.5"/><path d="m16 2 4 3 5 1 1 5 3 4-3 4-1 5-5 1-4 3-4-3-5-1-1-5-3-4 3-4 1-5 5-1Z" fill={GOLD} stroke={INK} strokeWidth="1.5"/><path d="m16 8 2 4 5 1-4 3 1 5-4-3-4 3 1-5-4-3 5-1Z" fill={INK}/></svg>}
+    {showCrown && <svg className="portrait-host" viewBox="0 0 32 36" width="24" height="27"><path d="m9 20-3 14 10-5 9 5-2-15" fill={RED} stroke={INK} strokeWidth="1.5"/><path d="m16 2 4 3 5 1 1 5 3 4-3 4-1 5-5 1-4 3-4-3-5-1-1-5-3-4 3-4 1-5 5-1Z" fill={GOLD} stroke={INK} strokeWidth="1.5"/><path d="m16 8 2 4 5 1-4 3 1 5-4-3-4 3 1-5-4-3 5-1Z" fill={INK}/></svg>}
   </span>
 }
-

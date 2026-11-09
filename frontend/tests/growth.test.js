@@ -58,6 +58,16 @@ describe('growth flows', () => {
     expect(bodies[0].context).toEqual({ phase: 'voting' })
   })
 
+  it('explains a mistyped reply email without sending, and sends a valid one', async () => {
+    const fetch = vi.fn().mockResolvedValue({ ok: true })
+    vi.stubGlobal('fetch', fetch)
+    const draft = { id: crypto.randomUUID(), kind: 'idea', topic: '', comment: 'Más categorías', email: 'ana@gmail', context: {} }
+    await expect(submitFeedback(draft)).rejects.toThrow('Revisa el correo')
+    expect(fetch).not.toHaveBeenCalled()
+    await submitFeedback({ ...draft, email: ' ana@gmail.com ' })
+    expect(JSON.parse(fetch.mock.calls[0][1].body).email).toBe('ana@gmail.com')
+  })
+
   it('uses the collector fallback, strips private properties and respects browser privacy signals', async () => {
     vi.stubGlobal('localStorage', memory()); vi.stubGlobal('sessionStorage', memory())
     vi.stubGlobal('window', { location: { pathname: '/' }, elImpostorConsent: consentApi })
